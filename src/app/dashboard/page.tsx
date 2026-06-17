@@ -8,6 +8,7 @@ import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const reqHeaders = await headers();
@@ -80,25 +81,27 @@ export default async function DashboardPage() {
       {activeOrgId && projectsData.length > 0 && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {projectsData.map(({ proj, inv }) => (
-            <Card key={proj.id} className="flex flex-col">
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-xl">{proj.name}</CardTitle>
-                  <Badge variant={proj.status === "active" ? "default" : "secondary"}>
-                    {proj.status}
-                  </Badge>
-                </div>
-                <CardDescription>Created on {new Date(proj.createdAt).toLocaleDateString()}</CardDescription>
-              </CardHeader>
-              <CardContent className="mt-auto">
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <span className="text-sm text-muted-foreground">Client Invite</span>
-                  <Badge variant={inv?.status === "accepted" ? "default" : "outline"} className="capitalize text-xs">
-                    {inv?.status || "None"}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+            <Link key={proj.id} href={`/projects/${proj.id}/contract`} className="transition-transform hover:-translate-y-1 block h-full">
+              <Card className="flex flex-col h-full cursor-pointer shadow-sm hover:shadow-md">
+                <CardHeader className="pb-4">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-xl">{proj.name}</CardTitle>
+                    <Badge variant={proj.status === "active" ? "default" : "secondary"}>
+                      {proj.status}
+                    </Badge>
+                  </div>
+                  <CardDescription>Created on {new Date(proj.createdAt).toLocaleDateString()}</CardDescription>
+                </CardHeader>
+                <CardContent className="mt-auto">
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <span className="text-sm text-muted-foreground">Client Invite</span>
+                    <Badge variant={inv?.status === "accepted" ? "default" : "outline"} className="capitalize text-xs">
+                      {inv?.status || "None"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

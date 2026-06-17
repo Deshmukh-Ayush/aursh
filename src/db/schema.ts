@@ -330,4 +330,57 @@ export const projectInvitationRelations = relations(projectInvitation, ({ one })
     fields: [projectInvitation.invitedBy],
     references: [user.id],
   }),
+}));
+
+export const contract = pgTable("contract", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  status: text("status").notNull().default("draft"),
+  uploadedBy: text("uploaded_by")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const signature = pgTable("signature", {
+  id: text("id").primaryKey(),
+  contractId: text("contract_id")
+    .notNull()
+    .references(() => contract.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  signedAt: timestamp("signed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const contractRelations = relations(contract, ({ one, many }) => ({
+  project: one(project, {
+    fields: [contract.projectId],
+    references: [project.id],
+  }),
+  uploader: one(user, {
+    fields: [contract.uploadedBy],
+    references: [user.id],
+  }),
+  signatures: many(signature),
+}));
+
+export const signatureRelations = relations(signature, ({ one }) => ({
+  contract: one(contract, {
+    fields: [signature.contractId],
+    references: [contract.id],
+  }),
+  user: one(user, {
+    fields: [signature.userId],
+    references: [user.id],
+  }),
 }));
