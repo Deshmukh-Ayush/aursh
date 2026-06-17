@@ -63,7 +63,11 @@ export async function createProjectAction(formData: FormData) {
       })
     ]);
 
-    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+    // Auto-detect Vercel deployment URLs or fallback to localhost
+    const baseUrl = process.env.BASE_URL 
+      || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
     const inviteLink = `${baseUrl}/invite/${token}`;
     await sendProjectInvitationEmail(clientEmail, name, inviteLink);
 

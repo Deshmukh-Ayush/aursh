@@ -30,8 +30,10 @@ export function AcceptInviteButton({ needsLogin, token }: { needsLogin: boolean,
 
     if (result.error) {
       alert(result.error);
+    } else if (result.projectId) {
+      // Redirect straight to the specific project contract tab
+      router.push(`/projects/${result.projectId}/contract`);
     } else {
-      // Redirect to dashboard (or specific project later)
       router.push("/dashboard");
     }
   };
