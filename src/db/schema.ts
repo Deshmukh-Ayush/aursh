@@ -252,3 +252,82 @@ export const teamMemberRelations = relations(
     }),
   })
 );
+
+export const project = pgTable("project", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("active"),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const projectMember = pgTable("project_member", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const projectInvitation = pgTable("project_invitation", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  status: text("status").notNull().default("pending"),
+  invitedBy: text("invited_by")
+    .notNull()
+    .references(() => user.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const projectRelations = relations(project, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [project.organizationId],
+    references: [organization.id],
+  }),
+  creator: one(user, {
+    fields: [project.createdBy],
+    references: [user.id],
+  }),
+  members: many(projectMember),
+  invitations: many(projectInvitation),
+}));
+
+export const projectMemberRelations = relations(projectMember, ({ one }) => ({
+  project: one(project, {
+    fields: [projectMember.projectId],
+    references: [project.id],
+  }),
+  user: one(user, {
+    fields: [projectMember.userId],
+    references: [user.id],
+  }),
+}));
+
+export const projectInvitationRelations = relations(projectInvitation, ({ one }) => ({
+  project: one(project, {
+    fields: [projectInvitation.projectId],
+    references: [project.id],
+  }),
+  inviter: one(user, {
+    fields: [projectInvitation.invitedBy],
+    references: [user.id],
+  }),
+}));
