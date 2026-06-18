@@ -9,6 +9,8 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import { OrgSelector } from "@/components/org-selector";
+import { ResendInviteButton } from "@/components/resend-invite-button";
 
 export default async function DashboardPage() {
   const reqHeaders = await headers();
@@ -52,9 +54,9 @@ export default async function DashboardPage() {
       </div>
 
       {!activeOrgId && (
-        <div className="rounded-md border p-8 text-center bg-muted/20">
+        <div className="rounded-xl border p-12 text-center bg-muted/20">
           <p className="text-muted-foreground mb-4">You need an active organization to manage projects.</p>
-          <Badge variant="outline" className="px-4 py-1 text-sm">Please select or create an organization</Badge>
+          <OrgSelector />
         </div>
       )}
 
@@ -95,9 +97,14 @@ export default async function DashboardPage() {
                 <CardContent className="mt-auto">
                   <div className="flex items-center justify-between pt-4 border-t">
                     <span className="text-sm text-muted-foreground">Client Invite</span>
-                    <Badge variant={inv?.status === "accepted" ? "default" : "outline"} className="capitalize text-xs">
-                      {inv?.status || "None"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {inv?.status === "pending" && (
+                        <ResendInviteButton projectId={proj.id} />
+                      )}
+                      <Badge variant={inv?.status === "accepted" ? "default" : "outline"} className="capitalize text-xs">
+                        {inv?.status || "None"}
+                      </Badge>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

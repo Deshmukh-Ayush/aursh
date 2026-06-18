@@ -2,6 +2,7 @@
 
 import { db } from "@/utils/db";
 import { project, projectMember, projectInvitation } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
@@ -76,5 +77,32 @@ export async function createProjectAction(formData: FormData) {
   } catch (error) {
     console.error("Create project error:", error);
     return { error: "Failed to create project." };
+  }
+}
+
+export async function resendInviteAction(projectId: string) {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
+    if (!session || !session.user) return { error: "Unauthorized" };
+
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (!proj) return { error: "Project not found" };
+
+    const [invitation] = await db.select().from(projectInvitation).where(eq(projectInvitation.projectId, projectId));
+    if (!invitation) return { error: "Invitation not found" };
+    if (invitation.status === "accepted") return { error: "Invitation already accepted" };
+
+    const baseUrl = process.env.BASE_URL 
+      || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+    const inviteLink = `${baseUrl}/invite/${invitation.token}`;
+    await sendProjectInvitationEmail(invitation.email, proj.name, inviteLink);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Resend invite error:", error);
+    return { error: "Failed to resend invite." };
   }
 }
