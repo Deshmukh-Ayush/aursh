@@ -64,10 +64,17 @@ export async function createProjectAction(formData: FormData) {
       })
     ]);
 
-    // Dynamically detect the base URL from the incoming request headers
-    const host = reqHeaders.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
+    // Extract base URL robustly using Better Auth URL, Vercel Envs, or forwarded host
+    const getBaseUrl = () => {
+      if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+      const forwardedHost = reqHeaders.get("x-forwarded-host");
+      if (forwardedHost) return `https://${forwardedHost}`;
+      const host = reqHeaders.get("host");
+      if (host && !host.includes("localhost")) return `https://${host}`;
+      return process.env.BASE_URL || "http://localhost:3000";
+    };
+    const baseUrl = getBaseUrl();
 
     const inviteLink = `${baseUrl}/invite/${token}`;
     await sendProjectInvitationEmail(clientEmail, name, inviteLink);
@@ -93,9 +100,16 @@ export async function resendInviteAction(projectId: string) {
     if (!invitation) return { error: "Invitation not found" };
     if (invitation.status === "accepted") return { error: "Invitation already accepted" };
 
-    const host = reqHeaders.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
+    const getBaseUrl = () => {
+      if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+      const forwardedHost = reqHeaders.get("x-forwarded-host");
+      if (forwardedHost) return `https://${forwardedHost}`;
+      const host = reqHeaders.get("host");
+      if (host && !host.includes("localhost")) return `https://${host}`;
+      return process.env.BASE_URL || "http://localhost:3000";
+    };
+    const baseUrl = getBaseUrl();
 
     const inviteLink = `${baseUrl}/invite/${invitation.token}`;
     await sendProjectInvitationEmail(invitation.email, proj.name, inviteLink);
