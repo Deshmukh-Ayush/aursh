@@ -77,12 +77,6 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
             {activeContract.status.replace('_', ' ')}
           </Badge>
         </div>
-        <ContractActionButtons 
-          contractId={activeContract.id} 
-          status={activeContract.status} 
-          role={role} 
-          hasSigned={!!mySignature?.sig.signedAt} 
-        />
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -101,35 +95,57 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
           />
         </Card>
 
-        <Card className="h-fit shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-              Signatures
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {signatures.map(s => (
-                <div key={s.sig.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <span className="text-sm font-medium">{s.usr.name}</span>
-                  {s.sig.signedAt ? (
-                    <Badge variant="default" className="text-xs bg-emerald-500 hover:bg-emerald-600">Signed</Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-xs">Waiting</Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-            {activeContract.status === 'draft' && (
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground text-center">
-                  Contract is currently a draft. Signatures cannot be collected until requested.
-                </p>
+        <div className="space-y-6">
+          <Card className="h-fit shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                Signatures
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {signatures.map(s => (
+                  <div key={s.sig.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <span className="text-sm font-medium">{s.usr.name}</span>
+                    {s.sig.signedAt ? (
+                      <Badge variant="default" className="text-xs bg-emerald-500 hover:bg-emerald-600">Signed</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">Waiting</Badge>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+              
+              {/* Draft State Action */}
+              {activeContract.status === 'draft' && (
+                <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-dashed flex flex-col items-center text-center gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    Contract is currently a draft. Signatures cannot be collected until requested.
+                  </p>
+                  <ContractActionButtons 
+                    contractId={activeContract.id} 
+                    status={activeContract.status} 
+                    role={role} 
+                    hasSigned={!!mySignature?.sig.signedAt} 
+                  />
+                </div>
+              )}
+
+              {/* Pending Signature State Action */}
+              {activeContract.status === 'pending_signature' && !mySignature?.sig.signedAt && (
+                <div className="mt-6">
+                  <ContractActionButtons 
+                    contractId={activeContract.id} 
+                    status={activeContract.status} 
+                    role={role} 
+                    hasSigned={!!mySignature?.sig.signedAt} 
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

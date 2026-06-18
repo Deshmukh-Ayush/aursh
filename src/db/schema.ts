@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -359,6 +359,17 @@ export const signature = pgTable("signature", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   signedAt: timestamp("signed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const files = pgTable("files", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
+  uploadedBy: text("uploaded_by").references(() => user.id).notNull(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  size: integer("size").notNull(),
+  mimeType: text("mime_type").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

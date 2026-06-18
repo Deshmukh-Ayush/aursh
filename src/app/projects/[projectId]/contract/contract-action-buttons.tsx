@@ -31,7 +31,7 @@ export function ContractActionButtons({
 
   if (status === 'draft' && role === 'owner') {
     return (
-      <Button onClick={handleRequestSignatures} disabled={isLoading}>
+      <Button onClick={handleRequestSignatures} disabled={isLoading} className="w-full">
         {isLoading ? "Processing..." : "Request Signatures"}
       </Button>
     );
@@ -39,7 +39,7 @@ export function ContractActionButtons({
 
   if (status === 'pending_signature' && !hasSigned) {
     return (
-      <Button onClick={handleSign} disabled={isLoading} className="bg-primary">
+      <Button onClick={handleSign} disabled={isLoading} className="w-full bg-primary">
         {isLoading ? "Signing..." : "Sign Contract"}
       </Button>
     );

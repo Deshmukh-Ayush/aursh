@@ -102,12 +102,23 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
               <span className="font-medium">{session.user.email}</span>
             </div>
             {session.user.email !== inv.email && (
-              <Badge variant="secondary" className="w-fit text-xs px-2 py-1">
-                Note: You were originally invited as {inv.email}
-              </Badge>
+              <div className="rounded-md bg-destructive/15 text-destructive p-3 text-xs font-medium">
+                Email mismatch! This invitation was sent to <strong>{inv.email}</strong>. 
+                You cannot accept it with your current account.
+              </div>
             )}
           </div>
-          <AcceptInviteButton needsLogin={false} token={token} />
+          
+          {session.user.email === inv.email ? (
+            <AcceptInviteButton needsLogin={false} token={token} />
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Please sign out and sign back in using the Google account for {inv.email}.
+              </p>
+              <AcceptInviteButton needsLogin={true} overrideText="Sign in with correct account" />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

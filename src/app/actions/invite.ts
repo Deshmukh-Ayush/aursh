@@ -32,6 +32,10 @@ export async function acceptProjectInvitation(token: string) {
       return { error: "Already accepted." };
     }
 
+    if (session.user.email !== invitation.email) {
+      return { error: "Email mismatch. This invitation was sent to a different email address." };
+    }
+
     if (new Date(invitation.expiresAt) < new Date()) {
       return { error: "Invitation expired." };
     }

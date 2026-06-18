@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { acceptProjectInvitation } from "@/app/actions/invite";
 import { useRouter } from "next/navigation";
 
-export function AcceptInviteButton({ needsLogin, token }: { needsLogin: boolean, token?: string }) {
+export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsLogin: boolean, token?: string, overrideText?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -14,6 +14,9 @@ export function AcceptInviteButton({ needsLogin, token }: { needsLogin: boolean,
     setIsLoading(true);
 
     if (needsLogin) {
+      // If they are logged in with the wrong account, sign them out first before the new sign-in flow
+      await authClient.signOut();
+      
       // Sign in with Google and redirect back here
       await authClient.signIn.social({
         provider: "google",
@@ -40,7 +43,7 @@ export function AcceptInviteButton({ needsLogin, token }: { needsLogin: boolean,
 
   return (
     <Button onClick={handleAction} disabled={isLoading} className="w-full">
-      {isLoading ? "Processing..." : needsLogin ? "Sign in with Google" : "Accept Invitation"}
+      {isLoading ? "Processing..." : needsLogin ? (overrideText || "Sign in with Google") : "Accept Invitation"}
     </Button>
   );
 }
