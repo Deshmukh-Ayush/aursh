@@ -11,14 +11,19 @@ export function ResendInviteButton({ projectId }: { projectId: string }) {
   const handleResend = async (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent the parent <Link> from navigating
     setIsSending(true);
-    const result = await resendInviteAction(projectId);
-    setIsSending(false);
-
-    if (result.error) {
-      alert(result.error);
-    } else {
-      setSent(true);
-      setTimeout(() => setSent(false), 3000);
+    try {
+      const result = await resendInviteAction(projectId);
+      if (result?.error) {
+        alert(result.error);
+      } else {
+        setSent(true);
+        setTimeout(() => setSent(false), 3000);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("A server or network error occurred. Please check Vercel logs.");
+    } finally {
+      setIsSending(false);
     }
   };
 
