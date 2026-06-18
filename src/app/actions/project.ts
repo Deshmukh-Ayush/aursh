@@ -64,10 +64,10 @@ export async function createProjectAction(formData: FormData) {
       })
     ]);
 
-    // Auto-detect Vercel deployment URLs or fallback to localhost
-    const baseUrl = process.env.BASE_URL 
-      || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    // Dynamically detect the base URL from the incoming request headers
+    const host = reqHeaders.get("host") || "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
 
     const inviteLink = `${baseUrl}/invite/${token}`;
     await sendProjectInvitationEmail(clientEmail, name, inviteLink);
@@ -93,9 +93,9 @@ export async function resendInviteAction(projectId: string) {
     if (!invitation) return { error: "Invitation not found" };
     if (invitation.status === "accepted") return { error: "Invitation already accepted" };
 
-    const baseUrl = process.env.BASE_URL 
-      || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null)
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const host = reqHeaders.get("host") || "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
 
     const inviteLink = `${baseUrl}/invite/${invitation.token}`;
     await sendProjectInvitationEmail(invitation.email, proj.name, inviteLink);
