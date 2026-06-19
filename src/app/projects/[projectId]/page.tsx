@@ -4,12 +4,20 @@ import { eq } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { deliverable } from "@/db/schema";
+import { MarkCompleteButton } from "./mark-complete-button";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export default async function ProjectOverviewPage({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({ headers: reqHeaders });
+  if (!session) return null;
+
   const { projectId } = await params;
 
   // Fetch Project
@@ -28,13 +36,27 @@ export default async function ProjectOverviewPage({
     .innerJoin(user, eq(projectMember.userId, user.id))
     .where(eq(projectMember.projectId, projectId));
 
+  const currentUserMember = members.find(m => m.user.id === session.user.id);
+  const isOwner = currentUserMember?.member.role === 'owner';
+
+  // Fetch Deliverables to check for completion
+  const deliverables = await db.select().from(deliverable).where(eq(deliverable.projectId, projectId));
+  const hasDeliverables = deliverables.length > 0;
+  const allApproved = hasDeliverables && deliverables.every(d => d.status === 'approved');
+  const canComplete = isOwner && proj.status !== 'completed' && allApproved;
+
   return (
     <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{proj.name}</h1>
-        <p className="text-muted-foreground mt-2">
-          Project Overview and Details
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{proj.name}</h1>
+          <p className="text-muted-foreground mt-2">
+            Project Overview and Details
+          </p>
+        </div>
+        {canComplete && (
+          <MarkCompleteButton projectId={projectId} />
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

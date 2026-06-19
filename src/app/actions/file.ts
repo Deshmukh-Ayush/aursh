@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
+import { logActivity } from "@/lib/activity";
 
 export async function uploadFileAction(formData: FormData) {
   try {
@@ -51,6 +52,13 @@ export async function uploadFileAction(formData: FormData) {
       url: blob.url,
       size: file.size,
       mimeType: file.type || "application/octet-stream",
+    });
+
+    await logActivity({
+      projectId,
+      userId,
+      type: "file_uploaded",
+      metadata: { fileName: file.name, size: file.size }
     });
 
     revalidatePath(`/projects/${projectId}/files`);

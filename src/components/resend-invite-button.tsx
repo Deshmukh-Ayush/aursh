@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { resendInviteAction } from "@/app/actions/project";
+import { toast } from "sonner";
 
 export function ResendInviteButton({ projectId }: { projectId: string }) {
   const [isSending, setIsSending] = useState(false);
@@ -14,14 +15,15 @@ export function ResendInviteButton({ projectId }: { projectId: string }) {
     try {
       const result = await resendInviteAction(projectId);
       if (result?.error) {
-        alert(result.error);
+        toast.error(result.error);
       } else {
         setSent(true);
+        toast.success("Invitation resent successfully");
         setTimeout(() => setSent(false), 3000);
       }
     } catch (error) {
       console.error(error);
-      alert("A server or network error occurred. Please check Vercel logs.");
+      toast.error("A server or network error occurred. Please check Vercel logs.");
     } finally {
       setIsSending(false);
     }

@@ -38,3 +38,42 @@ export async function deleteProjectAction(projectId: string) {
     return { error: "Failed to delete project." };
   }
 }
+
+import { logActivity } from "@/lib/activity";
+
+export async function markProjectCompleteAction(projectId: string) {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
+
+    if (!session || !session.user) {
+      return { error: "Unauthorized" };
+    }
+
+    const userId = session.user.id;
+
+    // Verify ownership
+    const [member] = await db
+      .select()
+      .from(projectMember)
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+
+    if (!member || member.role !== 'owner') {
+      return { error: "Only the project owner can complete the project." };
+    }
+
+    await db.update(project).set({ status: 'completed' }).where(eq(project.id, projectId));
+
+    await logActivity({
+      projectId,
+      userId,
+      type: "project_completed"
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Complete project error:", error);
+    return { error: "Failed to complete project." };
+  }
+}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { acceptProjectInvitation } from "@/app/actions/invite";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsLogin: boolean, token?: string, overrideText?: string }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +33,7 @@ export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsL
     setIsLoading(false);
 
     if (result.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else if (result.projectId) {
       // Redirect straight to the specific project contract tab
       router.push(`/projects/${result.projectId}/contract`);

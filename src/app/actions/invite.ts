@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
+import { logActivity } from "@/lib/activity";
 
 export async function acceptProjectInvitation(token: string) {
   try {
@@ -56,6 +57,13 @@ export async function acceptProjectInvitation(token: string) {
         role: "client",
       })
     ]);
+
+    await logActivity({
+      projectId: invitation.projectId,
+      userId: userId,
+      type: "member_joined",
+      metadata: { email: session.user.email }
+    });
 
     revalidatePath("/dashboard");
     return { success: true, projectId: invitation.projectId };

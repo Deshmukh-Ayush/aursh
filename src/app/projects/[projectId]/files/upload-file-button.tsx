@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { uploadFileAction } from "@/app/actions/file";
+import { toast } from "sonner";
 import { UploadCloud } from "lucide-react";
 
 export function UploadFileButton({ projectId }: { projectId: string }) {
@@ -21,7 +22,9 @@ export function UploadFileButton({ projectId }: { projectId: string }) {
     const result = await uploadFileAction(formData);
     
     if (result.error) {
-      alert(result.error);
+      toast.error(result.error);
+    } else {
+      toast.success("File uploaded successfully");
     }
     
     setIsUploading(false);

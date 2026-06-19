@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { uploadContractAction } from "@/app/actions/contract";
+import { toast } from "sonner";
 
 export function UploadContractForm({ projectId }: { projectId: string }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -14,7 +15,9 @@ export function UploadContractForm({ projectId }: { projectId: string }) {
     const result = await uploadContractAction(projectId, formData);
     setIsUploading(false);
     if (result.error) {
-      alert(result.error);
+      toast.error(result.error);
+    } else {
+      toast.success("Contract uploaded successfully");
     }
   }
 

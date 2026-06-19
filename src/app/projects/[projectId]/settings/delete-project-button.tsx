@@ -4,6 +4,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { deleteProjectAction } from "@/app/actions/project-settings";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function DeleteProjectButton({ projectId, role }: { projectId: string, role: string }) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -18,29 +30,47 @@ export function DeleteProjectButton({ projectId, role }: { projectId: string, ro
   }
 
   const handleDelete = async () => {
-    if (!confirm("Are you absolute sure you want to delete this project? This action cannot be undone and will permanently delete all files, contracts, and history.")) {
-      return;
-    }
-
     setIsDeleting(true);
     const result = await deleteProjectAction(projectId);
     
     if (result.error) {
-      alert(result.error);
+      toast.error(result.error);
       setIsDeleting(false);
     } else {
+      toast.success("Project deleted successfully");
       router.push("/dashboard");
     }
   };
 
   return (
-    <Button 
-      variant="destructive" 
-      onClick={handleDelete} 
-      disabled={isDeleting}
-      className="mt-4"
-    >
-      {isDeleting ? "Deleting..." : "Delete Project"}
-    </Button>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" disabled={isDeleting} className="mt-4">
+          {isDeleting ? "Deleting..." : "Delete Project"}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete your project,
+            all uploaded files, contracts, and activity history.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={(e) => {
+              e.preventDefault(); // Prevent modal from closing immediately so we can show loading state
+              handleDelete();
+            }}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? "Deleting..." : "Yes, Delete Project"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -373,6 +373,36 @@ export const files = pgTable("files", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const deliverable = pgTable("deliverable", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status", { enum: ["pending", "in_review", "approved", "revision_requested"] }).default("pending").notNull(),
+  dueDate: timestamp("due_date"),
+  createdBy: text("created_by").references(() => user.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+import { jsonb } from "drizzle-orm/pg-core";
+
+export const activityLog = pgTable("activity_log", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").references(() => user.id), // The actor
+  type: text("type", { 
+    enum: [
+      "contract_uploaded", "contract_signed", "file_uploaded", 
+      "deliverable_created", "deliverable_approved", "revision_requested", 
+      "deliverable_completed", "project_completed", "member_joined",
+      "deliverable_in_review"
+    ] 
+  }).notNull(),
+  metadata: jsonb("metadata"), // Flexible JSON for things like filenames, deliverable titles, revision comments
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const contractRelations = relations(contract, ({ one, many }) => ({
   project: one(project, {
     fields: [contract.projectId],
