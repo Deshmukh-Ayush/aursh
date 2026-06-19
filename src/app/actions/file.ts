@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/utils/db";
-import { files, projectMember } from "@/db/schema";
+import { files, project, projectMember } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -14,6 +14,11 @@ export async function uploadFileAction(formData: FormData) {
   try {
     const file = formData.get("file") as File;
     const projectId = formData.get("projectId") as string;
+
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (proj?.status === 'completed') {
+      return { error: "Cannot upload files to a completed project." };
+    }
 
     if (!file || !projectId) {
       return { error: "File and Project ID are required." };

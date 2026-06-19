@@ -23,12 +23,12 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-export function ProjectSidebar({ projectId, projectName, role }: { projectId: string, projectName: string, role: string }) {
+export function ProjectSidebar({ projectId, projectName, role, isMobile = false }: { projectId: string, projectName: string, role: string, isMobile?: boolean }) {
   const pathname = usePathname();
   const basePath = `/projects/${projectId}`;
 
   return (
-    <div className="hidden border-r bg-muted/40 md:block md:w-64 lg:w-72 flex-shrink-0 min-h-svh">
+    <div className={cn("bg-muted/40 flex-shrink-0 min-h-svh", isMobile ? "w-full border-r-0 block" : "hidden border-r md:block md:w-64 lg:w-72")}>
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">

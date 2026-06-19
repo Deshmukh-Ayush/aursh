@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/utils/db";
-import { deliverable, projectMember } from "@/db/schema";
+import { deliverable, projectMember, project } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -65,6 +65,11 @@ export async function updateDeliverableStatusAction(deliverableId: string, statu
 
     const [deliv] = await db.select().from(deliverable).where(eq(deliverable.id, deliverableId));
     if (!deliv) return { error: "Deliverable not found." };
+
+    const [proj] = await db.select().from(project).where(eq(project.id, deliv.projectId));
+    if (proj?.status === 'completed') {
+      return { error: "Cannot modify deliverables on a completed project." };
+    }
 
     const [member] = await db
       .select()

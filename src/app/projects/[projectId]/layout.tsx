@@ -4,10 +4,11 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ProjectSidebar } from "@/components/project-sidebar";
 import { ContractGate } from "@/components/contract-gate";
+import { ProjectSidebar } from "@/components/project-sidebar";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { MobileHeader } from "./mobile-header";
 
 export default async function ProjectLayout({
   children,
@@ -46,8 +47,11 @@ export default async function ProjectLayout({
         <div className="flex min-h-svh w-full flex-col md:flex-row">
           {/* Custom Sidebar Navigation */}
           <ProjectSidebar projectId={projectId} projectName={proj.name} role={member.role} />
-          <main className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-y-auto w-full">
-            {children}
+          <main className="flex-1 flex flex-col min-w-0">
+            <MobileHeader projectId={projectId} projectName={proj.name} role={member.role} />
+            <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+              {children}
+            </div>
           </main>
         </div>
       ) : (

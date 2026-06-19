@@ -1,14 +1,16 @@
 import { db } from "@/utils/db";
-import { deliverable, projectMember } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { deliverable, projectMember, comment, user } from "@/db/schema";
+import { eq, and, desc, isNotNull, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateDeliverableDialog } from "./create-deliverable-dialog";
 import { DeliverableActions } from "./deliverable-actions";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, MessageSquare } from "lucide-react";
 import { format, isPast } from "date-fns";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { CommentThread } from "../discussions/comment-thread";
 
 export default async function DeliverablesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -30,6 +32,16 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
     .from(deliverable)
     .where(eq(deliverable.projectId, projectId))
     .orderBy(desc(deliverable.createdAt));
+
+  const allComments = await db
+    .select({
+      comment: comment,
+      author: user
+    })
+    .from(comment)
+    .leftJoin(user, eq(comment.userId, user.id))
+    .where(and(eq(comment.projectId, projectId), isNotNull(comment.deliverableId)))
+    .orderBy(asc(comment.createdAt));
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -68,8 +80,10 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
         </div>
       ) : (
         <div className="grid gap-4">
+          <Accordion type="multiple" className="w-full space-y-4">
           {deliverablesList.map((deliv) => {
             const isOverdue = deliv.dueDate && isPast(deliv.dueDate) && deliv.status !== 'approved';
+            const delivComments = allComments.filter(c => c.comment.deliverableId === deliv.id);
             
             return (
               <Card key={deliv.id} className="shadow-sm">
@@ -104,9 +118,31 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
                     </div>
                   )}
                 </CardContent>
+                <div className="px-6 pb-2">
+                  <AccordionItem value={deliv.id} className="border-none">
+                    <AccordionTrigger className="py-2 text-sm text-muted-foreground hover:text-foreground hover:no-underline">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        {delivComments.length} {delivComments.length === 1 ? 'Comment' : 'Comments'}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="pt-2 h-[400px] flex flex-col">
+                        <CommentThread 
+                          projectId={projectId}
+                          deliverableId={deliv.id}
+                          comments={delivComments}
+                          currentUserId={userId}
+                          currentUserRole={member.role}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </div>
               </Card>
             )
           })}
+          </Accordion>
         </div>
       )}
     </div>

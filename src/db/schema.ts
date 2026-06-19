@@ -403,6 +403,21 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const comment = pgTable("comment", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
+  deliverableId: text("deliverable_id").references(() => deliverable.id, { onDelete: "cascade" }), // nullable
+  userId: text("user_id").references(() => user.id).notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  project: one(project, { fields: [comment.projectId], references: [project.id] }),
+  deliverable: one(deliverable, { fields: [comment.deliverableId], references: [deliverable.id] }),
+  user: one(user, { fields: [comment.userId], references: [user.id] }),
+}));
+
 export const contractRelations = relations(contract, ({ one, many }) => ({
   project: one(project, {
     fields: [contract.projectId],

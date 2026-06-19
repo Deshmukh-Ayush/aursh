@@ -1,15 +1,49 @@
-export default function DiscussionsPage() {
+import { db } from "@/utils/db";
+import { comment, user, projectMember } from "@/db/schema";
+import { eq, and, isNull, asc } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { CommentThread } from "./comment-thread";
+
+export default async function DiscussionsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({ headers: reqHeaders });
+  if (!session) return null;
+
+  const { projectId } = await params;
+  const userId = session.user.id;
+
+  const [member] = await db
+    .select()
+    .from(projectMember)
+    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+
+  if (!member) return null;
+
+  const thread = await db
+    .select({
+      comment: comment,
+      author: user
+    })
+    .from(comment)
+    .leftJoin(user, eq(comment.userId, user.id))
+    .where(and(eq(comment.projectId, projectId), isNull(comment.deliverableId)))
+    .orderBy(asc(comment.createdAt));
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center rounded-xl border border-dashed bg-muted/10">
-      <div className="rounded-full bg-primary/10 p-4 mb-4">
-        <svg className="h-8 w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-        </svg>
+    <div className="flex flex-col h-[calc(100svh-4rem)] md:h-[calc(100svh-4rem)] max-w-4xl mx-auto w-full">
+      <div className="mb-6 flex-shrink-0">
+        <h2 className="text-3xl font-bold tracking-tight">Discussions</h2>
+        <p className="text-muted-foreground mt-1">General project discussion and updates.</p>
       </div>
-      <h3 className="text-xl font-semibold">Discussions</h3>
-      <p className="text-muted-foreground mt-2 max-w-sm">
-        Centralized communication for the project. Say goodbye to scattered email threads! Coming soon in Day 5!
-      </p>
+
+      <CommentThread 
+        projectId={projectId} 
+        comments={thread} 
+        currentUserId={userId}
+        currentUserRole={member.role}
+        deliverableId={undefined}
+      />
     </div>
   );
 }
