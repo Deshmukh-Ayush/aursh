@@ -1,5 +1,5 @@
 import { db } from "@/utils/db";
-import { project, projectMember, contract } from "@/db/schema";
+import { project, projectMember, contract, organization } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -39,16 +39,34 @@ export default async function ProjectLayout({
   const [proj] = await db.select().from(project).where(eq(project.id, projectId));
   const [cont] = await db.select().from(contract).where(eq(contract.projectId, projectId));
 
+  const [org] = await db
+    .select()
+    .from(organization)
+    .where(eq(organization.id, proj.organizationId));
+
   const isSigned = cont?.status === "signed";
 
   return (
     <ContractGate isSigned={isSigned} projectId={projectId}>
       {isSigned ? (
-        <div className="flex min-h-svh w-full flex-col md:flex-row">
+        <div 
+          className="flex min-h-svh w-full flex-col md:flex-row"
+          style={org?.plan === 'paid' && org?.brandColor ? { '--primary': org.brandColor } as React.CSSProperties : undefined}
+        >
           {/* Custom Sidebar Navigation */}
-          <ProjectSidebar projectId={projectId} projectName={proj.name} role={member.role} />
+          <ProjectSidebar 
+            projectId={projectId} 
+            projectName={proj.name} 
+            role={member.role} 
+            org={org}
+          />
           <main className="flex-1 flex flex-col min-w-0">
-            <MobileHeader projectId={projectId} projectName={proj.name} role={member.role} />
+            <MobileHeader 
+              projectId={projectId} 
+              projectName={proj.name} 
+              role={member.role} 
+              org={org}
+            />
             <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
               {children}
             </div>

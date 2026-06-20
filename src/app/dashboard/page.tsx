@@ -8,6 +8,7 @@ import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { OrgSelector } from "@/components/org-selector";
 import { ResendInviteButton } from "@/components/resend-invite-button";
@@ -57,7 +58,14 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-center gap-4">
           <SignOutButton />
-          {activeOrgId && <CreateProjectDialog />}
+          {activeOrgId && (
+            <>
+              <Link href="/dashboard/settings">
+                <Button variant="outline">Settings</Button>
+              </Link>
+              <CreateProjectDialog />
+            </>
+          )}
         </div>
       </div>
 

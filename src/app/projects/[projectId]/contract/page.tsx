@@ -133,7 +133,7 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
               )}
 
               {/* Pending Signature State Action */}
-              {activeContract.status === 'pending_signature' && !mySignature?.sig.signedAt && (
+              {activeContract.status === 'pending_signature' && (
                 <div className="mt-6">
                   <ContractActionButtons 
                     contractId={activeContract.id} 

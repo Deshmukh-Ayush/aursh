@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/utils/db";
-import { projectInvitation, projectMember, project } from "@/db/schema";
+import { projectInvitation, projectMember, project, contract, signature } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -41,8 +41,12 @@ export async function acceptProjectInvitation(token: string) {
       return { error: "Invitation expired." };
     }
 
-    // Process acceptance
-    await db.batch([
+    const [existingContract] = await db
+      .select()
+      .from(contract)
+      .where(eq(contract.projectId, invitation.projectId));
+
+    const operations: any[] = [
       // 1. Mark invite as accepted
       db
         .update(projectInvitation)
@@ -56,7 +60,30 @@ export async function acceptProjectInvitation(token: string) {
         userId: userId,
         role: "client",
       })
-    ]);
+    ];
+
+    // 3. If a contract already exists, ensure this new member has a signature row
+    if (existingContract) {
+      operations.push(
+        db.insert(signature).values({
+          id: crypto.randomUUID(),
+          contractId: existingContract.id,
+          userId: userId,
+        })
+      );
+
+      // If the contract was "signed" previously, it needs to be pending again
+      if (existingContract.status === "signed") {
+        operations.push(
+          db.update(contract)
+            .set({ status: "pending_signature" })
+            .where(eq(contract.id, existingContract.id))
+        );
+      }
+    }
+
+    // Process acceptance
+    await db.batch(operations as any);
 
     await logActivity({
       projectId: invitation.projectId,

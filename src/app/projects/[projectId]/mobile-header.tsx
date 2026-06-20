@@ -7,8 +7,9 @@ import { ProjectSidebar } from "@/components/project-sidebar";
 import { useState } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-export function MobileHeader({ projectId, projectName, role }: { projectId: string, projectName: string, role: string }) {
+export function MobileHeader({ projectId, projectName, role, org }: { projectId: string, projectName: string, role: string, org?: any }) {
   const [open, setOpen] = useState(false);
+  const isPaid = org?.plan === "paid";
 
   return (
     <header className="md:hidden flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
@@ -27,12 +28,16 @@ export function MobileHeader({ projectId, projectName, role }: { projectId: stri
           </VisuallyHidden>
           {/* Pass setOpen so we can close it on navigation if we wanted, but standard Next.js navigation might reset it anyway. */}
           <div onClick={() => setOpen(false)} className="h-full">
-            <ProjectSidebar projectId={projectId} projectName={projectName} role={role} isMobile={true} />
+            <ProjectSidebar projectId={projectId} projectName={projectName} role={role} isMobile={true} org={org} />
           </div>
         </SheetContent>
       </Sheet>
       <div className="flex-1">
-        <h1 className="font-semibold truncate">{projectName}</h1>
+        {isPaid && org?.logoUrl ? (
+          <img src={org.logoUrl} alt={org.name || projectName} className="h-6 object-contain max-w-[150px]" />
+        ) : (
+          <h1 className="font-semibold truncate">{projectName}</h1>
+        )}
       </div>
     </header>
   );

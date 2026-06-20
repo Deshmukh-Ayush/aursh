@@ -148,3 +148,36 @@ export async function signContractAction(contractId: string) {
     return { error: "Failed to sign contract." };
   }
 }
+
+export async function deleteContractAction(contractId: string) {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
+    if (!session || !session.user) return { error: "Unauthorized" };
+
+    const [existing] = await db.select().from(contract).where(eq(contract.id, contractId));
+    if (!existing) return { error: "Contract not found" };
+
+    // Check if user is owner of the project
+    const [member] = await db.select().from(projectMember).where(and(eq(projectMember.projectId, existing.projectId), eq(projectMember.userId, session.user.id)));
+    if (!member || member.role !== 'owner') {
+      return { error: "Only the project owner can delete the contract" };
+    }
+
+    if (existing.status === 'signed') {
+      return { error: "Cannot delete a signed contract" };
+    }
+
+    // Delete the contract (cascades signatures if FK is set, or we explicitly delete them)
+    // Safe explicitly delete
+    await db.delete(signature).where(eq(signature.contractId, contractId));
+    await db.delete(contract).where(eq(contract.id, contractId));
+
+    revalidatePath(`/projects/${existing.projectId}`);
+    revalidatePath(`/projects/${existing.projectId}/contract`);
+    return { success: true };
+  } catch (error) {
+    console.error("Delete contract error:", error);
+    return { error: "Failed to delete contract." };
+  }
+}

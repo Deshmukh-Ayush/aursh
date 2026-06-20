@@ -1,8 +1,8 @@
 "use server"
 
 import { db } from "@/utils/db";
-import { project, projectMember, projectInvitation } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { project, projectMember, projectInvitation, organization } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
@@ -76,8 +76,18 @@ export async function createProjectAction(formData: FormData) {
     };
     const baseUrl = getBaseUrl();
 
-    const inviteLink = `${baseUrl}/invite/${token}`;
-    await sendProjectInvitationEmail(clientEmail, name, inviteLink);
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${token}`;
+
+    const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
+
+    await sendProjectInvitationEmail(
+      clientEmail, 
+      name, 
+      inviteLink,
+      org?.plan as "free" | "paid" | undefined,
+      org?.logoUrl,
+      org?.brandColor
+    );
 
     revalidatePath("/dashboard");
     return { success: true };
@@ -111,8 +121,18 @@ export async function resendInviteAction(projectId: string) {
     };
     const baseUrl = getBaseUrl();
 
-    const inviteLink = `${baseUrl}/invite/${invitation.token}`;
-    await sendProjectInvitationEmail(invitation.email, proj.name, inviteLink);
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${invitation.token}`;
+
+    const [org] = await db.select().from(organization).where(eq(organization.id, proj.organizationId));
+
+    await sendProjectInvitationEmail(
+      invitation.email, 
+      proj.name, 
+      inviteLink,
+      org?.plan as "free" | "paid" | undefined,
+      org?.logoUrl,
+      org?.brandColor
+    );
 
     return { success: true };
   } catch (error) {

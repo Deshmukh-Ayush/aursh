@@ -98,7 +98,11 @@ export const organization = pgTable("organization", {
 
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
-  logo: text("logo"),
+  logo: text("logo"), // Original from better-auth
+
+  plan: text("plan", { enum: ["free", "paid"] }).default("free").notNull(),
+  logoUrl: text("logo_url"), // Custom logo URL
+  brandColor: text("brand_color"), // Custom brand color hex
 
   metadata: text("metadata"),
 
