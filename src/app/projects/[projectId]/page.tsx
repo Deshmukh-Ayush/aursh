@@ -114,10 +114,10 @@ export default async function ProjectOverviewPage({
   return (
     <div className="space-y-8 max-w-5xl">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">{proj.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-balance">{proj.name}</h1>
             <Badge variant={proj.status === "active" ? "default" : "secondary"} className="capitalize">
               {proj.status}
             </Badge>
@@ -132,49 +132,49 @@ export default async function ProjectOverviewPage({
       </div>
 
       {/* Top Stat Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 fill-mode-both">
+        <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Deliverables</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalDelivs}</div>
+            <div className="text-2xl font-bold tabular-nums">{totalDelivs}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{approvedDelivs}</div>
+            <div className="text-2xl font-bold tabular-nums">{approvedDelivs}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Files</CardTitle>
             <UploadCloud className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{proj.files.length}</div>
+            <div className="text-2xl font-bold tabular-nums">{proj.files.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Days Active</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{daysActive}</div>
+            <div className="text-2xl font-bold tabular-nums">{daysActive}</div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Deliverable Progress & Timeline (Left 2 columns) */}
-        <div className="md:col-span-2 space-y-6">
-          <Card>
+        <div className="md:col-span-2 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-both">
+          <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
             <CardHeader>
               <CardTitle>Deliverable Progress</CardTitle>
               <CardDescription>Overall completion status for this project</CardDescription>
@@ -182,16 +182,16 @@ export default async function ProjectOverviewPage({
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium text-muted-foreground">Progress</span>
-                <span className="font-bold">{progressVal}%</span>
+                <span className="font-bold tabular-nums">{progressVal}%</span>
               </div>
               <Progress value={progressVal} className="h-3" />
-              <div className="text-sm text-muted-foreground mt-2">
+              <div className="text-sm text-muted-foreground mt-2 tabular-nums">
                 {approvedDelivs} of {totalDelivs} deliverables approved
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
             <CardHeader>
               <CardTitle>Milestone Timeline</CardTitle>
               <CardDescription>Chronological list of deliverables</CardDescription>
@@ -228,8 +228,8 @@ export default async function ProjectOverviewPage({
         </div>
 
         {/* Right Column: Activity & Team */}
-        <div className="space-y-6">
-          <Card>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-[300ms] fill-mode-both">
+          <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="space-y-1">
                 <CardTitle>Recent Activity</CardTitle>
@@ -263,15 +263,15 @@ export default async function ProjectOverviewPage({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
             <CardHeader>
               <CardTitle>Team Members</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {proj.members.map((member) => (
-                  <div key={member.id} className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
+                  <div key={member.id} className="flex items-center gap-3 group">
+                    <Avatar className="h-8 w-8 ring-1 ring-black/10 dark:ring-white/10">
                       <AvatarImage src={member.user.image || ""} />
                       <AvatarFallback>{member.user.name?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
                     </Avatar>

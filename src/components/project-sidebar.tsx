@@ -41,12 +41,12 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
   };
 
   return (
-    <div className={cn("bg-muted/40 flex-shrink-0 min-h-svh", isMobile ? "w-full border-r-0 block" : "hidden border-r md:block md:w-64 lg:w-72")}>
+    <div className={cn("bg-[#fbfbfb] dark:bg-[#151516] flex-shrink-0 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10", isMobile ? "w-full block min-h-svh" : "hidden md:block md:w-64 lg:w-72 sticky top-0 h-svh")}>
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
             {isPaid && org?.logoUrl ? (
-              <img src={org.logoUrl} alt={org.name || projectName} className="h-6 object-contain max-w-[150px]" />
+              <img src={org.logoUrl} alt={org.name || projectName} className="h-6 w-auto object-contain max-w-[150px] rounded-[4px] ring-1 ring-black/10 dark:ring-white/10" />
             ) : (
               <span className="truncate">{projectName}</span>
             )}
@@ -56,7 +56,7 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4 mb-4 space-y-1">
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted mb-2"
+              className="flex h-10 items-center gap-3 rounded-lg px-3 text-muted-foreground transition-transform active:scale-[0.96] hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 mb-4"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Dashboard
@@ -73,8 +73,10 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
                   key={item.name}
                   href={fullHref}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                    isActive ? "bg-muted text-primary" : "text-muted-foreground"
+                    "flex h-10 items-center gap-3 rounded-lg px-3 transition-transform active:scale-[0.96]",
+                    isActive 
+                      ? "bg-primary/10 text-primary font-medium" 
+                      : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -87,7 +89,7 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
           <div className="mt-auto px-2 lg:px-4 mb-4">
             <Button 
               variant="ghost" 
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="w-full h-10 justify-start gap-3 text-muted-foreground transition-transform active:scale-[0.96] hover:text-destructive hover:bg-destructive/10"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
