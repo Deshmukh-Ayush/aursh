@@ -1,16 +1,16 @@
+import React from 'react'
 import { db } from "@/utils/db";
 import { projectInvitation, project } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AcceptInviteButton } from "./accept-invite-button";
+import { AcceptInviteButton } from "@/components/invite/accept-invite-button";
 import Link from "next/link";
 
-// According to Next.js 15+ App Router, params in async pages must be awaited.
-export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
-  const resolvedParams = await params;
+
+export default async function InvitePage ({ params }: { params: Promise<{ token: string }> }) {
+const resolvedParams = await params;
   const token = resolvedParams.token;
 
   const invitationResult = await db
@@ -75,7 +75,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle>Accept Invitation</CardTitle>
-            <CardDescription>You've been invited to join <strong>{proj.name}</strong>.</CardDescription>
+            <CardDescription>You&apos;ve been invited to join <strong>{proj.name}</strong>.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md bg-muted p-4 mb-4 text-sm">
@@ -93,7 +93,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       <Card className="max-w-md w-full border-t-4 border-t-primary shadow-lg">
         <CardHeader>
           <CardTitle>Accept Invitation</CardTitle>
-          <CardDescription>You've been invited to join <strong>{proj.name}</strong>.</CardDescription>
+          <CardDescription>You&apos;ve been invited to join <strong>{proj.name}</strong>.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md bg-muted p-4 mb-6 text-sm flex flex-col gap-3 border">

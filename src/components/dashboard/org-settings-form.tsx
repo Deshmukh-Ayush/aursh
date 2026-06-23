@@ -10,7 +10,14 @@ import { updateOrgBrandingAction, toggleOrgPlanAction } from "@/app/actions/orga
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
-export function OrgSettingsForm({ org }: { org: any }) {
+type Org = {
+  id: string;
+  brandColor?: string | null;
+  plan: string;
+  logoUrl?: string | null;
+};
+
+export function OrgSettingsForm({ org }: { org: Org }) {
   const [isSaving, setIsSaving] = useState(false);
   const [brandColor, setBrandColor] = useState(org.brandColor || "#000000");
 

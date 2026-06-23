@@ -33,7 +33,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
     .where(eq(activityLog.projectId, projectId))
     .orderBy(desc(activityLog.createdAt));
 
-  const getActivityConfig = (type: string, metadata: any) => {
+  const getActivityConfig = (type: string, metadata: Record<string, unknown>) => {
     switch (type) {
       case "contract_uploaded":
         return { icon: <FileText className="w-5 h-5 text-blue-500" />, text: `uploaded the contract (${metadata?.fileName})` };

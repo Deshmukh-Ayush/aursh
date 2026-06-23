@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/utils/db";
 import { organization, member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { OrgSettingsForm } from "./org-settings-form";
+import { OrgSettingsForm } from "@/components/dashboard/org-settings-form";
 
 export default async function SettingsPage() {
   const reqHeaders = await headers();
