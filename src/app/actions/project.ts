@@ -140,3 +140,50 @@ export async function resendInviteAction(projectId: string) {
     return { error: "Failed to resend invite." };
   }
 }
+
+export async function renameProjectAction(projectId: string, newName: string) {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
+    if (!session || !session.user) return { error: "Unauthorized" };
+
+    const [member] = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
+    if (!member || member.role !== 'owner') {
+      return { error: "Only the project owner can rename the project." };
+    }
+
+    if (!newName || newName.trim() === '') {
+      return { error: "Project name cannot be empty." };
+    }
+
+    await db.update(project).set({ name: newName }).where(eq(project.id, projectId));
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Rename project error:", error);
+    return { error: "Failed to rename project." };
+  }
+}
+
+export async function deleteProjectAction(projectId: string) {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
+    if (!session || !session.user) return { error: "Unauthorized" };
+
+    const [member] = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
+    if (!member || member.role !== 'owner') {
+      return { error: "Only the project owner can delete the project." };
+    }
+
+    await db.delete(project).where(eq(project.id, projectId));
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Delete project error:", error);
+    return { error: "Failed to delete project." };
+  }
+}

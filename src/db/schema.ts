@@ -312,6 +312,10 @@ export const projectRelations = relations(project, ({ one, many }) => ({
   }),
   members: many(projectMember),
   invitations: many(projectInvitation),
+  contracts: many(contract),
+  deliverables: many(deliverable),
+  activityLogs: many(activityLog),
+  files: many(files),
 }));
 
 export const projectMemberRelations = relations(projectMember, ({ one }) => ({
@@ -441,6 +445,40 @@ export const signatureRelations = relations(signature, ({ one }) => ({
   }),
   user: one(user, {
     fields: [signature.userId],
+    references: [user.id],
+  }),
+}));
+
+export const deliverableRelations = relations(deliverable, ({ one, many }) => ({
+  project: one(project, {
+    fields: [deliverable.projectId],
+    references: [project.id],
+  }),
+  creator: one(user, {
+    fields: [deliverable.createdBy],
+    references: [user.id],
+  }),
+  comments: many(comment),
+}));
+
+export const activityLogRelations = relations(activityLog, ({ one }) => ({
+  project: one(project, {
+    fields: [activityLog.projectId],
+    references: [project.id],
+  }),
+  user: one(user, {
+    fields: [activityLog.userId],
+    references: [user.id],
+  }),
+}));
+
+export const filesRelations = relations(files, ({ one }) => ({
+  project: one(project, {
+    fields: [files.projectId],
+    references: [project.id],
+  }),
+  uploader: one(user, {
+    fields: [files.uploadedBy],
     references: [user.id],
   }),
 }));

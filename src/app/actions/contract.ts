@@ -30,6 +30,8 @@ export async function uploadContractAction(projectId: string, formData: FormData
     // Upload to Vercel Blob
     const blob = await put(`contracts/${projectId}/${file.name}`, file, {
       access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
     });
 
     const newContractId = crypto.randomUUID();

@@ -74,7 +74,8 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
           ) : (
             <div className="relative border-l border-muted ml-3 space-y-8 pb-4">
               {logs.map(({ log, actor }) => {
-                const config = getActivityConfig(log.type, log.metadata);
+                const metadata = (log.metadata as Record<string, unknown>) || {};
+                const config = getActivityConfig(log.type, metadata);
                 
                 return (
                   <div key={log.id} className="relative pl-8">
