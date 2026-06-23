@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/utils/db";
 import { project, projectInvitation, projectMember, contract, deliverable, activityLog } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,18 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { OrgSelector } from "@/components/org-selector";
 import { Progress } from "@/components/ui/progress";
-import { ChevronRight, AlertTriangle, FileSignature, CheckCircle2, LayoutDashboard } from "lucide-react";
+import { ChevronRight, AlertTriangle, FileSignature, CheckCircle2, LayoutDashboard, ArrowRight } from "lucide-react";
 import { ProjectRowMenu } from "@/components/dashboard/project-row-menu";
+import { format, subDays } from "date-fns";
+import { ActivityChart } from "./activity-chart";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function getRelativeTime(date: Date) {
   const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
@@ -89,7 +99,54 @@ export const Dash = async () => {
     }));
   }
 
-  // --- Process Stats ---
+  // --- Process Stats & Trends ---
+  let activityData: { date: string; actions: number }[] = [];
+  let newProjectsThisWeek = 0;
+  let newProjectsLastWeek = 0;
+  let newDeliverablesThisWeek = 0;
+  
+  if (activeOrgId) {
+    const fourteenDaysAgo = subDays(new Date(), 14);
+    const sevenDaysAgo = subDays(new Date(), 7);
+
+    // Get all activity for the org's projects
+    const allOrgActivity = await db
+      .select({ createdAt: activityLog.createdAt, type: activityLog.type })
+      .from(activityLog)
+      .innerJoin(project, eq(activityLog.projectId, project.id))
+      .where(
+        and(
+          eq(project.organizationId, activeOrgId),
+          gte(activityLog.createdAt, fourteenDaysAgo)
+        )
+      );
+
+    // Build chart data
+    activityData = Array.from({ length: 14 }).map((_, i) => {
+      const d = subDays(new Date(), 13 - i);
+      return {
+        date: format(d, "MMM dd"),
+        actions: 0,
+      };
+    });
+
+    allOrgActivity.forEach((log) => {
+      const logDate = format(log.createdAt, "MMM dd");
+      const dayData = activityData.find((d) => d.date === logDate);
+      if (dayData) {
+        dayData.actions++;
+      }
+    });
+
+    // Calculate KPI trends
+    const activeProjectsList = agencyProjectsData.filter(p => p.proj.status === 'active');
+    newProjectsThisWeek = activeProjectsList.filter(p => new Date(p.proj.createdAt) >= sevenDaysAgo).length;
+    newProjectsLastWeek = activeProjectsList.filter(p => new Date(p.proj.createdAt) >= fourteenDaysAgo && new Date(p.proj.createdAt) < sevenDaysAgo).length;
+    
+    // Count deliverables created this week
+    newDeliverablesThisWeek = allOrgActivity.filter(log => log.type === "deliverable_created" && new Date(log.createdAt) >= sevenDaysAgo).length;
+  }
+
   const totalActiveProjects = agencyProjectsData.filter(p => p.proj.status === 'active').length;
   const pendingSignatures = agencyProjectsData.filter(p => p.contracts.some(c => c.status === 'pending_signature')).length;
   const deliverablesAwaitingApproval = agencyProjectsData.reduce((acc, p) => acc + p.deliverables.filter(d => d.status === 'in_review').length, 0);
@@ -169,43 +226,60 @@ export const Dash = async () => {
           
           {/* STAT BAR */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
                 <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{totalActiveProjects}</div>
+                <div className="text-3xl font-bold tabular-nums">{totalActiveProjects}</div>
+                {newProjectsThisWeek > 0 && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
+                    +{newProjectsThisWeek} this week
+                  </p>
+                )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Pending Signatures</CardTitle>
                 <FileSignature className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{pendingSignatures}</div>
+                <div className="text-3xl font-bold tabular-nums">{pendingSignatures}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Awaiting Approval</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{deliverablesAwaitingApproval}</div>
+                <div className="text-3xl font-bold tabular-nums">{deliverablesAwaitingApproval}</div>
+                {newDeliverablesThisWeek > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {newDeliverablesThisWeek} new deliverables
+                  </p>
+                )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
                 <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{completedProjects}</div>
+                <div className="text-3xl font-bold tabular-nums">{completedProjects}</div>
               </CardContent>
             </Card>
           </div>
+
+          {/* ACTIVITY CHART */}
+          {activityData.length > 0 && (
+            <div className="mt-8">
+              <ActivityChart data={activityData} />
+            </div>
+          )}
 
           {/* NEEDS ATTENTION */}
           {needsAttention.length > 0 && (
@@ -230,7 +304,6 @@ export const Dash = async () => {
           {/* PROJECT LIST */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4 border-b pb-2">My Agency Workspace</h3>
-            
             {agencyProjectsData.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center bg-muted/10">
                 <div className="rounded-full bg-primary/10 p-4 mb-4">
@@ -242,84 +315,90 @@ export const Dash = async () => {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col border rounded-lg bg-card overflow-hidden">
-                {agencyProjectsData.map((data, idx) => {
-                  const proj = data.proj;
-                  const latestInvite = data.invitations[0];
-                  const latestContract = data.contracts[0];
-                  
-                  const totalDelivs = data.deliverables.length;
-                  const approvedDelivs = data.deliverables.filter(d => d.status === 'approved').length;
-                  const progressVal = totalDelivs === 0 ? 0 : Math.round((approvedDelivs / totalDelivs) * 100);
-
-                  const lastActivity = data.activityLogs[0]?.createdAt || proj.updatedAt;
-
-                  const draftContractId = latestContract?.status === 'draft' ? latestContract.id : undefined;
-
-                  return (
-                    <div key={proj.id} className={`flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group ${idx !== agencyProjectsData.length - 1 ? 'border-b' : ''}`}>
+              <div className="rounded-md border shadow-[0_2px_10px_rgba(0,0,0,0.04)] bg-card overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="w-[300px]">Project Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Deliverables</TableHead>
+                      <TableHead>Last Active</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {agencyProjectsData.map((data) => {
+                      const proj = data.proj;
+                      const latestInvite = data.invitations[0];
+                      const latestContract = data.contracts[0];
                       
-                      <Link href={`/projects/${proj.id}/contract`} className="flex items-center gap-6 flex-1 min-w-0 h-full">
-                        {/* Name and Status Dot */}
-                        <div className="flex items-center gap-2 w-48 shrink-0">
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${proj.status === 'active' ? 'bg-green-500' : 'bg-muted'}`} />
-                          <div className="font-semibold truncate">{proj.name}</div>
-                        </div>
-                        
-                        {/* Badges */}
-                        <div className="flex items-center gap-2 w-56 shrink-0">
-                          {latestInvite ? (
-                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground border-muted capitalize">
-                              Invite: {latestInvite.status}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground border-muted opacity-50">No Invite</Badge>
-                          )}
+                      const hasAcceptedClient = data.invitations.some(i => i.status === 'accepted');
+                      const isContractSigned = latestContract?.status === 'signed';
+                      
+                      let statusBadge = <Badge variant="secondary" className="capitalize">{proj.status}</Badge>;
+                      if (proj.status === 'active') {
+                        if (!hasAcceptedClient && latestInvite?.status === 'pending') {
+                          statusBadge = <Badge variant="outline" className="text-amber-600 border-amber-600/30">Invited</Badge>;
+                        } else if (hasAcceptedClient && !isContractSigned && latestContract?.status === 'pending_signature') {
+                          statusBadge = <Badge variant="outline" className="text-blue-600 border-blue-600/30">Waiting on Contract</Badge>;
+                        } else {
+                          statusBadge = (
+                            <div className="flex items-center gap-1.5 w-fit text-xs font-medium px-2 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20">
+                              <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                              Active
+                            </div>
+                          );
+                        }
+                      }
 
-                          {latestContract ? (
-                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground border-muted capitalize">
-                              Contract: {latestContract.status === 'signed' ? 'Signed' : 'Pending'}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground border-muted opacity-50">No Contract</Badge>
-                          )}
-                        </div>
+                      const totalDeliv = data.deliverables.length;
+                      const approvedDeliv = data.deliverables.filter(d => d.status === 'approved').length;
+                      const progress = totalDeliv === 0 ? 0 : Math.round((approvedDeliv / totalDeliv) * 100);
 
-                        {/* Progress */}
-                        <div className="flex-1 max-w-[200px] items-center gap-3 hidden sm:flex">
-                          {totalDelivs === 0 ? (
-                            <span className="text-xs text-muted-foreground italic">No deliverables yet</span>
-                          ) : (
-                            <>
-                              <Progress value={progressVal} className="h-2" />
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {approvedDelivs}/{totalDelivs}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </Link>
+                      const lastLog = data.activityLogs[0];
+                      const lastActiveText = lastLog ? getRelativeTime(new Date(lastLog.createdAt)) : "No activity";
+                      const draftContractId = latestContract?.status === 'draft' ? latestContract.id : undefined;
 
-                      {/* Right side (Menu & Chevron) */}
-                      <div className="flex items-center gap-2 shrink-0 pl-4">
-                        <span className="text-sm text-muted-foreground hidden md:inline-block mr-2">
-                          {getRelativeTime(lastActivity)}
-                        </span>
-                        <div>
-                          <ProjectRowMenu 
-                            projectId={proj.id} 
-                            projectName={proj.name} 
-                            draftContractId={draftContractId} 
-                          />
-                        </div>
-                        <Link href={`/projects/${proj.id}/contract`}>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors ml-1" />
-                        </Link>
-                      </div>
-
-                    </div>
-                  );
-                })}
+                      return (
+                        <TableRow key={proj.id} className="group hover:bg-muted/50">
+                          <TableCell className="font-medium">
+                            <Link href={`/projects/${proj.id}`} className="hover:underline text-foreground">
+                              {proj.name}
+                            </Link>
+                          </TableCell>
+                          <TableCell>{statusBadge}</TableCell>
+                          <TableCell>
+                            {totalDeliv > 0 ? (
+                              <div className="flex items-center gap-2 max-w-[120px]">
+                                <Progress value={progress} className="h-1.5" />
+                                <span className="text-xs text-muted-foreground tabular-nums">{progress}%</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No deliverables</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {lastActiveText}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end items-center gap-2">
+                              <Link href={`/projects/${proj.id}`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <ProjectRowMenu 
+                                projectId={proj.id} 
+                                projectName={proj.name}
+                                draftContractId={draftContractId}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
