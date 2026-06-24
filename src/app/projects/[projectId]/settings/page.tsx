@@ -1,10 +1,10 @@
 import { db } from "@/utils/db";
-import { project, projectMember } from "@/db/schema";
+import { projectMember } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { DeleteProjectButton } from "./delete-project-button";
+import { DeleteProjectButton } from "@/components/projects/settings/delete-project-button";
 
 export default async function SettingsPage({
   params,

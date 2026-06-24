@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,7 +95,9 @@ export function DeliverableActions({
                     <Textarea
                       id="comment"
                       value={comment}
-                      onChange={(e: any) => setComment(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                        setComment(e.target.value)
+                      }
                       placeholder="The logo color doesn't match the brand guidelines..."
                       rows={4}
                     />

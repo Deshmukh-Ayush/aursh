@@ -41,7 +41,7 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
   };
 
   return (
-    <div className={cn("bg-[#fbfbfb] dark:bg-[#151516] flex-shrink-0 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10", isMobile ? "w-full block min-h-svh" : "hidden md:block md:w-64 lg:w-72 sticky top-0 h-svh")}>
+    <div className={cn("bg-[#fbfbfb] dark:bg-[#151516] shrink-0 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10", isMobile ? "w-full block min-h-svh" : "hidden md:block md:w-64 lg:w-72 sticky top-0 h-svh")}>
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">

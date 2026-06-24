@@ -3,7 +3,7 @@ import { comment, user, projectMember } from "@/db/schema";
 import { eq, and, isNull, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { CommentThread } from "./comment-thread";
+import { CommentThread } from "@/components/projects/discussions/comment-thread";
 
 export default async function DiscussionsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -32,7 +32,7 @@ export default async function DiscussionsPage({ params }: { params: Promise<{ pr
 
   return (
     <div className="flex flex-col h-[calc(100svh-4rem)] md:h-[calc(100svh-4rem)] max-w-4xl mx-auto w-full">
-      <div className="mb-6 flex-shrink-0">
+      <div className="mb-6 shrink-0">
         <h2 className="text-3xl font-bold tracking-tight">Discussions</h2>
         <p className="text-muted-foreground mt-1">General project discussion and updates.</p>
       </div>

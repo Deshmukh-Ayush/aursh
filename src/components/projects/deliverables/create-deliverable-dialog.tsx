@@ -46,6 +46,10 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
     setIsSubmitting(false);
   };
 
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDescription(e.target.value);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -77,7 +81,7 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
               <Textarea
                 id="description"
                 value={description}
-                onChange={(e: any) => setDescription(e.target.value)}
+                onChange={handleDescriptionChange}
                 placeholder="Brief details about the deliverable..."
                 rows={3}
               />

@@ -5,8 +5,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UploadContractForm } from "./upload-contract-form";
-import { ContractActionButtons } from "./contract-action-buttons";
+import { UploadContractForm } from "../../../../components/projects/contracts/upload-contract-form";
+import { ContractActionButtons } from "../../../../components/projects/contracts/contract-action-buttons";
 
 export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();

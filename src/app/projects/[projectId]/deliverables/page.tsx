@@ -5,12 +5,12 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreateDeliverableDialog } from "./create-deliverable-dialog";
-import { DeliverableActions } from "./deliverable-actions";
+import { CreateDeliverableDialog } from "../../../../components/projects/deliverables/create-deliverable-dialog";
+import { DeliverableActions } from "../../../../components/projects/deliverables/deliverable-actions";
 import { Calendar, Clock, MessageSquare } from "lucide-react";
 import { format, isPast } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { CommentThread } from "../discussions/comment-thread";
+import { CommentThread } from "@/components/projects/discussions/comment-thread";
 
 export default async function DeliverablesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();

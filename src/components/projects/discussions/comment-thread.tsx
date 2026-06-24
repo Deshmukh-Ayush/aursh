@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, ChangeEvent, KeyboardEvent, FormEvent, SVGProps } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,19 +46,19 @@ export function CommentThread({
     }
   }, [comments]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-
+  
     setIsSubmitting(true);
     const result = await createCommentAction(projectId, newComment.trim(), deliverableId);
-    
+  
     if (result.error) {
       toast.error(result.error);
     } else {
       setNewComment("");
     }
-    
+  
     setIsSubmitting(false);
   };
 
@@ -92,7 +92,7 @@ export function CommentThread({
 
             return (
               <div key={comment.id} className={`flex gap-3 sm:gap-4 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                <Avatar className="w-8 h-8 sm:w-10 sm:h-10 shrink-0">
                   <AvatarImage src={author?.image || ""} />
                   <AvatarFallback>{author?.name?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
                 </Avatar>
@@ -121,7 +121,7 @@ export function CommentThread({
                         ? 'bg-primary text-primary-foreground rounded-tr-sm' 
                         : 'bg-muted rounded-tl-sm'
                     }`}>
-                      <p className="whitespace-pre-wrap break-words">{comment.body}</p>
+                      <p className="whitespace-pre-wrap wrap-break-word">{comment.body}</p>
                     </div>
 
                     {!isMe && canDelete && (
@@ -143,23 +143,23 @@ export function CommentThread({
 
       <div className="p-4 bg-muted/30 border-t">
         <form onSubmit={handleSubmit} className="flex gap-3 items-end">
-          <Textarea
-            value={newComment}
-            onChange={(e: any) => setNewComment(e.target.value)}
-            placeholder="Type a message..."
-            className="min-h-[60px] resize-none flex-1 rounded-xl bg-background border-muted-foreground/20 focus-visible:ring-1 focus-visible:ring-primary/50"
-            onKeyDown={(e: any) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
+        <Textarea
+          value={newComment}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewComment(e.target.value)}
+          placeholder="Type a message..."
+          className="min-h-[60px] resize-none flex-1 rounded-xl bg-background border-muted-foreground/20 focus-visible:ring-1 focus-visible:ring-primary/50"
+          onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
           <Button 
             type="submit" 
             disabled={isSubmitting || !newComment.trim()} 
             size="icon"
-            className="h-[60px] w-[60px] rounded-xl flex-shrink-0 bg-primary hover:bg-primary/90 transition-colors"
+            className="h-[60px] w-[60px] rounded-xl shrink-0 bg-primary hover:bg-primary/90 transition-colors"
           >
             <Send className="w-5 h-5" />
           </Button>
@@ -169,7 +169,7 @@ export function CommentThread({
   );
 }
 
-function MessageSquareIcon(props: any) {
+function MessageSquareIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

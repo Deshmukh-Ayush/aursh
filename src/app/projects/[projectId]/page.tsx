@@ -1,10 +1,10 @@
 import { db } from "@/utils/db";
-import { project, deliverable } from "@/db/schema";
+import { project } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MarkCompleteButton } from "./mark-complete-button";
+import { MarkCompleteButton } from "@/components/projects/mark-complete-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { Progress } from "@/components/ui/progress";
@@ -46,7 +46,7 @@ function getActivityIcon(type: string) {
   }
 }
 
-function formatActivityText(log: any) {
+function formatActivityText(log: { type: string }) {
   const type = log.type;
   switch (type) {
     case 'contract_uploaded': return 'Contract uploaded';
@@ -203,10 +203,10 @@ export default async function ProjectOverviewPage({
                 </div>
               ) : (
                 <div className="space-y-6 border-l-2 border-muted ml-3 pl-6 relative">
-                  {proj.deliverables.map((d, i) => (
+                  {proj.deliverables.map((d) => (
                     <div key={d.id} className="relative">
                       {/* Timeline dot */}
-                      <div className={`absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-background ${d.status === 'approved' ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+                      <div className={`absolute left-[-31px] top-1 h-3 w-3 rounded-full border-2 border-background ${d.status === 'approved' ? 'bg-green-500' : 'bg-muted-foreground'}`} />
                       
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
@@ -228,7 +228,7 @@ export default async function ProjectOverviewPage({
         </div>
 
         {/* Right Column: Activity & Team */}
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-[300ms] fill-mode-both">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-both">
           <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="space-y-1">
