@@ -160,10 +160,23 @@ export async function deleteContractAction(contractId: string) {
     const [existing] = await db.select().from(contract).where(eq(contract.id, contractId));
     if (!existing) return { error: "Contract not found" };
 
-    // Check if user is owner of the project
-    const [member] = await db.select().from(projectMember).where(and(eq(projectMember.projectId, existing.projectId), eq(projectMember.userId, session.user.id)));
-    if (!member || member.role !== 'owner') {
-      return { error: "Only the project owner can delete the contract" };
+    // Check if user is owner or agency of the project
+    let role: "agency" | "client" | "owner" | null = null;
+    const [member] = await db
+      .select()
+      .from(projectMember)
+      .where(and(eq(projectMember.projectId, existing.projectId), eq(projectMember.userId, session.user.id)));
+
+    const [proj] = await db.select().from(project).where(eq(project.id, existing.projectId));
+
+    if (member) {
+      role = member.role as "agency" | "client" | "owner";
+    } else if (proj && session.session?.activeOrganizationId === proj.organizationId) {
+      role = "agency";
+    }
+
+    if (!role || (role !== 'owner' && role !== 'agency')) {
+      return { error: "Only the project owner or agency can delete the contract" };
     }
 
     if (existing.status === 'signed') {

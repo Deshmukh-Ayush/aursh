@@ -25,24 +25,35 @@ export default async function ProjectLayout({
     redirect("/sign-in");
   }
 
-  // Verify membership
-  const [member] = await db
-    .select()
-    .from(projectMember)
-    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-
-  if (!member) {
+  const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+  if (!proj) {
     redirect("/dashboard");
   }
-
-  // Get project & contract status
-  const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-  const [cont] = await db.select().from(contract).where(eq(contract.projectId, projectId));
 
   const [org] = await db
     .select()
     .from(organization)
     .where(eq(organization.id, proj.organizationId));
+
+  // Verify membership (Explicit or Implicit)
+  let role: "agency" | "client" | "owner" | null = null;
+  const [member] = await db
+    .select()
+    .from(projectMember)
+    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
+
+  if (member) {
+    role = member.role as "agency" | "client" | "owner";
+  } else if (session.session?.activeOrganizationId === proj.organizationId) {
+    role = "agency";
+  }
+
+  if (!role) {
+    redirect("/dashboard");
+  }
+
+  // Get contract status
+  const [cont] = await db.select().from(contract).where(eq(contract.projectId, projectId));
 
   const isSigned = cont?.status === "signed";
 
@@ -57,14 +68,14 @@ export default async function ProjectLayout({
           <ProjectSidebar 
             projectId={projectId} 
             projectName={proj.name} 
-            role={member.role} 
+            role={role} 
             org={org}
           />
           <main className="flex-1 flex flex-col min-w-0">
             <MobileHeader 
               projectId={projectId} 
               projectName={proj.name} 
-              role={member.role} 
+              role={role} 
               org={org}
             />
             <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">

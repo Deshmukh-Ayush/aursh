@@ -18,14 +18,23 @@ export async function deleteProjectAction(projectId: string) {
 
     const userId = session.user.id;
 
-    // Verify ownership
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (!proj) return { error: "Project not found" };
+
+    let role: "agency" | "client" | "owner" | null = null;
     const [member] = await db
       .select()
       .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
 
-    if (!member || member.role !== 'owner') {
-      return { error: "Only the project owner can delete this project." };
+    if (member) {
+      role = member.role as "agency" | "client" | "owner";
+    } else if (session.session?.activeOrganizationId === proj.organizationId) {
+      role = "agency";
+    }
+
+    if (!role || (role !== 'owner' && role !== 'agency')) {
+      return { error: "Only the project owner or agency can delete this project." };
     }
 
     // Delete the project (Cascade deletion will handle members, contracts, files, etc)
@@ -52,14 +61,23 @@ export async function markProjectCompleteAction(projectId: string) {
 
     const userId = session.user.id;
 
-    // Verify ownership
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (!proj) return { error: "Project not found" };
+
+    let role: "agency" | "client" | "owner" | null = null;
     const [member] = await db
       .select()
       .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
 
-    if (!member || member.role !== 'owner') {
-      return { error: "Only the project owner can complete the project." };
+    if (member) {
+      role = member.role as "agency" | "client" | "owner";
+    } else if (session.session?.activeOrganizationId === proj.organizationId) {
+      role = "agency";
+    }
+
+    if (!role || (role !== 'owner' && role !== 'agency')) {
+      return { error: "Only the project owner or agency can complete the project." };
     }
 
     await db.update(project).set({ status: 'completed' }).where(eq(project.id, projectId));

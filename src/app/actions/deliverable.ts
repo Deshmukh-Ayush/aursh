@@ -17,14 +17,24 @@ export async function createDeliverableAction(projectId: string, data: { title: 
 
     const userId = session.user.id;
 
-    // Verify ownership
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (!proj) return { error: "Project not found" };
+
+    // Verify ownership (Explicit or Implicit)
+    let role: "agency" | "client" | "owner" | null = null;
     const [member] = await db
       .select()
       .from(projectMember)
       .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
 
-    if (!member || member.role !== 'owner') {
-      return { error: "Only the project owner can create deliverables." };
+    if (member) {
+      role = member.role as "agency" | "client" | "owner";
+    } else if (session.session?.activeOrganizationId === proj.organizationId) {
+      role = "agency";
+    }
+
+    if (!role || (role !== 'agency' && role !== 'owner')) {
+      return { error: "Only the agency can create deliverables." };
     }
 
     const deliverableId = crypto.randomUUID();

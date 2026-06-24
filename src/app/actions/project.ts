@@ -147,9 +147,23 @@ export async function renameProjectAction(projectId: string, newName: string) {
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user) return { error: "Unauthorized" };
 
-    const [member] = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-    if (!member || member.role !== 'owner') {
-      return { error: "Only the project owner can rename the project." };
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (!proj) return { error: "Project not found" };
+
+    let role: "agency" | "client" | "owner" | null = null;
+    const [member] = await db
+      .select()
+      .from(projectMember)
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
+
+    if (member) {
+      role = member.role as "agency" | "client" | "owner";
+    } else if (session.session?.activeOrganizationId === proj.organizationId) {
+      role = "agency";
+    }
+
+    if (!role || (role !== 'owner' && role !== 'agency')) {
+      return { error: "Only the project owner or agency can rename the project." };
     }
 
     if (!newName || newName.trim() === '') {
@@ -173,9 +187,23 @@ export async function deleteProjectAction(projectId: string) {
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user) return { error: "Unauthorized" };
 
-    const [member] = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-    if (!member || member.role !== 'owner') {
-      return { error: "Only the project owner can delete the project." };
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    if (!proj) return { error: "Project not found" };
+
+    let role: "agency" | "client" | "owner" | null = null;
+    const [member] = await db
+      .select()
+      .from(projectMember)
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
+
+    if (member) {
+      role = member.role as "agency" | "client" | "owner";
+    } else if (session.session?.activeOrganizationId === proj.organizationId) {
+      role = "agency";
+    }
+
+    if (!role || (role !== 'owner' && role !== 'agency')) {
+      return { error: "Only the project owner or agency can delete the project." };
     }
 
     await db.delete(project).where(eq(project.id, projectId));
