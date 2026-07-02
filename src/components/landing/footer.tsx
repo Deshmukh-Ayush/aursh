@@ -16,8 +16,8 @@ export function Footer() {
         
         <div className="flex items-center gap-8 text-sm font-medium text-zinc-500">
           <Link href="https://github.com/Deshmukh-Ayush/Scrunity" target="_blank" className="hover:text-white transition-colors">GitHub</Link>
-          <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
-          <Link href="#" className="hover:text-white transition-colors">Terms</Link>
+          <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+          <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
         </div>
       </div>
     </footer>

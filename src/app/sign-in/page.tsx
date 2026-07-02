@@ -139,14 +139,14 @@ export default function SignInPage() {
                         <p className="px-8 text-center text-sm text-muted-foreground text-balance">
                             By clicking continue, you agree to our{" "}
                             <Link
-                                href="#"
+                                href="/terms"
                                 className="underline underline-offset-4 hover:text-primary transition-colors"
                             >
                                 Terms of Service
                             </Link>{" "}
                             and{" "}
                             <Link
-                                href="#"
+                                href="/privacy"
                                 className="underline underline-offset-4 hover:text-primary transition-colors"
                             >
                                 Privacy Policy
