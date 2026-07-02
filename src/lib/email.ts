@@ -12,7 +12,7 @@ export async function sendProjectInvitationEmail(
 ) {
   try {
     const { data, error } = await resend.emails.send({
-      from: "Aursh <onboarding@resend.dev>", // Using Resend's testing domain by default
+      from: "Scrunity <onboarding@resend.dev>", // Using Resend's testing domain by default
       to: email,
       subject: `You have been invited to join ${projectName}`,
       html: `
@@ -29,7 +29,7 @@ export async function sendProjectInvitationEmail(
           </p>
           ${orgPlan === "free" ? `
             <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eaeaea; text-align: center; font-size: 12px; color: #888;">
-              Powered by <span style="font-weight: bold; color: #333;">Aursh</span>
+              Powered by <span style="font-weight: bold; color: #333;">Scrunity</span>
             </div>
           ` : ''}
         </div>

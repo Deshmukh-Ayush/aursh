@@ -102,7 +102,7 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
           <div className="p-4 mt-auto border-t">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <span>Powered by</span>
-              <span className="font-semibold text-foreground">Aursh</span>
+              <span className="font-semibold text-foreground">Scrunity</span>
             </div>
           </div>
         )}
