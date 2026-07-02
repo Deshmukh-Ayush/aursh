@@ -1,14 +1,16 @@
 import Link from "next/link";
-import { Layers } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between px-6 md:px-12 bg-background/50 backdrop-blur-xl border-b border-white/5">
       <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground group">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] group-hover:scale-105 transition-transform">
-          <Layers className="h-4 w-4" />
-        </div>
+        <img 
+          src="/logo/scrunity_logo_svg.svg" 
+          alt="Scrunity Logo" 
+          className="h-8 w-8 rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] group-hover:scale-105 transition-transform" 
+        />
         Scrunity
       </Link>
       

@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { signIn } from '@/lib/auth-client'
 import React, { useState } from 'react'
-import { Command, Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 export default function SignInPage() {
@@ -37,10 +37,12 @@ export default function SignInPage() {
                 <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-primary/20 opacity-20 blur-[100px]" />
 
                 <div className="relative z-20 flex items-center gap-2 text-lg font-medium">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
-                        <Command className="h-4 w-4" />
-                    </div>
-                    Agency OS
+                    <img 
+                        src="/logo/scrunity_logo_svg.svg" 
+                        alt="Scrunity Logo" 
+                        className="h-8 w-8 rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]" 
+                    />
+                    Scrunity
                 </div>
                 
                 <div className="relative z-20 mt-auto">
@@ -63,9 +65,11 @@ export default function SignInPage() {
                     {/* Header */}
                     <div className="flex flex-col space-y-2 text-center animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
                         <div className="flex justify-center lg:hidden mb-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-                                <Command className="h-6 w-6" />
-                            </div>
+                            <img 
+                                src="/logo/scrunity_logo_svg.svg" 
+                                alt="Scrunity Logo" 
+                                className="h-10 w-10 rounded-lg shadow-sm" 
+                            />
                         </div>
                         <h1 className="text-3xl font-semibold tracking-tight text-balance">
                             Welcome back
