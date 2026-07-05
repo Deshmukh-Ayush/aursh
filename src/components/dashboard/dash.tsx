@@ -11,11 +11,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { OrgSelector } from "@/components/org-selector";
+import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { Progress } from "@/components/ui/progress";
 import { ChevronRight, AlertTriangle, FileSignature, CheckCircle2, LayoutDashboard, ArrowRight } from "lucide-react";
 import { ProjectRowMenu } from "@/components/dashboard/project-row-menu";
 import { format, subDays } from "date-fns";
 import { ActivityChart } from "./activity-chart";
+import { CompletionChart } from "./completion-chart";
 import {
   Table,
   TableBody,
@@ -180,6 +182,7 @@ export const Dash = async () => {
           <SignOutButton />
           {activeOrgId && (
             <>
+              <WorkspaceSwitcher activeOrgId={activeOrgId} />
               <Link href="/dashboard/settings">
                 <Button variant="outline">Settings</Button>
               </Link>
@@ -193,7 +196,9 @@ export const Dash = async () => {
       {clientProjectsData.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold border-b pb-2">Projects You're Invited To</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <ActivityChart data={activityData} />
+
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
             {clientProjectsData.map(({ proj }) => (
               <Link key={proj.id} href={`/projects/${proj.id}/contract`} className="transition-transform hover:-translate-y-1 block h-full">
                 <Card className="flex flex-col h-full cursor-pointer shadow-sm hover:shadow-md border-primary/20">
@@ -249,20 +254,7 @@ export const Dash = async () => {
                 <div className="text-3xl font-bold tabular-nums">{pendingSignatures}</div>
               </CardContent>
             </Card>
-            <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Awaiting Approval</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold tabular-nums">{deliverablesAwaitingApproval}</div>
-                {newDeliverablesThisWeek > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {newDeliverablesThisWeek} new deliverables
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <CompletionChart projects={agencyProjectsData} />
             <Card className="shadow-[0_2px_10px_rgba(0,0,0,0.04)] border-border/40">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
@@ -274,12 +266,6 @@ export const Dash = async () => {
             </Card>
           </div>
 
-          {/* ACTIVITY CHART */}
-          {activityData.length > 0 && (
-            <div className="mt-8">
-              <ActivityChart data={activityData} />
-            </div>
-          )}
 
           {/* NEEDS ATTENTION */}
           {needsAttention.length > 0 && (
@@ -360,22 +346,30 @@ export const Dash = async () => {
                       const draftContractId = latestContract?.status === 'draft' ? latestContract.id : undefined;
 
                       return (
-                        <TableRow key={proj.id} className="group hover:bg-muted/50">
+                        <TableRow key={proj.id} className="group hover:bg-muted/30 cursor-pointer transition-colors">
                           <TableCell className="font-medium">
-                            <Link href={`/projects/${proj.id}`} className="hover:underline text-foreground">
+                            <Link href={`/projects/${proj.id}`} className="flex items-center gap-2 hover:underline decoration-primary/30 underline-offset-4">
                               {proj.name}
                             </Link>
                           </TableCell>
-                          <TableCell>{statusBadge}</TableCell>
                           <TableCell>
-                            {totalDeliv > 0 ? (
-                              <div className="flex items-center gap-2 max-w-[120px]">
-                                <Progress value={progress} className="h-1.5" />
+                            <Badge variant="secondary" className={`bg-secondary/50 font-medium ${
+                              proj.status === 'active' ? 'text-primary' : 
+                              proj.status === 'completed' ? 'text-emerald-500' : 'text-muted-foreground'
+                            }`}>
+                              {proj.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1.5 w-[140px]">
+                              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                                <span>{approvedDeliv} / {totalDeliv}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Progress value={progress} className={`h-1.5 ${totalDeliv === 0 ? 'opacity-30' : ''}`} />
                                 <span className="text-xs text-muted-foreground tabular-nums">{progress}%</span>
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">No deliverables</span>
-                            )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {lastActiveText}
@@ -402,6 +396,13 @@ export const Dash = async () => {
               </div>
             )}
           </div>
+
+          {/* ACTIVITY CHART */}
+          {activityData.length > 0 && (
+            <div className="mt-8">
+              <ActivityChart data={activityData} />
+            </div>
+          )}
         </div>
       )}
     </div>

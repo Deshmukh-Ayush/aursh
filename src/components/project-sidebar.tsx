@@ -1,4 +1,5 @@
 "use client";
+import useSWR from "swr";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,6 +29,17 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+function getUpdateCount(notifications: any[], types: string[], projectId: string) {
+  if (!notifications) return 0;
+  return notifications.filter(n => 
+    n.projectId === projectId && 
+    !n.read && 
+    types.includes(n.type)
+  ).length;
+}
+
 export function ProjectSidebar({ projectId, projectName, role, isMobile = false, org }: { projectId: string, projectName: string, role: string, isMobile?: boolean, org?: any }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -35,9 +47,32 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
 
   const isPaid = org?.plan === "paid";
 
+  const { data: notifData } = useSWR('/api/notifications', fetcher, { 
+    refreshInterval: 30000,
+    revalidateOnFocus: true 
+  });
+  const notifications = notifData?.notifications || [];
+
   const handleLogout = async () => {
     await authClient.signOut();
     router.push("/sign-in");
+  };
+
+  const getUnreadCount = (href: string) => {
+    switch(href) {
+      case "/deliverables":
+        return getUpdateCount(notifications, ["deliverable_created", "deliverable_approved", "revision_requested", "deliverable_completed", "deliverable_in_review"], projectId);
+      case "/files":
+        return getUpdateCount(notifications, ["file_uploaded"], projectId);
+      case "/contract":
+        return getUpdateCount(notifications, ["contract_uploaded", "contract_signed"], projectId);
+      case "/discussions":
+        return getUpdateCount(notifications, ["comment_added"], projectId);
+      case "/activity":
+        return getUpdateCount(notifications, ["project_completed", "member_joined"], projectId);
+      default:
+        return 0;
+    }
   };
 
   return (
@@ -68,19 +103,26 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
                 ? pathname === fullHref 
                 : pathname.startsWith(fullHref);
               const Icon = item.icon;
+              const updateCount = getUnreadCount(item.href);
+              
               return (
                 <Link
                   key={item.name}
                   href={fullHref}
                   className={cn(
-                    "flex h-10 items-center gap-3 rounded-lg px-3 transition-transform active:scale-[0.96]",
+                    "flex h-10 items-center gap-3 rounded-lg px-3 transition-[background-color,color,transform] active:scale-[0.96]",
                     isActive 
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
-                  {item.name}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.name}</span>
+                  {updateCount > 0 && (
+                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white tabular-nums px-1 shadow-[0_1px_3px_rgba(239,68,68,0.4)]">
+                      {updateCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

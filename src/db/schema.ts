@@ -404,10 +404,27 @@ export const activityLog = pgTable("activity_log", {
       "contract_uploaded", "contract_signed", "file_uploaded", 
       "deliverable_created", "deliverable_approved", "revision_requested", 
       "deliverable_completed", "project_completed", "member_joined",
-      "deliverable_in_review"
+      "deliverable_in_review", "comment_added"
     ] 
   }).notNull(),
   metadata: jsonb("metadata"), // Flexible JSON for things like filenames, deliverable titles, revision comments
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notification = pgTable("notification", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+  projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
+  type: text("type", { 
+    enum: [
+      "contract_uploaded", "contract_signed", "file_uploaded", 
+      "deliverable_created", "deliverable_approved", "revision_requested", 
+      "deliverable_completed", "project_completed", "member_joined",
+      "deliverable_in_review", "comment_added"
+    ] 
+  }).notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -424,6 +441,11 @@ export const commentRelations = relations(comment, ({ one }) => ({
   project: one(project, { fields: [comment.projectId], references: [project.id] }),
   deliverable: one(deliverable, { fields: [comment.deliverableId], references: [deliverable.id] }),
   user: one(user, { fields: [comment.userId], references: [user.id] }),
+}));
+
+export const notificationRelations = relations(notification, ({ one }) => ({
+  user: one(user, { fields: [notification.userId], references: [user.id] }),
+  project: one(project, { fields: [notification.projectId], references: [project.id] }),
 }));
 
 export const contractRelations = relations(contract, ({ one, many }) => ({

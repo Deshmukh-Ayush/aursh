@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
 import { logActivity } from "@/lib/activity";
+import { createNotification } from "@/lib/notifications";
 
 export async function acceptProjectInvitation(token: string) {
   try {
@@ -91,6 +92,21 @@ export async function acceptProjectInvitation(token: string) {
       type: "member_joined",
       metadata: { email: session.user.email }
     });
+
+    const otherMembers = await db
+      .select()
+      .from(projectMember)
+      .where(eq(projectMember.projectId, invitation.projectId));
+
+    for (const m of otherMembers) {
+      if (m.userId === userId) continue;
+      await createNotification(
+        m.userId,
+        invitation.projectId,
+        "member_joined",
+        `${session.user.name || session.user.email} joined the project.`
+      );
+    }
 
     revalidatePath("/dashboard");
     return { success: true, projectId: invitation.projectId };

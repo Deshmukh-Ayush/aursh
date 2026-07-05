@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
+import { createNotification } from "@/lib/notifications";
 
 export async function createCommentAction(projectId: string, body: string, deliverableId?: string) {
   try {
@@ -55,6 +56,21 @@ export async function createCommentAction(projectId: string, body: string, deliv
       type: "comment_added" as any, // Need to make sure this is added to schema enum if needed
       metadata: { commentId: newComment.id, contextTitle }
     });
+
+    const otherMembers = await db
+      .select()
+      .from(projectMember)
+      .where(eq(projectMember.projectId, projectId));
+
+    for (const m of otherMembers) {
+      if (m.userId === userId) continue;
+      await createNotification(
+        m.userId,
+        projectId,
+        "comment_added" as any,
+        `${session.user.name || "A user"} commented on ${contextTitle === "project" ? "the project" : `"${contextTitle}"`}: "${body.substring(0, 50)}${body.length > 50 ? '...' : ''}"`
+      );
+    }
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/discussions`);

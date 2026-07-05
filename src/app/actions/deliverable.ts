@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
+import { createNotification } from "@/lib/notifications";
 
 export async function createDeliverableAction(projectId: string, data: { title: string, description: string, dueDate: Date | null }) {
   try {
@@ -89,8 +90,8 @@ export async function updateDeliverableStatusAction(deliverableId: string, statu
     if (!member) return { error: "Unauthorized." };
 
     // Enforce role-based state transitions
-    if (member.role === 'owner') {
-      if (status !== 'in_review') return { error: "Owners can only mark deliverables as in_review." };
+    if (member.role === 'owner' || member.role === 'agency') {
+      // Owners/agencies can freely move cards across columns for management
     } else if (member.role === 'client') {
       if (status !== 'approved' && status !== 'revision_requested') {
         return { error: "Clients can only approve or request revisions." };
@@ -113,6 +114,22 @@ export async function updateDeliverableStatusAction(deliverableId: string, statu
       type: activityType,
       metadata: { deliverableId, title: deliv.title, comment: comment || null }
     });
+
+    const otherMembers = await db
+      .select()
+      .from(projectMember)
+      .where(and(eq(projectMember.projectId, deliv.projectId)));
+
+    for (const m of otherMembers) {
+      if (m.userId === userId) continue;
+      
+      let msg = "";
+      if (status === "in_review") msg = `Deliverable "${deliv.title}" was submitted for review.`;
+      if (status === "approved") msg = `Deliverable "${deliv.title}" was approved!`;
+      if (status === "revision_requested") msg = `Revision requested for "${deliv.title}". ${comment ? `Comment: ${comment}` : ''}`;
+      
+      await createNotification(m.userId, deliv.projectId, activityType, msg);
+    }
 
     // We do NOT mark project completed here. That is a separate action on the overview page.
     

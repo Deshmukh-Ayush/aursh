@@ -6,13 +6,14 @@ import { Menu } from "lucide-react";
 import { ProjectSidebar } from "@/components/project-sidebar";
 import { useState } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { TopbarNotifications } from "@/components/projects/topbar-notifications";
 
 export function MobileHeader({ projectId, projectName, role, org }: { projectId: string, projectName: string, role: string, org?: any }) {
   const [open, setOpen] = useState(false);
   const isPaid = org?.plan === "paid";
 
   return (
-    <header className="md:hidden flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -32,13 +33,15 @@ export function MobileHeader({ projectId, projectName, role, org }: { projectId:
           </div>
         </SheetContent>
       </Sheet>
-      <div className="flex-1">
+      <div className="flex-1 md:hidden">
         {isPaid && org?.logoUrl ? (
           <img src={org.logoUrl} alt={org.name || projectName} className="h-6 object-contain max-w-[150px]" />
         ) : (
           <h1 className="font-semibold truncate">{projectName}</h1>
         )}
       </div>
+      <div className="hidden md:flex flex-1" />
+      <TopbarNotifications projectId={projectId} />
     </header>
   );
 }
