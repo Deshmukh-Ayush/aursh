@@ -1,7 +1,6 @@
 "use client";
 
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { ProjectSidebar } from "@/components/project-sidebar";
 import { useState } from "react";
@@ -13,31 +12,29 @@ export function MobileHeader({ projectId, projectName, role, org }: { projectId:
   const isPaid = org?.plan === "paid";
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
+    <header className="flex h-12 items-center gap-3 border-b border-border/40 bg-background px-3 md:px-4">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-            <Menu className="h-5 w-5" />
+          <button className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground/[0.04] hover:bg-foreground/[0.08] transition-colors shrink-0 md:hidden active:scale-[0.95]">
+            <Menu className="h-4 w-4 text-muted-foreground" />
             <span className="sr-only">Toggle navigation menu</span>
-          </Button>
+          </button>
         </SheetTrigger>
-        <SheetContent side="left" className="flex flex-col p-0 w-72">
-          {/* Radix requires SheetTitle/SheetDescription for accessibility, we visually hide it if we don't want it */}
+        <SheetContent side="left" className="flex flex-col p-0 w-[260px]">
           <VisuallyHidden>
             <SheetTitle>Navigation Menu</SheetTitle>
             <SheetDescription>Navigate through the project workspace.</SheetDescription>
           </VisuallyHidden>
-          {/* Pass setOpen so we can close it on navigation if we wanted, but standard Next.js navigation might reset it anyway. */}
           <div onClick={() => setOpen(false)} className="h-full">
             <ProjectSidebar projectId={projectId} projectName={projectName} role={role} isMobile={true} org={org} />
           </div>
         </SheetContent>
       </Sheet>
-      <div className="flex-1 md:hidden">
+      <div className="flex-1 md:hidden min-w-0">
         {isPaid && org?.logoUrl ? (
-          <img src={org.logoUrl} alt={org.name || projectName} className="h-6 object-contain max-w-[150px]" />
+          <img src={org.logoUrl} alt={org.name || projectName} className="h-5 object-contain max-w-[120px] rounded-[3px] outline outline-1 outline-black/[0.08] dark:outline-white/[0.08]" />
         ) : (
-          <h1 className="font-semibold truncate">{projectName}</h1>
+          <h1 className="text-[13px] font-semibold truncate">{projectName}</h1>
         )}
       </div>
       <div className="hidden md:flex flex-1" />

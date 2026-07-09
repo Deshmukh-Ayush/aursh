@@ -26,10 +26,11 @@ export function MarkCompleteButton({ projectId }: { projectId: string }) {
     <Button 
       onClick={handleComplete} 
       disabled={isUpdating}
-      className="w-full sm:w-auto gap-2 bg-emerald-500 hover:bg-emerald-600 mt-4 sm:mt-0"
+      size="sm"
+      className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_1px_3px_rgba(16,185,129,0.3)] active:scale-[0.96] transition-transform text-[13px]"
     >
-      <Flag className="w-4 h-4" />
-      {isUpdating ? "Completing..." : "Mark Project Complete"}
+      <Flag className="w-3.5 h-3.5" />
+      {isUpdating ? "Completing…" : "Complete Project"}
     </Button>
   );
 }
