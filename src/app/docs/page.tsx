@@ -25,10 +25,10 @@ export default async function DocsPage() {
       `}} />
       
       {/* Floating nav */}
-      <nav className="sticky top-0 z-50 h-[52px] px-6 border-b border-border/40 bg-background/80 backdrop-blur-md flex items-center justify-between">
+      <nav className="sticky top-0 z-50 h-13 px-6 border-b border-border/40 bg-background/80 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="text-[14px] font-bold tracking-tight text-foreground">Scrunity</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px] bg-purple-500/15 text-purple-600 dark:text-purple-400 tracking-wider uppercase">
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-purple-500/15 text-cyan-600 dark:text-cyan-400 tracking-wider uppercase">
             Internal Docs
           </span>
         </div>
