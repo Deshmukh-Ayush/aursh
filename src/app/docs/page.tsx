@@ -35,13 +35,13 @@ export default async function DocsPage() {
         <span className="text-[11px] text-muted-foreground font-medium">v0.0.1</span>
       </nav>
 
-      <div className="max-w-[860px] mx-auto px-6 pt-12 pb-32">
+      <div className="max-w-215 mx-auto px-6 pt-12 pb-32">
         {/* Hero */}
         <header className="mb-16">
           <h1 className="text-[36px] font-extrabold tracking-tight leading-tight text-foreground mb-4 text-balance">
             Developer Documentation
           </h1>
-          <p className="text-base leading-relaxed text-muted-foreground max-w-[640px] text-pretty">
+          <p className="text-base leading-relaxed text-muted-foreground max-w-160 text-pretty">
             Everything you need to know before writing your first line of code. Architecture, conventions, database schema, and patterns.
           </p>
         </header>
