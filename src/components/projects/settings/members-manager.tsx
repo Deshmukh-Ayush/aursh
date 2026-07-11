@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { createProjectInviteAction, revokeInviteAction } from "@/app/actions/invite";
-import { removeMemberAction } from "@/app/actions/project-settings";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 import { Link2, Trash2, Mail, UserPlus2, Copy, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -49,6 +49,7 @@ export function MembersManager({
   const [isInviting, setIsInviting] = useState(false);
   const [newInviteToken, setNewInviteToken] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const router = useRouter();
   
   const canEdit = role === "owner" || role === "agency";
 
@@ -58,16 +59,19 @@ export function MembersManager({
 
     setIsInviting(true);
     setNewInviteToken(null);
-    const result = await createProjectInviteAction(projectId, email);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else if (result.token) {
-      toast.success("Invite link generated!");
-      setNewInviteToken(result.token);
-      setEmail("");
+    try {
+      const res = await axios.post('/api/projects/invites', { projectId, email });
+      if (res.data.success && res.data.token) {
+        toast.success("Invite link generated!");
+        setNewInviteToken(res.data.token);
+        setEmail("");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to create invitation");
+    } finally {
+      setIsInviting(false);
     }
-    setIsInviting(false);
   };
 
   const copyToClipboard = (token: string) => {
@@ -79,15 +83,27 @@ export function MembersManager({
   };
 
   const handleRevoke = async (inviteId: string) => {
-    const result = await revokeInviteAction(inviteId);
-    if (result.error) toast.error(result.error);
-    else toast.success("Invite revoked");
+    try {
+      const res = await axios.delete(`/api/projects/invites?inviteId=${inviteId}`);
+      if (res.data.success) {
+        toast.success("Invite revoked");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to revoke invite");
+    }
   };
 
   const handleRemoveMember = async (targetUserId: string) => {
-    const result = await removeMemberAction(projectId, targetUserId);
-    if (result.error) toast.error(result.error);
-    else toast.success("Member removed");
+    try {
+      const res = await axios.delete(`/api/projects/members?projectId=${projectId}&targetUserId=${targetUserId}`);
+      if (res.data.success) {
+        toast.success("Member removed");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to remove member");
+    }
   };
 
   const getRoleBadgeColor = (roleStr: string) => {

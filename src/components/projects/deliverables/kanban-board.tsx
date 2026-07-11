@@ -14,7 +14,8 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { updateDeliverableStatusAction } from "@/app/actions/deliverable";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MessageSquare, AlertCircle } from "lucide-react";
@@ -99,6 +100,7 @@ export function KanbanBoard({
   const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
   const [revisionComment, setRevisionComment] = useState("");
   const [pendingRevisionUpdate, setPendingRevisionUpdate] = useState<{ id: string, status: string } | null>(null);
+  const router = useRouter();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -113,13 +115,15 @@ export function KanbanBoard({
     const previousItems = [...items];
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, status: newStatus } : item));
 
-    const res = await updateDeliverableStatusAction(id, newStatus as any, comment);
-    
-    if (res?.error) {
-      toast.error(res.error);
+    try {
+      const res = await axios.patch('/api/deliverables', { deliverableId: id, status: newStatus, comment });
+      if (res.data.success) {
+        toast.success(`Moved to ${COLUMNS.find(c => c.id === newStatus)?.title}`);
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to update status");
       setItems(previousItems); // revert
-    } else {
-      toast.success(`Moved to ${COLUMNS.find(c => c.id === newStatus)?.title}`);
     }
   };
 

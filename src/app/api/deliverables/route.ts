@@ -1,5 +1,3 @@
-"use server"
-
 import { db } from "@/utils/db";
 import { deliverable, projectMember, project } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -9,19 +7,25 @@ import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { createNotification } from "@/lib/notifications";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function createDeliverableAction(projectId: string, data: { title: string, description: string, dueDate: Date | null }) {
+export async function POST(req: NextRequest) {
   try {
+    const { projectId, data } = await req.json();
+
+    if (!projectId || !data || !data.title) {
+      return NextResponse.json({ error: "Project ID and title are required." }, { status: 400 });
+    }
+
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) return { error: "Unauthorized" };
+    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const userId = session.user.id;
 
     const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (!proj) return { error: "Project not found" };
+    if (!proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-    // Verify ownership (Explicit or Implicit)
     let role: "agency" | "client" | "owner" | null = null;
     const [member] = await db
       .select()
@@ -35,7 +39,7 @@ export async function createDeliverableAction(projectId: string, data: { title: 
     }
 
     if (!role || (role !== 'agency' && role !== 'owner')) {
-      return { error: "Only the agency can create deliverables." };
+      return NextResponse.json({ error: "Only the agency can create deliverables." }, { status: 403 });
     }
 
     const deliverableId = crypto.randomUUID();
@@ -45,7 +49,7 @@ export async function createDeliverableAction(projectId: string, data: { title: 
       projectId,
       title: data.title,
       description: data.description,
-      dueDate: data.dueDate,
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
       status: "pending",
       createdBy: userId,
     });
@@ -59,27 +63,33 @@ export async function createDeliverableAction(projectId: string, data: { title: 
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/deliverables`);
-    return { success: true };
+    return NextResponse.json({ success: true, deliverableId });
   } catch (error) {
     console.error("Create deliverable error:", error);
-    return { error: "Failed to create deliverable." };
+    return NextResponse.json({ error: "Failed to create deliverable." }, { status: 500 });
   }
 }
 
-export async function updateDeliverableStatusAction(deliverableId: string, status: "pending" | "in_review" | "approved" | "revision_requested", comment?: string) {
+export async function PATCH(req: NextRequest) {
   try {
+    const { deliverableId, status, comment } = await req.json();
+
+    if (!deliverableId || !status) {
+      return NextResponse.json({ error: "Deliverable ID and status are required." }, { status: 400 });
+    }
+
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) return { error: "Unauthorized" };
+    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const userId = session.user.id;
 
     const [deliv] = await db.select().from(deliverable).where(eq(deliverable.id, deliverableId));
-    if (!deliv) return { error: "Deliverable not found." };
+    if (!deliv) return NextResponse.json({ error: "Deliverable not found." }, { status: 404 });
 
     const [proj] = await db.select().from(project).where(eq(project.id, deliv.projectId));
     if (proj?.status === 'completed') {
-      return { error: "Cannot modify deliverables on a completed project." };
+      return NextResponse.json({ error: "Cannot modify deliverables on a completed project." }, { status: 400 });
     }
 
     const [member] = await db
@@ -87,23 +97,21 @@ export async function updateDeliverableStatusAction(deliverableId: string, statu
       .from(projectMember)
       .where(and(eq(projectMember.projectId, deliv.projectId), eq(projectMember.userId, userId)));
 
-    if (!member) return { error: "Unauthorized." };
+    if (!member) return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
 
-    // Enforce role-based state transitions
     if (member.role === 'owner' || member.role === 'agency') {
-      // Owners/agencies can freely move cards across columns for management
+      // Owners/agencies can freely move cards
     } else if (member.role === 'client') {
       if (status !== 'approved' && status !== 'revision_requested') {
-        return { error: "Clients can only approve or request revisions." };
+        return NextResponse.json({ error: "Clients can only approve or request revisions." }, { status: 403 });
       }
       if (deliv.status !== 'in_review') {
-        return { error: "Deliverable must be in review before action." };
+        return NextResponse.json({ error: "Deliverable must be in review before action." }, { status: 400 });
       }
     }
 
     await db.update(deliverable).set({ status, updatedAt: new Date() }).where(eq(deliverable.id, deliverableId));
 
-    // Log Activity
     let activityType: any = "deliverable_in_review";
     if (status === 'approved') activityType = "deliverable_approved";
     if (status === 'revision_requested') activityType = "revision_requested";
@@ -130,14 +138,12 @@ export async function updateDeliverableStatusAction(deliverableId: string, statu
       
       await createNotification(m.userId, deliv.projectId, activityType, msg);
     }
-
-    // We do NOT mark project completed here. That is a separate action on the overview page.
     
     revalidatePath(`/projects/${deliv.projectId}`);
     revalidatePath(`/projects/${deliv.projectId}/deliverables`);
-    return { success: true };
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Update deliverable error:", error);
-    return { error: "Failed to update deliverable status." };
+    return NextResponse.json({ error: "Failed to update deliverable status." }, { status: 500 });
   }
 }

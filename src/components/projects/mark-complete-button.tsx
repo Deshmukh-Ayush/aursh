@@ -2,24 +2,28 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { markProjectCompleteAction } from "@/app/actions/project-settings";
+import axios from "axios";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { Flag } from "lucide-react";
 
 export function MarkCompleteButton({ projectId }: { projectId: string }) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const router = useRouter();
 
   const handleComplete = async () => {
     setIsUpdating(true);
-    const result = await markProjectCompleteAction(projectId);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Project marked as completed!");
+    try {
+      const res = await axios.patch('/api/projects', { projectId, status: 'completed' });
+      if (res.data.success) {
+        toast.success("Project marked as completed!");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to mark as completed");
+    } finally {
+      setIsUpdating(false);
     }
-    
-    setIsUpdating(false);
   };
 
   return (

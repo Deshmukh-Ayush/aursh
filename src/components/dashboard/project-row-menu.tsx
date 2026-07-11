@@ -30,9 +30,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteProjectAction, renameProjectAction } from "@/app/actions/project";
-import { requestSignaturesAction } from "@/app/actions/contract";
+import axios from "axios";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function ProjectRowMenu({
   projectId,
@@ -49,44 +49,52 @@ export function ProjectRowMenu({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
+  const router = useRouter();
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    const result = await deleteProjectAction(projectId);
-    setIsDeleting(false);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Project deleted successfully");
-      setIsDeleteOpen(false);
+    try {
+      const res = await axios.delete(`/api/projects?projectId=${projectId}`);
+      if (res.data.success) {
+        toast.success("Project deleted successfully");
+        setIsDeleteOpen(false);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete project");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleRename = async () => {
     if (!newName.trim()) return;
     setIsRenaming(true);
-    const result = await renameProjectAction(projectId, newName);
-    setIsRenaming(false);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Project renamed successfully");
-      setIsRenameOpen(false);
+    try {
+      const res = await axios.patch('/api/projects', { projectId, newName });
+      if (res.data.success) {
+        toast.success("Project renamed successfully");
+        setIsRenameOpen(false);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to rename project");
+    } finally {
+      setIsRenaming(false);
     }
   };
 
   const handleRequestSignature = async () => {
     if (!draftContractId) return;
     setIsRequesting(true);
-    const result = await requestSignaturesAction(draftContractId);
-    setIsRequesting(false);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Signature requested successfully");
+    try {
+      const res = await axios.patch('/api/contracts', { contractId: draftContractId, action: "request_signatures" });
+      if (res.data.success) {
+        toast.success("Signature requested successfully");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to request signature");
+    } finally {
+      setIsRequesting(false);
     }
   };
 

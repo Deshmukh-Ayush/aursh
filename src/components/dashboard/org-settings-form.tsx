@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { updateOrgBrandingAction } from "@/app/actions/organization";
+import axios from "axios";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
@@ -29,15 +29,20 @@ export function OrgSettingsForm({ org }: { org: Org }) {
 
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    const result = await updateOrgBrandingAction(org.id, formData);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Branding updated successfully!");
+    formData.append("orgId", org.id);
+
+    try {
+      const res = await axios.patch('/api/organizations', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        toast.success("Branding updated successfully!");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to update branding settings");
+    } finally {
+      setIsSaving(false);
     }
-    
-    setIsSaving(false);
   };
 
   return (

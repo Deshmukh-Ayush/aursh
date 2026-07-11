@@ -6,25 +6,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { toggleOrgPlanAction } from "@/app/actions/organization";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 type PlanType = "free" | "freelancer" | "agency";
 
 export function BillingPlans({ orgId, currentPlan }: { orgId: string, currentPlan: string }) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const router = useRouter();
 
   const handleUpgrade = async (plan: PlanType) => {
     if (plan === currentPlan) return;
     setIsUpdating(true);
+    setIsUpdating(true);
     
-    const result = await toggleOrgPlanAction(orgId, plan);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Successfully switched to " + plan + " plan!");
+    try {
+      const res = await axios.patch('/api/organizations', { orgId, plan });
+      if (res.data.success) {
+        toast.success("Successfully switched to " + plan + " plan!");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to switch plan");
+    } finally {
+      setIsUpdating(false);
     }
-    
-    setIsUpdating(false);
   };
 
   const plans = [

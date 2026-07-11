@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { requestSignaturesAction, signContractAction, deleteContractAction } from "@/app/actions/contract";
+import axios from "axios";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function ContractActionButtons({ 
   contractId, 
@@ -17,24 +19,52 @@ export function ContractActionButtons({
   hasSigned: boolean;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleRequestSignatures = async () => {
     setIsLoading(true);
-    await requestSignaturesAction(contractId);
-    setIsLoading(false);
+    try {
+      const res = await axios.patch('/api/contracts', { contractId, action: "request_signatures" });
+      if (res.data.success) {
+        toast.success("Signatures requested successfully");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to request signatures");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSign = async () => {
     setIsLoading(true);
-    await signContractAction(contractId);
-    setIsLoading(false);
+    try {
+      const res = await axios.patch('/api/contracts', { contractId, action: "sign" });
+      if (res.data.success) {
+        toast.success("Contract signed successfully");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to sign contract");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this contract? You can upload a new one afterwards.")) return;
     setIsLoading(true);
-    await deleteContractAction(contractId);
-    setIsLoading(false);
+    try {
+      const res = await axios.delete(`/api/contracts?contractId=${contractId}`);
+      if (res.data.success) {
+        toast.success("Contract deleted successfully");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete contract");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (status === 'draft' && role === 'owner') {

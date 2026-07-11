@@ -5,8 +5,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { renameProjectAction, updateProjectStatusAction } from "@/app/actions/project-settings";
 import { CheckCircle2, Circle } from "lucide-react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export function GeneralSettings({ 
   projectId, 
@@ -22,6 +23,7 @@ export function GeneralSettings({
   const [name, setName] = useState(initialName);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const router = useRouter();
 
   const canEdit = role === "owner" || role === "agency";
 
@@ -34,27 +36,35 @@ export function GeneralSettings({
     }
 
     setIsRenaming(true);
-    const result = await renameProjectAction(projectId, name);
-    if (result.error) {
-      toast.error(result.error);
+    try {
+      const res = await axios.patch('/api/projects', { projectId, newName: name });
+      if (res.data.success) {
+        toast.success("Project renamed successfully");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to rename project");
       setName(initialName);
-    } else {
-      toast.success("Project renamed successfully");
+    } finally {
+      setIsRenaming(false);
     }
-    setIsRenaming(false);
   };
 
   const handleStatusToggle = async (newStatus: "active" | "completed") => {
     if (initialStatus === newStatus) return;
     
     setIsUpdatingStatus(true);
-    const result = await updateProjectStatusAction(projectId, newStatus);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success(`Project marked as ${newStatus}`);
+    try {
+      const res = await axios.patch('/api/projects', { projectId, status: newStatus });
+      if (res.data.success) {
+        toast.success(`Project marked as ${newStatus}`);
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to update status");
+    } finally {
+      setIsUpdatingStatus(false);
     }
-    setIsUpdatingStatus(false);
   };
 
   return (

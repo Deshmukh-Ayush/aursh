@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { uploadFileAction } from "@/app/actions/file";
+import axios from "axios";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { UploadCloud } from "lucide-react";
 
 export function UploadFileButton({ projectId }: { projectId: string }) {
   const [isUploading, setIsUploading] = useState(false);
+  const router = useRouter();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -19,17 +21,20 @@ export function UploadFileButton({ projectId }: { projectId: string }) {
     formData.append("file", file);
     formData.append("projectId", projectId);
 
-    const result = await uploadFileAction(formData);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("File uploaded successfully");
+    try {
+      const res = await axios.post('/api/files', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        toast.success("File uploaded successfully");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to upload file");
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
     }
-    
-    setIsUploading(false);
-    // Reset the input
-    e.target.value = "";
   };
 
   return (

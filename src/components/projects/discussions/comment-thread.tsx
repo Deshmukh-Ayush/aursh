@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, ChangeEvent, KeyboardEvent, FormEvent, SVG
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { createCommentAction, deleteCommentAction } from "@/app/actions/comment";
+import axios from "axios";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { Trash2, Send, CornerDownRight } from "lucide-react";
 
 type CommentType = {
@@ -38,6 +39,7 @@ export function CommentThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const router = useRouter();
 
   // Auto-scroll to bottom on mount or new comment
   useEffect(() => {
@@ -59,26 +61,31 @@ export function CommentThread({
     if (!newComment.trim() || isSubmitting) return;
   
     setIsSubmitting(true);
-    const result = await createCommentAction(projectId, newComment.trim(), deliverableId);
-  
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      setNewComment("");
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
+    try {
+      const res = await axios.post('/api/comments', { projectId, body: newComment.trim(), deliverableId });
+      if (res.data.success) {
+        setNewComment("");
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+        }
+        router.refresh();
       }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to create comment");
+    } finally {
+      setIsSubmitting(false);
     }
-  
-    setIsSubmitting(false);
   };
 
   const handleDelete = async (commentId: string) => {
-    const result = await deleteCommentAction(commentId);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Comment deleted");
+    try {
+      const res = await axios.delete(`/api/comments?commentId=${commentId}`);
+      if (res.data.success) {
+        toast.success("Comment deleted");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete comment");
     }
   };
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { acceptProjectInvitation } from "@/app/actions/invite";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -29,16 +29,19 @@ export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsL
 
     if (!token) return;
 
-    const result = await acceptProjectInvitation(token);
-    setIsLoading(false);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else if (result.projectId) {
-      // Redirect straight to the specific project contract tab
-      router.push(`/projects/${result.projectId}/contract`);
-    } else {
-      router.push("/dashboard");
+    try {
+      const res = await axios.post('/api/projects/invites/accept', { token });
+      if (res.data.success) {
+        if (res.data.projectId) {
+          router.push(`/projects/${res.data.projectId}/contract`);
+        } else {
+          router.push("/dashboard");
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to accept invitation");
+    } finally {
+      setIsLoading(false);
     }
   };
 

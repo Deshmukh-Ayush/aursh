@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { updateDeliverableStatusAction } from "@/app/actions/deliverable";
+import axios from "axios";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { Check, XCircle, Send } from "lucide-react";
 
 export function DeliverableActions({ 
@@ -21,18 +22,21 @@ export function DeliverableActions({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [comment, setComment] = useState("");
+  const router = useRouter();
 
   const handleStatusChange = async (newStatus: "in_review" | "approved") => {
     setIsUpdating(true);
-    const result = await updateDeliverableStatusAction(deliverableId, newStatus);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success(newStatus === 'approved' ? "Deliverable approved!" : "Submitted for review");
+    try {
+      const res = await axios.patch('/api/deliverables', { deliverableId, status: newStatus });
+      if (res.data.success) {
+        toast.success(newStatus === 'approved' ? "Deliverable approved!" : "Submitted for review");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to update status");
+    } finally {
+      setIsUpdating(false);
     }
-    
-    setIsUpdating(false);
   };
 
   const handleRequestRevision = async (e: React.FormEvent) => {
@@ -43,17 +47,19 @@ export function DeliverableActions({
     }
 
     setIsUpdating(true);
-    const result = await updateDeliverableStatusAction(deliverableId, "revision_requested", comment);
-    
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Revision requested");
-      setIsRevisionOpen(false);
-      setComment("");
+    try {
+      const res = await axios.patch('/api/deliverables', { deliverableId, status: "revision_requested", comment });
+      if (res.data.success) {
+        toast.success("Revision requested");
+        setIsRevisionOpen(false);
+        setComment("");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to request revision");
+    } finally {
+      setIsUpdating(false);
     }
-    
-    setIsUpdating(false);
   };
 
   // Owner Actions

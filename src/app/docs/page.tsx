@@ -133,19 +133,15 @@ export default async function DocsPage() {
 │   │   ├── activity/           # Full activity log
 │   │   └── settings/           # Project settings, members, invites
 │   │
-│   ├── actions/                # ⬇ Server Actions ("use server")
-│   │   ├── comment.ts          # addComment
-│   │   ├── contract.ts         # uploadContract, signContract
-│   │   ├── deliverable.ts      # createDeliverable, updateStatus
-│   │   ├── file.ts             # uploadFile, deleteFile
-│   │   ├── invite.ts           # sendProjectInvite, acceptInvite
-│   │   ├── organization.ts     # createOrg, updateBranding
-│   │   ├── project.ts          # createProject, getProjects
-│   │   └── project-settings.ts # updateProject, markComplete
-│   │
-│   └── api/                    # Route Handlers
-│       ├── auth/[...all]/      # Better Auth catch-all
-│       └── notifications/      # GET unread, POST mark-read
+│   ├── api/                    # Route Handlers
+│   │   ├── auth/[...all]/      # Better Auth catch-all
+│   │   ├── notifications/      # GET unread, POST mark-read
+│   │   ├── projects/           # Projects API CRUD & Members/Invites
+│   │   ├── organizations/      # Orgs API CRUD & Members/Invites
+│   │   ├── comments/           # Comments POST/DELETE
+│   │   ├── deliverables/       # Deliverables POST/PATCH
+│   │   ├── contracts/          # Contracts POST/PATCH/DELETE
+│   │   └── files/              # Files POST
 │
 ├── components/
 │   ├── ui/                     # shadcn/ui primitives (Button, Card, etc.)
@@ -252,40 +248,30 @@ export default async function DocsPage() {
 
         {/* ─── SERVER ACTIONS ─── */}
         <Section id="actions" title="Server Actions">
-          <P>All mutations go through server actions in <Code>src/app/actions/</Code>. Every action follows the same pattern:</P>
-          <CodeBlock>{`"use server";
-// 1. Get session
-// 2. Validate inputs
-// 3. Check permissions (role-based)
-// 4. Mutate database
-// 5. logActivity() — writes to activity_log
-// 6. createNotification() — writes to notification table
-// 7. revalidatePath() — bust Next.js cache
-// 8. Return { success } or { error }`}</CodeBlock>
-
-          <Table
-            headers={['File', 'Key Exports']}
-            rows={[
-              ['comment.ts', 'addCommentAction(projectId, body, deliverableId?)'],
-              ['contract.ts', 'uploadContractAction(formData), signContractAction(contractId)'],
-              ['deliverable.ts', 'createDeliverableAction(formData), updateDeliverableStatusAction(id, status, comment?)'],
-              ['file.ts', 'uploadFileAction(formData), deleteFileAction(fileId)'],
-              ['invite.ts', 'sendProjectInviteAction(projectId, email, role), acceptInviteAction(token)'],
-              ['organization.ts', 'createOrganizationAction(name, slug), updateOrgBrandingAction(...)'],
-              ['project.ts', 'createProjectAction(name), getProjectsAction()'],
-              ['project-settings.ts', 'updateProjectAction(id, data), markProjectCompleteAction(id)'],
-            ]}
-          />
+          <P>Most mutations have been migrated to API Routes. Only a few legacy actions might remain, but the standard is now REST-like endpoints using Axios.</P>
         </Section>
 
         {/* ─── API ─── */}
         <Section id="api" title="API Routes">
+          <P>All data mutations now go through API route handlers in <Code>src/app/api/</Code>. They follow REST patterns and return JSON.</P>
           <Table
             headers={['Route', 'Method', 'Purpose']}
             rows={[
               ['/api/auth/[...all]', 'ALL', 'Better Auth catch-all (OAuth, session, org management)'],
               ['/api/notifications', 'GET', 'Fetch unread notifications for current user'],
               ['/api/notifications/read', 'POST', 'Mark one or all notifications as read'],
+              ['/api/projects', 'POST/PATCH/DELETE', 'Create, update (name/status), delete projects'],
+              ['/api/organizations', 'POST/PATCH', 'Create orgs, update branding & plans'],
+              ['/api/organizations/invites', 'POST/DELETE', 'Send org invites, revoke invites'],
+              ['/api/organizations/members', 'DELETE', 'Remove members from org'],
+              ['/api/comments', 'POST/DELETE', 'Add or remove comments'],
+              ['/api/deliverables', 'POST/PATCH', 'Create deliverable, update status'],
+              ['/api/contracts', 'POST/PATCH/DELETE', 'Upload, sign, request signatures, delete'],
+              ['/api/files', 'POST', 'Upload files'],
+              ['/api/projects/invites', 'POST/DELETE', 'Create or revoke project invites'],
+              ['/api/projects/invites/accept', 'POST', 'Accept project invite'],
+              ['/api/projects/invites/resend', 'POST', 'Resend project invite'],
+              ['/api/projects/members', 'DELETE', 'Remove project members'],
             ]}
           />
         </Section>

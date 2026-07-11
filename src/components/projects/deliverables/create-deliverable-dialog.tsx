@@ -6,13 +6,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { createDeliverableAction } from "@/app/actions/deliverable";
+import axios from "axios";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
 export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -25,25 +27,30 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
     }
 
     setIsSubmitting(true);
-    const parsedDate = dueDate ? new Date(dueDate) : null;
+    const parsedDate = dueDate ? new Date(dueDate).toISOString() : null;
     
-    const result = await createDeliverableAction(projectId, {
-      title,
-      description,
-      dueDate: parsedDate,
-    });
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Deliverable created successfully");
-      setTitle("");
-      setDescription("");
-      setDueDate("");
-      setOpen(false);
+    try {
+      const res = await axios.post('/api/deliverables', {
+        projectId,
+        data: {
+          title,
+          description,
+          dueDate: parsedDate,
+        }
+      });
+      if (res.data.success) {
+        toast.success("Deliverable created successfully");
+        setTitle("");
+        setDescription("");
+        setDueDate("");
+        setOpen(false);
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to create deliverable");
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

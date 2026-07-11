@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { deleteProjectAction } from "@/app/actions/project-settings";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -31,14 +31,15 @@ export function DeleteProjectButton({ projectId, role }: { projectId: string, ro
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    const result = await deleteProjectAction(projectId);
-    
-    if (result.error) {
-      toast.error(result.error);
+    try {
+      const res = await axios.delete(`/api/projects?projectId=${projectId}`);
+      if (res.data.success) {
+        toast.success("Project deleted successfully");
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to delete project");
       setIsDeleting(false);
-    } else {
-      toast.success("Project deleted successfully");
-      router.push("/dashboard");
     }
   };
 
