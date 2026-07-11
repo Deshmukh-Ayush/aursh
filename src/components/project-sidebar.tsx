@@ -47,7 +47,7 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
   const router = useRouter();
   const basePath = `/projects/${projectId}`;
 
-  const isPaid = org?.plan === "paid";
+  const canWhitelabel = org?.plan === "agency";
 
   const { data: notifData } = useSWR('/api/notifications', fetcher, { 
     refreshInterval: 30000,
@@ -128,14 +128,17 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground/[0.06] shrink-0 group-hover:bg-foreground/[0.1] transition-colors">
               <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
             </div>
-            {isPaid && org?.logoUrl ? (
+            {canWhitelabel && org?.logoUrl ? (
               <img 
                 src={org.logoUrl} 
                 alt={org.name || projectName} 
                 className="h-5 w-auto object-contain max-w-[120px] rounded-[3px] outline outline-1 outline-black/[0.08] dark:outline-white/[0.08]" 
               />
             ) : (
-              <span className="text-[13px] font-semibold truncate text-foreground">{projectName}</span>
+              <div className="flex items-center gap-2">
+                <img src="/logo/scrunity_logo_svg.svg" alt="Scrunity" className="h-5 w-auto object-contain dark:invert" />
+                <span className="text-[13px] font-semibold truncate text-foreground">{projectName}</span>
+              </div>
             )}
           </Link>
         </div>
@@ -172,11 +175,11 @@ export function ProjectSidebar({ projectId, projectName, role, isMobile = false,
         </div>
         
         {/* Footer */}
-        {!isPaid && (
+        {!canWhitelabel && (
           <div className="px-4 py-3 shrink-0">
             <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40 select-none">
               <span>Powered by</span>
-              <span className="font-semibold text-muted-foreground/60">Scrunity</span>
+              <img src="/logo/scrunity_logo_svg.svg" alt="Scrunity" className="h-3 w-auto object-contain dark:invert opacity-60" />
             </div>
           </div>
         )}

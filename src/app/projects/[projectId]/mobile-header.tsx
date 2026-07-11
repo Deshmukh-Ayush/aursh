@@ -9,7 +9,7 @@ import { TopbarNotifications } from "@/components/projects/topbar-notifications"
 
 export function MobileHeader({ projectId, projectName, role, org }: { projectId: string, projectName: string, role: string, org?: any }) {
   const [open, setOpen] = useState(false);
-  const isPaid = org?.plan === "paid";
+  const canWhitelabel = org?.plan === "agency";
 
   return (
     <header className="flex h-12 items-center gap-3 border-b border-border/40 bg-background px-3 md:px-4">
@@ -31,10 +31,13 @@ export function MobileHeader({ projectId, projectName, role, org }: { projectId:
         </SheetContent>
       </Sheet>
       <div className="flex-1 md:hidden min-w-0">
-        {isPaid && org?.logoUrl ? (
+        {canWhitelabel && org?.logoUrl ? (
           <img src={org.logoUrl} alt={org.name || projectName} className="h-5 object-contain max-w-[120px] rounded-[3px] outline outline-1 outline-black/[0.08] dark:outline-white/[0.08]" />
         ) : (
-          <h1 className="text-[13px] font-semibold truncate">{projectName}</h1>
+          <div className="flex items-center gap-2">
+            <img src="/logo/scrunity_logo_svg.svg" alt="Scrunity" className="h-4 w-auto object-contain dark:invert" />
+            <h1 className="text-[13px] font-semibold truncate">{projectName}</h1>
+          </div>
         )}
       </div>
       <div className="hidden md:flex flex-1" />

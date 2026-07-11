@@ -28,6 +28,21 @@ export async function createProjectAction(formData: FormData) {
     const userId = session.user.id;
     const orgId = session.session.activeOrganizationId;
 
+    const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
+    if (!org) return { error: "Organization not found." };
+
+    // Feature Gate: Free tier limit (1 active project)
+    if (org.plan === "free") {
+      const activeProjects = await db
+        .select({ id: project.id })
+        .from(project)
+        .where(and(eq(project.organizationId, orgId), eq(project.status, "active")));
+      
+      if (activeProjects.length >= 1) {
+        return { error: "Free plan is limited to 1 active project. Please upgrade to Freelancer or Agency to create more." };
+      }
+    }
+
     // Generate token
     const token = crypto.randomUUID();
 
@@ -77,8 +92,6 @@ export async function createProjectAction(formData: FormData) {
     const baseUrl = getBaseUrl();
 
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${token}`;
-
-    const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
 
     await sendProjectInvitationEmail(
       clientEmail, 

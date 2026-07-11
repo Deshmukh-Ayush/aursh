@@ -59,7 +59,7 @@ export default async function ProjectLayout({
   return (
     <div 
       className="flex min-h-svh w-full flex-col md:flex-row"
-      style={org?.plan === 'paid' && org?.brandColor ? { '--primary': org.brandColor } as React.CSSProperties : undefined}
+      style={org?.plan === 'agency' && org?.brandColor ? { '--primary': org.brandColor } as React.CSSProperties : undefined}
     >
       {/* Custom Sidebar Navigation */}
       <ProjectSidebar 

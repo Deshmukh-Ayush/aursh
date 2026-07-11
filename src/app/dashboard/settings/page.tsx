@@ -5,6 +5,7 @@ import { db } from "@/utils/db";
 import { organization, member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { OrgSettingsForm } from "@/components/dashboard/org-settings-form";
+import { BillingPlans } from "@/components/dashboard/billing-plans";
 
 export default async function SettingsPage() {
   const reqHeaders = await headers();
@@ -56,8 +57,17 @@ export default async function SettingsPage() {
           Manage your white-label branding and agency settings.
         </p>
       </div>
-
-      <OrgSettingsForm org={org} />
+      <div className="grid gap-12">
+        <BillingPlans orgId={org.id} currentPlan={org.plan} />
+        
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold tracking-tight">White-Label Branding</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure your custom logo and brand colors (Agency plan only).
+          </p>
+        </div>
+        <OrgSettingsForm org={org} />
+      </div>
     </div>
   );
 }

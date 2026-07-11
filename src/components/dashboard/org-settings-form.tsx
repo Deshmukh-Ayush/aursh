@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { updateOrgBrandingAction, toggleOrgPlanAction } from "@/app/actions/organization";
+import { updateOrgBrandingAction } from "@/app/actions/organization";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
@@ -21,11 +21,11 @@ export function OrgSettingsForm({ org }: { org: Org }) {
   const [isSaving, setIsSaving] = useState(false);
   const [brandColor, setBrandColor] = useState(org.brandColor || "#000000");
 
-  const isFree = org.plan === "free";
+  const canWhitelabel = org.plan === "agency";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isFree) return; // Prevent submission if free (though UI should block it anyway)
+    if (!canWhitelabel) return;
 
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
@@ -40,39 +40,25 @@ export function OrgSettingsForm({ org }: { org: Org }) {
     setIsSaving(false);
   };
 
-  const handleTogglePlan = async () => {
-    setIsSaving(true);
-    const newPlan = isFree ? "paid" : "free";
-    const result = await toggleOrgPlanAction(org.id, newPlan);
-    if (result.error) toast.error(result.error);
-    else toast.success(`Plan updated to ${newPlan}!`);
-    setIsSaving(false);
-  };
-
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>White-Label Branding</CardTitle>
-            <CardDescription>Customize the workspace experience for your clients.</CardDescription>
+            <CardDescription>Customize the workspace experience for your clients. Available on Agency plan.</CardDescription>
           </div>
-          <div className="flex items-center gap-4">
-            <Button size="sm" variant="outline" onClick={handleTogglePlan} disabled={isSaving}>
-              Test Switch to {isFree ? "Paid" : "Free"}
-            </Button>
-            <Badge variant={isFree ? "secondary" : "default"} className="capitalize">
-              {org.plan} Plan
-            </Badge>
-          </div>
+          <Badge variant={canWhitelabel ? "default" : "secondary"} className="capitalize">
+            {org.plan} Plan
+          </Badge>
         </div>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
-          {isFree && (
+          {!canWhitelabel && (
             <div className="bg-primary/5 border border-primary/20 text-primary px-4 py-3 rounded-lg text-sm flex items-center justify-between">
-              <span>These features are available on the Paid plan.</span>
-              <Button size="sm" variant="outline" type="button" disabled>Upgrade</Button>
+              <span>These features are exclusively available on the Agency plan.</span>
+              <Button size="sm" variant="outline" type="button" disabled>Upgrade to Agency</Button>
             </div>
           )}
 
@@ -83,9 +69,9 @@ export function OrgSettingsForm({ org }: { org: Org }) {
               name="logo" 
               type="file" 
               accept="image/*" 
-              disabled={isFree}
+              disabled={!canWhitelabel}
             />
-            {org.logoUrl && !isFree && (
+            {org.logoUrl && canWhitelabel && (
               <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                 <span>Current Logo:</span>
                 <img src={org.logoUrl} alt="Logo" className="h-6 object-contain" />
@@ -103,14 +89,14 @@ export function OrgSettingsForm({ org }: { org: Org }) {
                 type="color" 
                 value={brandColor}
                 onChange={(e) => setBrandColor(e.target.value)}
-                disabled={isFree}
+                disabled={!canWhitelabel}
                 className="w-16 h-10 p-1"
               />
               <Input 
                 type="text" 
                 value={brandColor}
                 onChange={(e) => setBrandColor(e.target.value)}
-                disabled={isFree}
+                disabled={!canWhitelabel}
                 className="flex-1 max-w-[200px]"
                 pattern="^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$"
               />
@@ -120,7 +106,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
 
         </CardContent>
         <CardFooter className="border-t pt-6 bg-muted/20">
-          <Button type="submit" disabled={isFree || isSaving}>
+          <Button type="submit" disabled={!canWhitelabel || isSaving}>
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

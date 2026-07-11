@@ -73,7 +73,7 @@ export async function updateOrgBrandingAction(orgId: string, formData: FormData)
   }
 }
 
-export async function toggleOrgPlanAction(orgId: string, plan: "free" | "paid") {
+export async function toggleOrgPlanAction(orgId: string, plan: "free" | "freelancer" | "agency") {
   try {
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
