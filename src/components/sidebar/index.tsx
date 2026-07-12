@@ -29,7 +29,6 @@ type ProjectSidebarProps = {
 
 const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 
-// One class controls the whole label's visibility — no mount/unmount, no AnimatePresence.
 function CollapsibleLabel({
   isCollapsed,
   className,
@@ -56,7 +55,6 @@ function CollapsibleLabel({
 export function ProjectSidebar({
   projectId,
   projectName,
-  role: _role,
   isMobile = false,
   org,
 }: ProjectSidebarProps) {
@@ -142,7 +140,7 @@ export function ProjectSidebar({
           <div className="space-y-0.5">
             <CollapsibleLabel
               isCollapsed={isCollapsed}
-              className="block px-2.5 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em] mb-1.5 select-none"
+              className="block px-2.5 text-[10px] font-semibold text-foreground/80 uppercase tracking-[0.08em] mb-1.5 select-none"
             >
               Workspace
             </CollapsibleLabel>
@@ -152,7 +150,7 @@ export function ProjectSidebar({
           <div className="space-y-0.5 mt-6">
             <CollapsibleLabel
               isCollapsed={isCollapsed}
-              className="block px-2.5 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em] mb-1.5 select-none"
+              className="block px-2.5 text-[10px] font-semibold text-foreground/80 uppercase tracking-[0.08em] mb-1.5 select-none"
             >
               More
             </CollapsibleLabel>

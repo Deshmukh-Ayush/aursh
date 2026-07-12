@@ -16,31 +16,31 @@ export function ActivityChart({ data }: { data: { date: string, actions: number 
         <Activity className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="h-[180px] w-full mt-4">
+        <div className="h-45 w-full mt-4 text-foreground dark:text-muted-foreground">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <XAxis 
                 dataKey="date" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11, fill: "currentColor" }}
                 dy={10}
               />
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11, fill: "currentColor" }}
                 allowDecimals={false}
               />
               <Tooltip 
                 cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
                 contentStyle={{ backgroundColor: "hsl(var(--background))", borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
-                itemStyle={{ color: "hsl(var(--foreground))", fontSize: "12px", fontWeight: "bold" }}
-                labelStyle={{ color: "hsl(var(--muted-foreground))", fontSize: "12px", marginBottom: "4px" }}
+                itemStyle={{ color: "currentColor", fontSize: "12px", fontWeight: "bold" }}
+                labelStyle={{ color: "currentColor", fontSize: "12px", marginBottom: "4px" }}
               />
               <Bar 
                 dataKey="actions" 
-                fill="hsl(var(--primary))" 
+                fill="currentColor" 
                 radius={[4, 4, 0, 0]} 
                 maxBarSize={40}
               />
