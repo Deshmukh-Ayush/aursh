@@ -22,7 +22,7 @@ export default function GlobalError({
         <AlertCircle className="h-12 w-12 text-destructive" />
       </div>
       <h1 className="text-3xl font-bold tracking-tight mb-2">Something went wrong</h1>
-      <p className="text-muted-foreground max-w-[500px] mb-8">
+      <p className="text-muted-foreground max-w-125 mb-8">
         We apologize for the inconvenience. An unexpected error occurred.
       </p>
       <div className="flex gap-4">

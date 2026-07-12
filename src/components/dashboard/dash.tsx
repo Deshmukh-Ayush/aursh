@@ -88,6 +88,7 @@ export const Dash = async () => {
       proj: {
         id: p.id,
         name: p.name,
+        description: p.description,
         organizationId: p.organizationId,
         status: p.status,
         createdBy: p.createdBy,

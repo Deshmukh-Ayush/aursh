@@ -206,7 +206,7 @@ export default async function DocsPage() {
           <Table
             headers={['Table', 'Key Columns', 'Notes']}
             rows={[
-              ['project', 'name, organizationId, status, createdBy', 'Status: active | completed'],
+              ['project', 'name, description, organizationId, status, createdBy', 'Status: active | completed'],
               ['project_member', 'projectId, userId, role', 'Role: owner | client | agency'],
               ['project_invitation', 'projectId, email, token, status', 'Token-based invite links'],
               ['contract', 'projectId, fileUrl, fileName, status', 'Status: draft | pending_signature | signed'],

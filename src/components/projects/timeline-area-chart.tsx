@@ -24,7 +24,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
         config={{
           expected: {
             label: "Total Expected",
-            color: "hsl(var(--muted-foreground) / 0.25)",
+            color: "hsl(var(--muted-foreground))",
           },
           completed: {
             label: "Completed",
@@ -49,7 +49,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
               <stop offset="95%" stopColor="var(--color-completed)" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="fillExpected" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-expected)" stopOpacity={0.15} />
+              <stop offset="5%" stopColor="var(--color-expected)" stopOpacity={0.08} />
               <stop offset="95%" stopColor="var(--color-expected)" stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -76,6 +76,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
             fill="url(#fillExpected)"
             fillOpacity={1}
             stroke="var(--color-expected)"
+            strokeOpacity={0.4}
             strokeWidth={1.5}
             strokeDasharray="4 4"
             isAnimationActive={true}

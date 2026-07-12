@@ -34,7 +34,7 @@ export function ActivityChart({ data }: { data: { date: string, actions: number 
               />
               <Tooltip 
                 cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-                contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+                contentStyle={{ backgroundColor: "hsl(var(--background))", borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
                 itemStyle={{ color: "hsl(var(--foreground))", fontSize: "12px", fontWeight: "bold" }}
                 labelStyle={{ color: "hsl(var(--muted-foreground))", fontSize: "12px", marginBottom: "4px" }}
               />

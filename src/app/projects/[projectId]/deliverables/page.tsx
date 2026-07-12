@@ -42,7 +42,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
 
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight" style={{ textWrap: 'balance' }}>Deliverables</h2>

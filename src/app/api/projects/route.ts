@@ -106,13 +106,13 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { projectId, newName, status } = await req.json();
+    const { projectId, newName, description, status } = await req.json();
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
     }
 
-    if (!newName && !status) {
+    if (newName === undefined && status === undefined && description === undefined) {
       return NextResponse.json({ error: "No update fields provided." }, { status: 400 });
     }
 
@@ -142,7 +142,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updates: any = {};
-    if (newName && newName.trim() !== '') updates.name = newName.trim();
+    if (newName !== undefined && newName.trim() !== '') updates.name = newName.trim();
+    if (description !== undefined) updates.description = description.trim();
     if (status && (status === "active" || status === "completed")) updates.status = status;
 
     await db.update(project).set(updates).where(eq(project.id, projectId));

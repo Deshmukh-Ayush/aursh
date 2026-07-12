@@ -139,7 +139,7 @@ export default async function ProjectOverviewPage({
   const ringOffset = ringCircumference - (completionPct / 100) * ringCircumference;
 
   return (
-    <div className="w-full max-w-5xl space-y-8">
+    <div className="w-full max-w-7xl mx-auto space-y-8">
       
       <ContractBanner 
         projectId={projectId} 

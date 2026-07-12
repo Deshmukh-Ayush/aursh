@@ -2,10 +2,11 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/utils/db";
-import { organization, member } from "@/db/schema";
+import { organization, member, user } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { OrgSettingsForm } from "@/components/dashboard/org-settings-form";
 import { BillingPlans } from "@/components/dashboard/billing-plans";
+import { OrgMembersManager } from "@/components/dashboard/org-members-manager";
 
 export default async function SettingsPage() {
   const reqHeaders = await headers();
@@ -49,6 +50,21 @@ export default async function SettingsPage() {
     );
   }
 
+  const orgMembers = await db
+    .select({
+      id: member.id,
+      role: member.role,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      }
+    })
+    .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
+    .where(eq(member.organizationId, activeOrgId));
+
   return (
     <div className="flex flex-col min-h-svh p-4 md:p-8 gap-8 max-w-3xl mx-auto w-full">
       <div>
@@ -61,6 +77,14 @@ export default async function SettingsPage() {
         <BillingPlans orgId={org.id} currentPlan={org.plan} />
         
         <div className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold tracking-tight">Team Management</h2>
+          <p className="text-sm text-muted-foreground">
+            Invite your agency teammates to collaborate on projects.
+          </p>
+        </div>
+        <OrgMembersManager org={{ id: org.id, plan: org.plan }} initialMembers={orgMembers} />
+
+        <div className="flex flex-col gap-2 mt-4">
           <h2 className="text-xl font-semibold tracking-tight">White-Label Branding</h2>
           <p className="text-sm text-muted-foreground">
             Configure your custom logo and brand colors (Agency plan only).

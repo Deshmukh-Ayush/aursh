@@ -12,23 +12,26 @@ import { useRouter } from "next/navigation";
 export function GeneralSettings({ 
   projectId, 
   initialName, 
+  initialDescription,
   initialStatus, 
   role 
 }: { 
   projectId: string; 
   initialName: string; 
+  initialDescription: string;
   initialStatus: string;
   role: string;
 }) {
   const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const router = useRouter();
 
   const canEdit = role === "owner" || role === "agency";
 
-  const handleRename = async () => {
-    if (name.trim() === initialName) return;
+  const handleSaveDetails = async () => {
+    if (name.trim() === initialName && description.trim() === initialDescription) return;
     if (!name.trim()) {
       toast.error("Project name cannot be empty");
       setName(initialName);
@@ -37,14 +40,19 @@ export function GeneralSettings({
 
     setIsRenaming(true);
     try {
-      const res = await axios.patch('/api/projects', { projectId, newName: name });
+      const res = await axios.patch('/api/projects', { 
+        projectId, 
+        newName: name.trim(),
+        description: description.trim()
+      });
       if (res.data.success) {
-        toast.success("Project renamed successfully");
+        toast.success("Project details saved successfully");
         router.refresh();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to rename project");
+      toast.error(err.response?.data?.error || "Failed to save project details");
       setName(initialName);
+      setDescription(initialDescription);
     } finally {
       setIsRenaming(false);
     }
@@ -77,7 +85,7 @@ export function GeneralSettings({
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-end gap-4 max-w-md">
+          <div className="flex flex-col gap-5 max-w-md">
             <div className="space-y-2 w-full">
               <label className="text-[13px] font-medium text-foreground">Project Name</label>
               <Input 
@@ -87,14 +95,28 @@ export function GeneralSettings({
                 className="h-9 text-[13px] rounded-lg shadow-sm"
               />
             </div>
+            
+            <div className="space-y-2 w-full">
+              <label className="text-[13px] font-medium text-foreground">Description <span className="text-muted-foreground font-normal">(Optional)</span></label>
+              <textarea 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={!canEdit || isRenaming}
+                className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-[13px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] resize-none"
+                placeholder="Briefly describe what this project is about..."
+              />
+            </div>
+
             {canEdit && (
-              <Button 
-                onClick={handleRename}
-                disabled={isRenaming || name.trim() === initialName}
-                className="h-9 px-4 rounded-lg bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all"
-              >
-                {isRenaming ? "Saving..." : "Save"}
-              </Button>
+              <div className="flex justify-end mt-2">
+                <Button 
+                  onClick={handleSaveDetails}
+                  disabled={isRenaming || (name.trim() === initialName && description.trim() === initialDescription)}
+                  className="h-9 px-5 rounded-lg bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all"
+                >
+                  {isRenaming ? "Saving..." : "Save Details"}
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>

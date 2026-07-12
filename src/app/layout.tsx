@@ -4,6 +4,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Agentation } from "agentation";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -30,9 +32,17 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable, fontSerif.variable)}
     >
       <body>
-        <ThemeProvider>
-          {children}
-          <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider delayDuration={200}>
+            {children}
+            {process.env.NODE_ENV === "development" && <Agentation />}
+            <Toaster richColors position="top-center" />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -260,6 +260,7 @@ export const teamMemberRelations = relations(
 export const project = pgTable("project", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  description: text("description"),
   organizationId: text("organization_id")
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),

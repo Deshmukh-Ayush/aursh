@@ -148,7 +148,7 @@ export function MembersManager({
                 <Button 
                   type="submit"
                   disabled={isInviting || !email.trim()}
-                  className="h-9 px-4 rounded-lg shrink-0 w-full sm:w-auto"
+                  className="h-9 px-4 rounded-lg shrink-0 w-full sm:w-auto active:scale-[0.97] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
                 >
                   {isInviting ? "Generating..." : "Generate Link"}
                 </Button>
@@ -168,7 +168,7 @@ export function MembersManager({
                   size="sm"
                   variant="outline"
                   onClick={() => copyToClipboard(newInviteToken)}
-                  className="h-8 shrink-0 bg-background/50 hover:bg-background border-green-500/20 text-green-700 dark:text-green-400"
+                  className="h-8 shrink-0 bg-background/50 hover:bg-background border-green-500/20 text-green-700 dark:text-green-400 active:scale-[0.97] transition-all duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
                 >
                   {copiedLink ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                   {copiedLink ? "Copied!" : "Copy Link"}
@@ -205,7 +205,7 @@ export function MembersManager({
                     size="sm"
                     variant="outline"
                     onClick={() => copyToClipboard(invite.token)}
-                    className="h-7 px-2.5 text-[11px] font-medium"
+                    className="h-7 px-2.5 text-[11px] font-medium active:scale-[0.97] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
                   >
                     <Link2 className="w-3 h-3 mr-1.5" />
                     Copy
@@ -215,7 +215,7 @@ export function MembersManager({
                       size="sm"
                       variant="ghost"
                       onClick={() => handleRevoke(invite.id)}
-                      className="h-7 px-2.5 text-[11px] font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="h-7 px-2.5 text-[11px] font-medium text-destructive hover:bg-destructive/10 hover:text-destructive active:scale-[0.97] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
                     >
                       Revoke
                     </Button>
@@ -268,7 +268,7 @@ export function MembersManager({
                     size="sm"
                     variant="ghost"
                     onClick={() => handleRemoveMember(m.userId)}
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
                     title="Remove access"
                   >
                     <Trash2 className="w-4 h-4" />
