@@ -54,6 +54,10 @@ export default async function ProjectLayout({
 
   const isSigned = cont?.status === "signed";
 
+  const orgSafe = org
+    ? ({ ...org, logoUrl: org.logoUrl ?? undefined } as typeof org & { logoUrl?: string })
+    : undefined;
+
   return (
     <div 
       className="flex min-h-svh w-full flex-col md:flex-row"
@@ -64,14 +68,14 @@ export default async function ProjectLayout({
         projectId={projectId} 
         projectName={proj.name} 
         role={role} 
-        org={org}
+        org={orgSafe}
       />
       <main className="flex-1 flex flex-col min-w-0">
         <MobileHeader 
           projectId={projectId} 
           projectName={proj.name} 
           role={role} 
-          org={org}
+          org={orgSafe}
         />
         <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
           {children}

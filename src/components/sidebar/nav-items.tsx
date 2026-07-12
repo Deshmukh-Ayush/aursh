@@ -53,7 +53,7 @@ export function SidebarNavItem({
             <Icon
                 className={cn(
                     "h-3.75 w-3.75 shrink-0",
-                    isActive ? "text-foreground" : "text-muted-foreground/60",
+                    isActive ? "text-foreground" : "text-muted-foreground",
                 )}
             />
 

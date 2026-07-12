@@ -19,7 +19,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
   }
 
   return (
-    <div className="h-[200px] w-full">
+    <div className="h-50 w-full">
       <ChartContainer
         config={{
           expected: {
@@ -31,7 +31,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
             color: "hsl(142 71% 45%)",
           },
         }}
-        className="h-full w-full"
+        className="h-full w-full text-muted-foreground dark:text-foreground"
       >
         <AreaChart
           accessibilityLayer
@@ -48,10 +48,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
               <stop offset="5%" stopColor="var(--color-completed)" stopOpacity={0.25} />
               <stop offset="95%" stopColor="var(--color-completed)" stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="fillExpected" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-expected)" stopOpacity={0.08} />
-              <stop offset="95%" stopColor="var(--color-expected)" stopOpacity={0} />
-            </linearGradient>
+            
           </defs>
           <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/30" />
           <XAxis
@@ -60,14 +57,14 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
             axisLine={false}
             tickMargin={8}
             minTickGap={30}
-            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            tick={{ fontSize: 11, fill: 'currentColor' }}
           />
           <YAxis 
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             allowDecimals={false}
-            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            tick={{ fontSize: 11, fill: 'currentColor' }}
           />
           <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
           <Area

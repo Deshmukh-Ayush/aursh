@@ -33,13 +33,16 @@ export function SidebarBrand({
             </div>{" "}
             {!isCollapsed &&
                 (canWhitelabel && org?.logoUrl ? (
-                    <Image
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Image
                         src={org.logoUrl}
                         alt={org.name || projectName}
-                        className="h-5 w-auto object-contain max-w-30 rounded-[3px] outline-1 outline-black/8 dark:outline-white/8"
+                        className="h-8 w-auto object-contain max-w-30 rounded-[3px]"
                         width={100}
                         height={100}
                     />
+                    <span>{org.name || projectName}</span>
+                    </div>
                 ) : (
                     <div className="flex items-center gap-2 shrink-0">
                         {" "}
@@ -48,7 +51,7 @@ export function SidebarBrand({
                             height={100}
                             src="/logo/scrunity_logo_svg.svg"
                             alt="Scrunity"
-                            className="h-5 w-auto object-contain dark:invert"
+                            className="h-8 w-auto object-contain dark:invert"
                         />{" "}
                         <span className="text-[13px] font-semibold truncate text-foreground">
                             {" "}
