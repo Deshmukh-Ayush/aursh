@@ -4,9 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ProjectSidebar } from "@/components/project-sidebar";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ProjectSidebar } from "@/components/sidebar/index";
 import { MobileHeader } from "./mobile-header";
 
 export default async function ProjectLayout({
