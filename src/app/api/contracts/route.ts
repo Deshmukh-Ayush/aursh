@@ -9,6 +9,8 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { createNotification } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
+import { hashDocument } from "@/lib/hash-document";
+import { embedSignaturesInPdf, buildAuditTrailEvent } from "@/lib/pdf-signing";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,6 +44,9 @@ export async function POST(req: NextRequest) {
       allowOverwrite: true,
     });
 
+    const fileBuffer = await file.arrayBuffer();
+    const docHash = hashDocument(fileBuffer);
+
     const newContractId = crypto.randomUUID();
     const members = await db.select().from(projectMember).where(eq(projectMember.projectId, projectId));
 
@@ -61,6 +66,7 @@ export async function POST(req: NextRequest) {
         projectId,
         fileUrl: blob.url,
         fileName: file.name,
+        documentHash: docHash,
         status: "draft",
         uploadedBy: session.user.id,
       }),
@@ -119,15 +125,85 @@ export async function PATCH(req: NextRequest) {
     if (action === "sign") {
       if (existing.status !== 'pending_signature') return NextResponse.json({ error: "Contract is not pending signature" }, { status: 400 });
 
+      const { signatureData, signatureMethod, orgPlan } = await req.json().catch(() => ({ signatureData: null, signatureMethod: null, orgPlan: "free" }));
+      const isPaidPlan = orgPlan === "freelancer" || orgPlan === "agency";
+      
+      const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+      const userAgent = req.headers.get("user-agent") || "unknown";
+
+      let currentDocHash = null;
+      let originalBuffer = null;
+
+      if (isPaidPlan) {
+        // Fetch and verify PDF
+        const pdfRes = await fetch(existing.fileUrl);
+        originalBuffer = await pdfRes.arrayBuffer();
+        currentDocHash = hashDocument(originalBuffer);
+
+        if (currentDocHash !== existing.documentHash) {
+           return NextResponse.json({ error: "Document has been tampered with since upload." }, { status: 400 });
+        }
+      }
+
       await db.update(signature)
-        .set({ signedAt: new Date() })
+        .set({ 
+          signedAt: new Date(),
+          ...(isPaidPlan && {
+             signatureData,
+             signatureMethod,
+             ipAddress,
+             userAgent,
+             documentHash: currentDocHash,
+             auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod })]
+          })
+        })
         .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));
 
       const allSigs = await db.select().from(signature).where(eq(signature.contractId, contractId));
       const allSigned = allSigs.every(sig => sig.signedAt !== null);
 
       if (allSigned) {
-        await db.update(contract).set({ status: 'signed' }).where(eq(contract.id, contractId));
+        let finalStatusUpdate: any = { status: 'signed' };
+
+        if (isPaidPlan && originalBuffer) {
+           // Embed signatures
+           try {
+             // Get users to attach names/emails
+             const sigMembers = await db.query.signature.findMany({
+               where: eq(signature.contractId, contractId),
+               with: { user: true } // Assuming we have relation but we don't, need to fetch users
+             });
+             
+             // Since we didn't add the `with: { user: true }` relation in schema for signature, we fetch manually
+             // But actually we did: signatureRelations has `user`. 
+           } catch(e) {} // ignore for now to write raw query
+
+           const users = await db.query.user.findMany({
+              where: (u, { inArray }) => inArray(u.id, allSigs.map(s => s.userId))
+           });
+
+           const sigItems = allSigs.map(sig => {
+              const u = users.find(u => u.id === sig.userId);
+              return {
+                 name: u?.name || "Unknown",
+                 email: u?.email || "Unknown",
+                 ip: sig.ipAddress || "Unknown",
+                 timestamp: sig.signedAt?.toISOString() || new Date().toISOString(),
+                 signatureData: sig.signatureData || "",
+                 method: sig.signatureMethod || "unknown",
+              };
+           });
+
+           const signedPdfBuffer = await embedSignaturesInPdf(originalBuffer, sigItems);
+           const finalBlob = await put(`contracts/${existing.projectId}/signed_${existing.fileName}`, signedPdfBuffer, {
+              access: 'public',
+              addRandomSuffix: false,
+              allowOverwrite: true,
+           });
+           finalStatusUpdate.signedDocumentUrl = finalBlob.url;
+        }
+
+        await db.update(contract).set(finalStatusUpdate).where(eq(contract.id, contractId));
       }
 
       await logActivity({

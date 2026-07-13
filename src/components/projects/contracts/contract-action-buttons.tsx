@@ -7,18 +7,23 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+import { SignatureModal } from "./signature-modal";
+
 export function ContractActionButtons({ 
   contractId, 
   status, 
   role, 
-  hasSigned 
+  hasSigned,
+  orgPlan
 }: { 
   contractId: string;
   status: string;
   role: string;
   hasSigned: boolean;
+  orgPlan: string;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
 
   const handleRequestSignatures = async () => {
@@ -36,10 +41,17 @@ export function ContractActionButtons({
     }
   };
 
-  const handleSign = async () => {
+  const handleSign = async (signatureData?: string, signatureMethod?: string) => {
     setIsLoading(true);
+    setIsModalOpen(false);
     try {
-      const res = await axios.patch('/api/contracts', { contractId, action: "sign" });
+      const res = await axios.patch('/api/contracts', { 
+        contractId, 
+        action: "sign",
+        signatureData,
+        signatureMethod,
+        orgPlan
+      });
       if (res.data.success) {
         toast.success("Contract signed successfully");
         router.refresh();
@@ -84,9 +96,26 @@ export function ContractActionButtons({
     return (
       <div className="flex gap-2 w-full">
         {!hasSigned && (
-          <Button onClick={handleSign} disabled={isLoading} className="flex-1 bg-primary">
-            {isLoading ? "Signing..." : "Sign Contract"}
-          </Button>
+          <>
+            <Button 
+              onClick={() => {
+                if (orgPlan === "free") {
+                  handleSign(); // Basic sign
+                } else {
+                  setIsModalOpen(true); // E-Signature Modal
+                }
+              }} 
+              disabled={isLoading} 
+              className="flex-1 bg-primary"
+            >
+              {isLoading ? "Signing..." : "Sign Contract"}
+            </Button>
+            <SignatureModal 
+              isOpen={isModalOpen} 
+              onClose={() => setIsModalOpen(false)} 
+              onConfirm={(data, method) => handleSign(data, method)} 
+            />
+          </>
         )}
         {role === 'owner' && (
           <Button variant="destructive" size="icon" onClick={handleDelete} disabled={isLoading} title="Delete Contract" className={hasSigned ? "w-full" : ""}>

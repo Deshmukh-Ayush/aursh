@@ -349,6 +349,8 @@ export const contract = pgTable("contract", {
   fileUrl: text("file_url").notNull(),
   fileName: text("file_name").notNull(),
   status: text("status").notNull().default("draft"),
+  signedDocumentUrl: text("signed_document_url"),
+  documentHash: text("document_hash"),
   uploadedBy: text("uploaded_by")
     .notNull()
     .references(() => user.id),
@@ -368,6 +370,12 @@ export const signature = pgTable("signature", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   signedAt: timestamp("signed_at"),
+  signatureData: text("signature_data"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  documentHash: text("document_hash"),
+  signatureMethod: text("signature_method"), // 'draw' | 'type' | 'upload'
+  auditTrail: jsonb("audit_trail"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -405,7 +413,8 @@ export const activityLog = pgTable("activity_log", {
       "contract_uploaded", "contract_signed", "file_uploaded", 
       "deliverable_created", "deliverable_approved", "revision_requested", 
       "deliverable_completed", "project_completed", "member_joined",
-      "deliverable_in_review", "comment_added"
+      "deliverable_in_review", "comment_added",
+      "proposal_sent", "proposal_accepted", "proposal_declined"
     ] 
   }).notNull(),
   metadata: jsonb("metadata"), // Flexible JSON for things like filenames, deliverable titles, revision comments
@@ -421,7 +430,8 @@ export const notification = pgTable("notification", {
       "contract_uploaded", "contract_signed", "file_uploaded", 
       "deliverable_created", "deliverable_approved", "revision_requested", 
       "deliverable_completed", "project_completed", "member_joined",
-      "deliverable_in_review", "comment_added"
+      "deliverable_in_review", "comment_added",
+      "proposal_sent", "proposal_accepted", "proposal_declined"
     ] 
   }).notNull(),
   message: text("message").notNull(),
@@ -504,4 +514,61 @@ export const filesRelations = relations(files, ({ one }) => ({
     fields: [files.uploadedBy],
     references: [user.id],
   }),
-}));
+}));
+
+export const proposal = pgTable("proposal", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  scopeSummary: text("scope_summary"),
+  price: integer("price").notNull(),
+  currency: text("currency").default("INR").notNull(),
+  validUntil: timestamp("valid_until"),
+  status: text("status", { enum: ["draft", "sent", "accepted", "declined"] }).default("draft").notNull(),
+  sentAt: timestamp("sent_at"),
+  acceptedAt: timestamp("accepted_at"),
+  declinedAt: timestamp("declined_at"),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const proposalLineItems = pgTable("proposal_line_items", {
+  id: text("id").primaryKey(),
+  proposalId: text("proposal_id")
+    .notNull()
+    .references(() => proposal.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  total: integer("total").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const proposalRelations = relations(proposal, ({ one, many }) => ({
+  project: one(project, {
+    fields: [proposal.projectId],
+    references: [project.id],
+  }),
+  creator: one(user, {
+    fields: [proposal.createdBy],
+    references: [user.id],
+  }),
+  lineItems: many(proposalLineItems),
+}));
+
+export const proposalLineItemsRelations = relations(proposalLineItems, ({ one }) => ({
+  proposal: one(proposal, {
+    fields: [proposalLineItems.proposalId],
+    references: [proposal.id],
+  }),
+}));
+

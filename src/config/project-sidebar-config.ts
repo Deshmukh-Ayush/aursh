@@ -7,12 +7,14 @@ import {
     LayoutDashboard,
     MessageSquare,
     Settings,
+    FileSignature,
 } from "lucide-react";
 
 export type NavItem = { name: string; href: string; icon: LucideIcon };
 
 export const mainNavItems: NavItem[] = [
     { name: "Overview", href: "", icon: LayoutDashboard },
+    { name: "Proposal", href: "/proposal", icon: FileSignature },
     { name: "Deliverables", href: "/deliverables", icon: CheckSquare },
     { name: "Files", href: "/files", icon: Files },
     { name: "Contract", href: "/contract", icon: FileText },
@@ -32,6 +34,7 @@ export const unreadTypeMap: Record<string, string[]> = {
         "deliverable_completed",
         "deliverable_in_review",
     ],
+    "/proposal": ["proposal_sent", "proposal_accepted", "proposal_declined"],
     "/files": ["file_uploaded"],
     "/contract": ["contract_uploaded", "contract_signed"],
     "/discussions": ["comment_added"],
