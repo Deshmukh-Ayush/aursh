@@ -173,6 +173,25 @@ export async function PATCH(req: NextRequest) {
 
       await db.update(proposal).set({ status: "accepted", acceptedAt: new Date() }).where(eq(proposal.id, proposalId));
       
+      // Auto-create deliverables from line items
+      const { deliverable } = await import("@/db/schema");
+      const lineItems = await db.query.proposalLineItems.findMany({
+        where: eq(proposalLineItems.proposalId, proposalId)
+      });
+      
+      if (lineItems.length > 0) {
+        const deliverablesData = lineItems.map(item => ({
+          id: crypto.randomUUID(),
+          projectId: existing.projectId,
+          title: item.description,
+          description: `Auto-generated from proposal "${existing.title}"`,
+          status: "pending" as any,
+          createdBy: session.user.id,
+          dueDate: null, // User will set this in the timeline
+        }));
+        await db.insert(deliverable).values(deliverablesData);
+      }
+      
       await logActivity({
         projectId: existing.projectId,
         userId: session.user.id,
@@ -183,7 +202,7 @@ export async function PATCH(req: NextRequest) {
       const members = await db.select().from(projectMember).where(eq(projectMember.projectId, existing.projectId));
       const owners = members.filter(m => m.role === 'owner');
       for (const owner of owners) {
-        await createNotification(owner.userId, existing.projectId, "proposal_accepted" as any, `Proposal "${existing.title}" was accepted. Ready to upload the contract?`);
+        await createNotification(owner.userId, existing.projectId, "proposal_accepted" as any, `Proposal "${existing.title}" was accepted. Deliverables have been auto-generated.`);
       }
 
       return NextResponse.json({ success: true });
