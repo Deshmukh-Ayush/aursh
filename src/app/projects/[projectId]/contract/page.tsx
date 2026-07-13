@@ -1,5 +1,5 @@
 import { db } from "@/utils/db";
-import { contract, signature, projectMember, user } from "@/db/schema";
+import { contract, signature, projectMember, user, project, organization } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -20,6 +20,11 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
   // Check role
   const member = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
   const role = member[0]?.role;
+
+  // Fetch project to get orgId
+  const proj = await db.select().from(project).where(eq(project.id, projectId));
+  const org = await db.select().from(organization).where(eq(organization.id, proj[0].organizationId));
+  const orgPlan = org[0]?.plan || "free";
 
   // Fetch contract
   const existingContracts = await db.select().from(contract).where(eq(contract.projectId, projectId));
@@ -96,10 +101,10 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               {activeContract.fileName}
             </span>
-            <a href={activeContract.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 font-medium hover:underline">Download</a>
+            <a href={activeContract.signedDocumentUrl || activeContract.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 font-medium hover:underline">Download</a>
           </div>
           <iframe 
-            src={activeContract.fileUrl} 
+            src={activeContract.signedDocumentUrl || activeContract.fileUrl} 
             className="w-full flex-1 border-0" 
             title="Contract Document"
           />
@@ -136,8 +141,9 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
                   <ContractActionButtons 
                     contractId={activeContract.id} 
                     status={activeContract.status} 
-                    role={role} 
+                    role={role as any} 
                     hasSigned={!!mySignature?.sig.signedAt} 
+                    orgPlan={orgPlan}
                   />
                 </div>
               )}

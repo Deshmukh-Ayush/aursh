@@ -55,7 +55,7 @@ export default async function ProjectLayout({
   const isSigned = cont?.status === "signed";
 
   const orgSafe = org
-    ? ({ ...org, logoUrl: org.logoUrl ?? undefined } as typeof org & { logoUrl?: string })
+    ? ({ ...org, logoUrl: org.logoUrl ?? undefined, plan: org.plan } as typeof org & { logoUrl?: string, plan: string })
     : undefined;
 
   return (
