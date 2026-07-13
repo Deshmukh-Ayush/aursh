@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   DndContext, 
   DragOverlay, 
@@ -12,18 +12,17 @@ import {
   DragStartEvent, 
   DragEndEvent 
 } from "@dnd-kit/core";
-import { arrayMove, SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, MessageSquare, AlertCircle } from "lucide-react";
-import { format, isPast } from "date-fns";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+import { KanbanColumn } from "./kanban-column";
+import { KanbanCard } from "./kanban-card";
 
 const COLUMNS = [
   { id: "pending", title: "Pending", color: "text-muted-foreground", dotColor: "bg-muted-foreground" },
@@ -31,56 +30,6 @@ const COLUMNS = [
   { id: "revision_requested", title: "Needs Revision", color: "text-red-500", dotColor: "bg-red-500" },
   { id: "approved", title: "Approved", color: "text-emerald-500", dotColor: "bg-emerald-500" }
 ];
-
-function SortableItem({ item, comments, disabled }: { item: any, comments: number, disabled: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-    disabled
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
-  const isOverdue = item.dueDate && isPast(new Date(item.dueDate)) && item.status !== 'approved';
-
-  return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      {...attributes} 
-      {...listeners} 
-      className={`cursor-grab active:cursor-grabbing active:scale-[0.96] transition-transform ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
-    >
-      <Card className="shadow-[0_1px_3px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.04)] border-0 hover:shadow-[0_3px_10px_rgba(0,0,0,0.07)] dark:hover:shadow-[0_3px_10px_rgba(0,0,0,0.3)] transition-shadow">
-        <CardHeader className="p-3 pb-2">
-          <CardTitle className="text-[13px] font-semibold line-clamp-2 leading-snug tracking-tight">{item.title}</CardTitle>
-          {item.description && (
-            <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1 leading-relaxed">{item.description}</p>
-          )}
-        </CardHeader>
-        <CardContent className="p-3 pt-0 flex items-center justify-between mt-1.5">
-          <div className="flex items-center gap-2.5">
-            {item.dueDate && (
-              <div className={`flex items-center gap-1 text-[10px] tabular-nums ${isOverdue ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
-                <Calendar className="w-3 h-3 shrink-0" />
-                {format(new Date(item.dueDate), 'MMM d')}
-              </div>
-            )}
-            {comments > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
-                <MessageSquare className="w-3 h-3 shrink-0" />
-                {comments}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 export function KanbanBoard({ 
   deliverables: initialDeliverables, 
@@ -94,13 +43,28 @@ export function KanbanBoard({
   projectId: string;
 }) {
   const [items, setItems] = useState(initialDeliverables);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [activeId, setActiveId] = useState<string | null>(null);
   
   // Revision Comment Dialog State
   const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
   const [revisionComment, setRevisionComment] = useState("");
   const [pendingRevisionUpdate, setPendingRevisionUpdate] = useState<{ id: string, status: string } | null>(null);
+  
+  // Edit Dialog State
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+
   const router = useRouter();
+
+  // Reset local state if initial data changes and we're not dirty
+  useEffect(() => {
+    if (!isDirty) {
+      setItems(initialDeliverables);
+    }
+  }, [initialDeliverables, isDirty]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -111,23 +75,12 @@ export function KanbanBoard({
     setActiveId(event.active.id as string);
   };
 
-  const executeStatusUpdate = async (id: string, newStatus: string, comment?: string) => {
-    const previousItems = [...items];
+  const handleStatusUpdate = (id: string, newStatus: string) => {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, status: newStatus } : item));
-
-    try {
-      const res = await axios.patch('/api/deliverables', { deliverableId: id, status: newStatus, comment });
-      if (res.data.success) {
-        toast.success(`Moved to ${COLUMNS.find(c => c.id === newStatus)?.title}`);
-        router.refresh();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to update status");
-      setItems(previousItems); // revert
-    }
+    setIsDirty(true);
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
@@ -149,23 +102,14 @@ export function KanbanBoard({
 
     // Constraints Validation
     if (memberRole === 'client') {
-      if (newStatus !== 'in_review') {
-        toast.error("Clients can only submit items for review.");
-        return;
-      }
-      if (activeItem.status !== 'pending' && activeItem.status !== 'revision_requested') {
-        toast.error("Item cannot be submitted for review from this state.");
+      if (newStatus !== 'revision_requested' && newStatus !== 'approved') {
+        toast.error("Clients can only move items to Needs Revision or Approved.");
         return;
       }
     }
 
     if (memberRole === 'owner') {
-      if (newStatus !== 'in_review') {
-         if (newStatus !== 'in_review') {
-           toast.error("Owners can only move to In Review right now.");
-           return;
-         }
-      }
+      // Owner can move freely, but let's warn if they move to approved without client review, although allowed.
     }
 
     if (newStatus === "revision_requested") {
@@ -174,13 +118,63 @@ export function KanbanBoard({
       return;
     }
 
-    await executeStatusUpdate(activeItem.id, newStatus);
+    handleStatusUpdate(activeItem.id, newStatus);
   };
 
-  const activeItem = items.find((item) => item.id === activeId);
+  const handleSaveBulk = async () => {
+    setIsSaving(true);
+    try {
+      // We only want to send items that have actually changed
+      const updates = items.filter(item => {
+        const initial = initialDeliverables.find((i: any) => i.id === item.id);
+        return !initial || 
+               initial.status !== item.status || 
+               initial.title !== item.title || 
+               initial.description !== item.description || 
+               initial.dueDate !== item.dueDate;
+      }).map(item => ({
+        id: item.id,
+        status: item.status,
+        title: item.title,
+        description: item.description,
+        dueDate: item.dueDate
+      }));
+
+      if (updates.length > 0) {
+        const res = await axios.patch('/api/deliverables/bulk', { updates });
+        if (res.data.success) {
+          toast.success("Board saved successfully");
+          setIsDirty(false);
+          router.refresh();
+        }
+      } else {
+        setIsDirty(false);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to save board");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelBulk = () => {
+    setItems(initialDeliverables);
+    setIsDirty(false);
+  };
+
+  const activeItem = useMemo(() => items.find((item) => item.id === activeId), [items, activeId]);
 
   return (
-    <div className="w-full h-full pb-10">
+    <div className="w-full h-full pb-10 flex flex-col relative">
+      {/* Floating Save/Cancel Toolbar */}
+      {isDirty && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-background/95 backdrop-blur-md border shadow-lg px-4 py-3 rounded-full animate-in slide-in-from-bottom-5">
+           <span className="text-sm font-medium px-2">Unsaved changes</span>
+           <Button variant="outline" size="sm" onClick={handleCancelBulk} disabled={isSaving} className="rounded-full">Cancel</Button>
+           <Button size="sm" onClick={handleSaveBulk} disabled={isSaving} className="rounded-full">{isSaving ? "Saving..." : "Save Changes"}</Button>
+        </div>
+      )}
+
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCorners} 
@@ -191,40 +185,17 @@ export function KanbanBoard({
           {COLUMNS.map((column) => {
             const columnItems = items.filter((item) => item.status === column.id);
             return (
-              <div key={column.id} className="flex flex-col gap-2.5 bg-muted/20 p-3 rounded-xl min-h-[420px] min-w-[260px] w-[260px] lg:w-full lg:min-w-0 flex-1 snap-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                <div className="flex items-center justify-between mb-1.5 px-1">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${column.dotColor}`} />
-                    <span className={`text-[13px] font-semibold ${column.color}`}>{column.title}</span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{columnItems.length}</span>
-                </div>
-                
-                <SortableContext 
-                  id={column.id}
-                  items={columnItems.map(i => i.id)} 
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="flex flex-col gap-2.5 min-h-[100px]">
-                    {columnItems.map((item) => {
-                      const commentsCount = allComments.filter(c => c.comment.deliverableId === item.id).length;
-                      // Constraints UI
-                      const canDrag = memberRole === 'client' 
-                        ? (item.status === 'pending' || item.status === 'revision_requested')
-                        : true;
-
-                      return (
-                        <SortableItem key={item.id} item={item} comments={commentsCount} disabled={!canDrag} />
-                      );
-                    })}
-                    {columnItems.length === 0 && (
-                      <div className="flex items-center justify-center h-20 text-[11px] text-muted-foreground/50 border border-dashed border-border/30 rounded-lg">
-                        Drop here
-                      </div>
-                    )}
-                  </div>
-                </SortableContext>
-              </div>
+              <KanbanColumn 
+                key={column.id} 
+                column={column} 
+                items={columnItems} 
+                allComments={allComments} 
+                memberRole={memberRole} 
+                onEdit={memberRole === 'owner' ? (item) => {
+                  setEditingItem({ ...item, dueDate: item.dueDate ? item.dueDate.split('T')[0] : "" });
+                  setEditDialogOpen(true);
+                } : undefined}
+              />
             );
           })}
         </div>
@@ -232,7 +203,12 @@ export function KanbanBoard({
         <DragOverlay>
           {activeItem ? (
             <div className="opacity-90 rotate-1 scale-[1.02] shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-              <SortableItem item={activeItem} comments={0} disabled={false} />
+              <KanbanCard 
+                item={activeItem} 
+                comments={0} 
+                disabled={false} 
+                memberRole={memberRole} 
+              />
             </div>
           ) : null}
         </DragOverlay>
@@ -251,17 +227,65 @@ export function KanbanBoard({
             rows={4}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRevisionDialogOpen(false)} className="active:scale-[0.96] transition-transform">Cancel</Button>
+            <Button variant="outline" onClick={() => setRevisionDialogOpen(false)}>Cancel</Button>
             <Button 
-              className="active:scale-[0.96] transition-transform"
-              onClick={() => {
+              onClick={async () => {
                 if (pendingRevisionUpdate) {
-                  executeStatusUpdate(pendingRevisionUpdate.id, pendingRevisionUpdate.status, revisionComment);
+                  // We also need to save the comment. Since the UI wants a "Save Board" flow, 
+                  // but comments are discrete actions. We should probably send the comment immediately via API
+                  // or just attach it. For now, since comments map to deliverables, we will send it immediately
+                  // to keep the thread alive, but mark the item as dirty.
+                  if (revisionComment.trim()) {
+                     try {
+                        await axios.post('/api/comments', {
+                           deliverableId: pendingRevisionUpdate.id,
+                           body: revisionComment
+                        });
+                     } catch(e) {}
+                  }
+                  handleStatusUpdate(pendingRevisionUpdate.id, pendingRevisionUpdate.status);
                 }
                 setRevisionDialogOpen(false);
                 setRevisionComment("");
               }}
             >Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Deliverable</DialogTitle>
+            <DialogDescription>Update the details and due date.</DialogDescription>
+          </DialogHeader>
+          {editingItem && (
+             <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                   <Label htmlFor="title">Title</Label>
+                   <Input id="title" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                   <Label htmlFor="description">Description</Label>
+                   <Textarea id="description" value={editingItem.description || ''} onChange={e => setEditingItem({...editingItem, description: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                   <Label htmlFor="dueDate">Due Date</Label>
+                   <Input id="dueDate" type="date" value={editingItem.dueDate} onChange={e => setEditingItem({...editingItem, dueDate: e.target.value})} />
+                </div>
+             </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={() => {
+                if (editingItem) {
+                  setItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...editingItem } : i));
+                  setIsDirty(true);
+                  setEditDialogOpen(false);
+                }
+              }}
+            >Save to Draft</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
