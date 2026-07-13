@@ -36,7 +36,7 @@ export function CompletionChart({ projects }: { projects: any[] }) {
           </div>
         ) : (
           <div className="h-[140px] w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={0} minWidth={0}>
               <PieChart>
                 <Pie
                   data={data}
