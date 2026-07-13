@@ -9,6 +9,7 @@ import { Plus, Trash2 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export function ProposalBuilder({ projectId, initialData }: { projectId: string, initialData?: any }) {
   const router = useRouter();
@@ -17,6 +18,7 @@ export function ProposalBuilder({ projectId, initialData }: { projectId: string,
   const [validityDays, setValidityDays] = useState("30");
   const [currency, setCurrency] = useState("INR");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
   
   const [lineItems, setLineItems] = useState<any[]>(
     initialData?.lineItems || [{ description: "", quantity: 1, unitPrice: 0 }]
@@ -76,6 +78,7 @@ export function ProposalBuilder({ projectId, initialData }: { projectId: string,
       toast.error("Please save as draft first before sending.");
       return;
     }
+    setSendDialogOpen(false);
     setIsSubmitting(true);
     try {
       await axios.patch('/api/proposals', { proposalId: initialData.id, action: "send" });
@@ -194,11 +197,28 @@ export function ProposalBuilder({ projectId, initialData }: { projectId: string,
           {isSubmitting ? "Saving..." : "Save Draft"}
         </Button>
         {initialData?.id && (
-          <Button onClick={sendProposal} disabled={isSubmitting}>
+          <Button onClick={() => setSendDialogOpen(true)} disabled={isSubmitting}>
              Send to Client
           </Button>
         )}
       </div>
+
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Proposal</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to send this proposal to the client? You will not be able to edit it once sent.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendDialogOpen(false)}>Cancel</Button>
+            <Button onClick={sendProposal} disabled={isSubmitting}>
+              {isSubmitting ? "Sending..." : "Send Proposal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

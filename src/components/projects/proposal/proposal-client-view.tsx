@@ -7,21 +7,25 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export function ProposalClientView({ proposal, role }: { proposal: any, role: string }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; action: "accept" | "decline" | null }>({ isOpen: false, action: null });
 
-  const handleAction = async (action: "accept" | "decline") => {
-    if (!confirm(`Are you sure you want to ${action} this proposal?`)) return;
+  const executeAction = async () => {
+    if (!confirmDialog.action) return;
     
     setIsSubmitting(true);
+    setConfirmDialog({ isOpen: false, action: null });
+    
     try {
-      await axios.patch('/api/proposals', { proposalId: proposal.id, action });
-      toast.success(`Proposal ${action}ed successfully`);
+      await axios.patch('/api/proposals', { proposalId: proposal.id, action: confirmDialog.action });
+      toast.success(`Proposal ${confirmDialog.action}ed successfully`);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || `Failed to ${action} proposal`);
+      toast.error(err.response?.data?.error || `Failed to ${confirmDialog.action} proposal`);
     } finally {
       setIsSubmitting(false);
     }
@@ -111,10 +115,10 @@ export function ProposalClientView({ proposal, role }: { proposal: any, role: st
       {/* Actions (Client Only) */}
       {role === 'client' && proposal.status === 'sent' && !isExpired && (
         <div className="flex gap-4 justify-end p-6 bg-primary/5 border border-primary/20 rounded-xl">
-          <Button variant="outline" size="lg" className="border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleAction('decline')} disabled={isSubmitting}>
+          <Button variant="outline" size="lg" className="border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDialog({ isOpen: true, action: 'decline' })} disabled={isSubmitting}>
             Decline Proposal
           </Button>
-          <Button size="lg" onClick={() => handleAction('accept')} disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Button size="lg" onClick={() => setConfirmDialog({ isOpen: true, action: 'accept' })} disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             Accept & Continue
           </Button>
         </div>
@@ -126,6 +130,31 @@ export function ProposalClientView({ proposal, role }: { proposal: any, role: st
           This proposal has expired. Please contact the project owner for a revised version.
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialog.isOpen} onOpenChange={(open) => !open && setConfirmDialog({ isOpen: false, action: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+               {confirmDialog.action === 'accept' ? 'Accept Proposal' : 'Decline Proposal'}
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {confirmDialog.action} this proposal? 
+              {confirmDialog.action === 'accept' ? ' This will automatically generate the project deliverables.' : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog({ isOpen: false, action: null })}>Cancel</Button>
+            <Button 
+               variant={confirmDialog.action === 'decline' ? 'destructive' : 'default'} 
+               onClick={executeAction}
+               disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Processing...' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

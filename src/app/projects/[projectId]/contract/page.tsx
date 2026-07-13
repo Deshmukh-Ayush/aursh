@@ -156,6 +156,7 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
                     status={activeContract.status} 
                     role={role} 
                     hasSigned={!!mySignature?.sig.signedAt} 
+                    orgPlan={orgPlan}
                   />
                 </div>
               )}
