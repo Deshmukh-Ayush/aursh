@@ -292,6 +292,15 @@ export default async function DocsPage() {
             ]}
           />
 
+          <H3>Navigation</H3>
+          <Table
+            headers={['Component', 'Description']}
+            rows={[
+              ['ProjectSidebar', 'Collapsible workspace navigation, state persisted to localStorage, uses Tooltips for collapsed state'],
+              ['MobileHeader', 'Sheet-based mobile navigation header'],
+            ]}
+          />
+
           <H3>Key Patterns</H3>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
             <li><strong className="text-foreground font-medium">Server Components by default</strong> — pages fetch data directly from the DB</li>
@@ -366,6 +375,7 @@ await createNotification(
             <li><strong className="text-foreground font-medium">Scale on press</strong> — <Code>active:scale-[0.96]</Code> on clickable elements</li>
             <li><strong className="text-foreground font-medium">Never transition: all</strong> — specify exact properties</li>
             <li><strong className="text-foreground font-medium">Text wrapping</strong> — <Code>text-wrap: balance</Code> on headings, <Code>pretty</Code> on body</li>
+            <li><strong className="text-foreground font-medium">Expansive layouts</strong> — use <Code>max-w-7xl mx-auto</Code> for main content to gracefully fill horizontal space</li>
             <li><strong className="text-foreground font-medium">13px body text</strong> — the app uses <Code>text-[13px]</Code> as the standard body size</li>
           </ul>
 
