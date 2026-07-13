@@ -96,7 +96,8 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { contractId, action } = await req.json();
+    const body = await req.json();
+    const { contractId, action, signatureData = null, signatureMethod = null, orgPlan = "free" } = body;
 
     if (!contractId || !action) {
       return NextResponse.json({ error: "Contract ID and action are required" }, { status: 400 });
@@ -125,7 +126,6 @@ export async function PATCH(req: NextRequest) {
     if (action === "sign") {
       if (existing.status !== 'pending_signature') return NextResponse.json({ error: "Contract is not pending signature" }, { status: 400 });
 
-      const { signatureData, signatureMethod, orgPlan } = await req.json().catch(() => ({ signatureData: null, signatureMethod: null, orgPlan: "free" }));
       const isPaidPlan = orgPlan === "freelancer" || orgPlan === "agency";
       
       const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
@@ -270,9 +270,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Only the project owner or agency can delete the contract" }, { status: 403 });
     }
 
-    if (existing.status === 'signed') {
-      return NextResponse.json({ error: "Cannot delete a signed contract" }, { status: 400 });
-    }
+    // if (existing.status === 'signed') {
+    //   return NextResponse.json({ error: "Cannot delete a signed contract" }, { status: 400 });
+    // }
 
     await db.delete(signature).where(eq(signature.contractId, contractId));
     await db.delete(contract).where(eq(contract.id, contractId));

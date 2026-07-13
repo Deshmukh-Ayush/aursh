@@ -126,5 +126,16 @@ export function ContractActionButtons({
     );
   }
 
+  if (status === 'signed' && role === 'owner') {
+    return (
+      <div className="flex gap-2 w-full mt-4">
+        <Button variant="destructive" className="w-full" onClick={handleDelete} disabled={isLoading}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete Signed Contract
+        </Button>
+      </div>
+    );
+  }
+
   return null;
 }

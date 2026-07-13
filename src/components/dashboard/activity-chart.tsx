@@ -17,7 +17,7 @@ export function ActivityChart({ data }: { data: { date: string, actions: number 
       </CardHeader>
       <CardContent>
         <div className="h-45 w-full mt-4 text-foreground dark:text-muted-foreground">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={0} minWidth={0}>
             <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <XAxis 
                 dataKey="date" 
