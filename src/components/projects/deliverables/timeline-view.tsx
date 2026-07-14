@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, CSSProperties } from "react";
 import { format, differenceInDays, addDays, isPast, isBefore, isAfter } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CommentThread } from "@/components/projects/discussions/comment-thread";
-import { Calendar, Clock, CheckCircle2, Eye, AlertCircle, Hourglass } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, Eye, AlertCircle, Hourglass, MessageSquare } from "lucide-react";
 import { DeliverableActions } from "./deliverable-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,22 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; bar: string; te
   pending: { label: "Pending", bg: "bg-zinc-500/8", bar: "bg-zinc-400 dark:bg-zinc-500", text: "text-muted-foreground", icon: Hourglass },
 };
 
+type Deliverable = {
+  id: string;
+  createdAt: string;
+  dueDate?: string | null;
+  title: string;
+  status: string;
+  description?: string | null;
+};
+
+type DeliverableComment = React.ComponentProps<typeof CommentThread>['comments'][number] & {
+  comment: {
+    deliverableId: string;
+    [key: string]: unknown;
+  };
+};
+
 export function TimelineView({
   deliverables: initialDeliverables,
   allComments,
@@ -27,31 +43,32 @@ export function TimelineView({
   projectId,
   userId
 }: {
-  deliverables: any[];
-  allComments: any[];
+  deliverables: Deliverable[];
+  allComments: DeliverableComment[];
   memberRole: string;
   projectId: string;
   userId: string;
 }) {
-  const [items, setItems] = useState(initialDeliverables);
+  const [items, setItems] = useState<Deliverable[]>(initialDeliverables);
+  const [prevInitial, setPrevInitial] = useState<Deliverable[]>(initialDeliverables);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [selectedDeliv, setSelectedDeliv] = useState<any | null>(null);
+  const [selectedDeliv, setSelectedDeliv] = useState<Deliverable | null>(null);
   const router = useRouter();
 
   // Reset local state if initial data changes and we're not dirty
-  useEffect(() => {
+  if (initialDeliverables !== prevInitial) {
+    setPrevInitial(initialDeliverables);
     if (!isDirty) {
       setItems(initialDeliverables);
     }
-  }, [initialDeliverables, isDirty]);
+  }
 
-  const { startDate, endDate, totalDays, gridDates, todayPct } = useMemo(() => {
+  const { startDate, totalDays, gridDates, todayPct } = useMemo(() => {
     if (items.length === 0) {
       const s = new Date();
-      const e = addDays(s, 14);
-      return { startDate: s, endDate: e, totalDays: 14, gridDates: [], todayPct: 50 };
+      return { startDate: s, totalDays: 14, gridDates: [], todayPct: 50 };
     }
 
     let minDate = new Date();
@@ -78,7 +95,7 @@ export function TimelineView({
     const today = new Date();
     const tPct = Math.max(0, Math.min(100, (differenceInDays(today, minDate) / total) * 100));
 
-    return { startDate: minDate, endDate: maxDate, totalDays: total, gridDates: dates, todayPct: tPct };
+    return { startDate: minDate, totalDays: total, gridDates: dates, todayPct: tPct };
   }, [items]);
 
   const handleUpdateDates = (id: string, deltaDays: number) => {
@@ -86,9 +103,6 @@ export function TimelineView({
       if (item.id === id) {
         const created = new Date(item.createdAt);
         const due = item.dueDate ? new Date(item.dueDate) : addDays(created, 7);
-        // We shift both createdAt and dueDate for visual timeline editing consistency
-        // Wait, editing createdAt is not allowed in DB typically, so we only update dueDate.
-        // We can just add deltaDays to dueDate.
         const newDue = addDays(due, deltaDays);
         return { ...item, dueDate: newDue.toISOString() };
       }
@@ -101,7 +115,7 @@ export function TimelineView({
     setIsSaving(true);
     try {
       const updates = items.filter(item => {
-        const initial = initialDeliverables.find((i: any) => i.id === item.id);
+        const initial = initialDeliverables.find((i: Deliverable) => i.id === item.id);
         return !initial || initial.dueDate !== item.dueDate;
       }).map(item => ({
         id: item.id,
@@ -118,8 +132,12 @@ export function TimelineView({
       } else {
         setIsDirty(false);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to save timeline");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.error || "Failed to save timeline");
+      } else {
+        toast.error("Failed to save timeline");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -136,8 +154,8 @@ export function TimelineView({
         <div className="rounded-xl bg-muted/50 p-4 mb-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <Calendar className="h-7 w-7 text-muted-foreground/60" />
         </div>
-        <h3 className="text-base font-semibold tracking-tight" style={{ textWrap: 'balance' as any }}>No timeline to display</h3>
-        <p className="text-muted-foreground mt-1.5 max-w-sm text-[13px] leading-relaxed" style={{ textWrap: 'pretty' as any }}>
+        <h3 className="text-base font-semibold tracking-tight" style={{ textWrap: 'balance' } as CSSProperties}>No timeline to display</h3>
+        <p className="text-muted-foreground mt-1.5 max-w-sm text-[13px] leading-relaxed" style={{ textWrap: 'pretty' } as CSSProperties}>
           Add deliverables with due dates to see your project timeline here.
         </p>
       </div>
@@ -158,7 +176,7 @@ export function TimelineView({
       <div className="rounded-xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.04)] bg-background relative">
         {/* Scrollable area */}
         <div className="overflow-x-auto scrollbar-thin">
-          <div className="min-w-[700px]">
+          <div className="min-w-175">
 
             {/* Date header */}
             <div className="relative h-10 border-b border-border/30 flex items-end">
@@ -262,7 +280,7 @@ export function TimelineView({
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <DialogTitle className="text-lg font-semibold tracking-tight" style={{ textWrap: 'balance' as any }}>{selectedDeliv.title}</DialogTitle>
+                      <DialogTitle className="text-lg font-semibold tracking-tight" style={{ textWrap: 'balance' } as CSSProperties}>{selectedDeliv.title}</DialogTitle>
                       <Badge variant="secondary" className={`${config.bg} ${config.text} border-0 shadow-none text-[11px] font-semibold shrink-0`}>
                         {config.label}
                       </Badge>
@@ -292,7 +310,7 @@ export function TimelineView({
                   </div>
                 </div>
                 {selectedDeliv.description && (
-                  <DialogDescription className="mt-3 text-foreground/70 leading-relaxed text-[13px]" style={{ textWrap: 'pretty' as any }}>
+                  <DialogDescription className="mt-3 text-foreground/70 leading-relaxed text-[13px]" style={{ textWrap: 'pretty' } as CSSProperties}>
                     {selectedDeliv.description}
                   </DialogDescription>
                 )}
@@ -306,7 +324,7 @@ export function TimelineView({
                     <span className="text-muted-foreground font-normal tabular-nums">({delivComments.length})</span>
                   )}
                 </h4>
-                <div className="h-[300px] flex flex-col bg-muted/15 rounded-lg p-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+                <div className="h-75 flex flex-col bg-muted/15 rounded-lg p-1 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
                   <CommentThread
                     projectId={projectId}
                     deliverableId={selectedDeliv.id}
