@@ -4,7 +4,6 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { logActivity } from "@/lib/activity";
-import { createNotification } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -158,12 +157,6 @@ export async function PATCH(req: NextRequest) {
         metadata: { proposalId: existing.id, title: existing.title }
       });
 
-      const members = await db.select().from(projectMember).where(eq(projectMember.projectId, existing.projectId));
-      for (const m of members) {
-        if (m.userId !== session.user.id) {
-          await createNotification(m.userId, existing.projectId, "proposal_sent" as any, `A new proposal "${existing.title}" has been sent for your review.`);
-        }
-      }
 
       return NextResponse.json({ success: true });
     }
@@ -199,11 +192,6 @@ export async function PATCH(req: NextRequest) {
         metadata: { proposalId: existing.id, title: existing.title }
       });
 
-      const members = await db.select().from(projectMember).where(eq(projectMember.projectId, existing.projectId));
-      const owners = members.filter(m => m.role === 'owner');
-      for (const owner of owners) {
-        await createNotification(owner.userId, existing.projectId, "proposal_accepted" as any, `Proposal "${existing.title}" was accepted. Deliverables have been auto-generated.`);
-      }
 
       return NextResponse.json({ success: true });
     }
@@ -220,11 +208,6 @@ export async function PATCH(req: NextRequest) {
         metadata: { proposalId: existing.id, title: existing.title }
       });
 
-      const members = await db.select().from(projectMember).where(eq(projectMember.projectId, existing.projectId));
-      const owners = members.filter(m => m.role === 'owner');
-      for (const owner of owners) {
-        await createNotification(owner.userId, existing.projectId, "proposal_declined" as any, `Proposal "${existing.title}" was declined.`);
-      }
 
       return NextResponse.json({ success: true });
     }

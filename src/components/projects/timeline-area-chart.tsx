@@ -19,7 +19,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
   }
 
   return (
-    <div className="h-50 w-full">
+    <div className="min-h-[220px] w-full mt-2">
       <ChartContainer
         config={{
           expected: {
@@ -46,7 +46,10 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
               <stop offset="5%" stopColor="var(--color-completed)" stopOpacity={0.25} />
               <stop offset="95%" stopColor="var(--color-completed)" stopOpacity={0} />
             </linearGradient>
-            
+            <linearGradient id="fillExpected" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="var(--color-expected)" stopOpacity={0.08} />
+              <stop offset="95%" stopColor="var(--color-expected)" stopOpacity={0} />
+            </linearGradient>
           </defs>
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis

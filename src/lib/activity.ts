@@ -1,6 +1,9 @@
 import { db } from "@/utils/db";
-import { activityLog } from "@/db/schema";
+import { activityLog, project } from "@/db/schema";
 import crypto from "crypto";
+import { eq } from "drizzle-orm";
+import { createNotification } from "./notifications";
+import { sendActivityNotificationEmail } from "./email";
 
 type ActivityType = 
   | "contract_uploaded" 
@@ -12,7 +15,11 @@ type ActivityType =
   | "deliverable_completed" 
   | "project_completed" 
   | "member_joined"
-  | "deliverable_in_review";
+  | "deliverable_in_review"
+  | "comment_added"
+  | "proposal_sent"
+  | "proposal_accepted"
+  | "proposal_declined";
 
 interface LogActivityParams {
   projectId: string;
@@ -21,17 +28,83 @@ interface LogActivityParams {
   metadata?: Record<string, any>;
 }
 
-export async function logActivity({ projectId, userId, type, metadata }: LogActivityParams) {
+function getActivityMessage(type: ActivityType, metadata: any, actorName: string) {
+  switch(type) {
+    case "contract_uploaded": return `${actorName} uploaded a new contract: ${metadata.fileName || 'Document'}`;
+    case "contract_signed": return metadata.fullySigned ? `The contract has been fully signed!` : `${actorName} signed the contract.`;
+    case "file_uploaded": return `${actorName} uploaded a new file: ${metadata.fileName || 'File'}`;
+    case "deliverable_created": return `${actorName} created a new deliverable: ${metadata.title || 'Task'}`;
+    case "deliverable_in_review": return `${actorName} submitted a deliverable for review: ${metadata.title || 'Task'}`;
+    case "deliverable_approved": return `${actorName} approved the deliverable: ${metadata.title || 'Task'}`;
+    case "revision_requested": return `${actorName} requested a revision on: ${metadata.title || 'Task'}`;
+    case "deliverable_completed": return `${actorName} completed a deliverable: ${metadata.title || 'Task'}`;
+    case "project_completed": return `${actorName} marked the project as complete!`;
+    case "member_joined": return `${actorName} joined the project.`;
+    case "comment_added": return `${actorName} added a new comment.`;
+    case "proposal_sent": return `${actorName} sent a proposal for review: ${metadata.title || 'Proposal'}`;
+    case "proposal_accepted": return `${actorName} accepted the proposal: ${metadata.title || 'Proposal'}`;
+    case "proposal_declined": return `${actorName} declined the proposal: ${metadata.title || 'Proposal'}`;
+    default: return `${actorName} updated the project.`;
+  }
+}
+
+export async function logActivity({ projectId, userId, type, metadata = {} }: LogActivityParams) {
   try {
+    // 1. Log the activity itself
     await db.insert(activityLog).values({
       id: crypto.randomUUID(),
       projectId,
       userId,
       type,
-      metadata: metadata || {},
+      metadata,
     });
+
+    // 2. Fetch project context
+    const proj = await db.query.project.findFirst({
+      where: eq(project.id, projectId),
+      with: {
+        organization: true,
+        members: {
+          with: { user: true }
+        }
+      }
+    });
+
+    if (!proj) return;
+
+    // 3. Find actor
+    const actor = proj.members.find(m => m.user.id === userId);
+    const actorName = actor?.user.name || "Someone";
+    const activityMessage = getActivityMessage(type, metadata, actorName);
+
+    // 4. Distribute to all other members
+    const org = proj.organization;
+    
+    for (const member of proj.members) {
+      if (member.userId === userId) continue; // Skip the actor
+      
+      // In-app Notification
+      await createNotification(
+        member.userId,
+        projectId,
+        type as any,
+        activityMessage
+      );
+
+      // Email Notification
+      await sendActivityNotificationEmail(
+        member.user.email,
+        proj.name,
+        activityMessage,
+        projectId,
+        org?.plan as any,
+        org?.logoUrl,
+        org?.brandColor
+      );
+    }
+
   } catch (error) {
-    console.error("Failed to log activity:", error);
+    console.error("Failed to log activity and dispatch notifications:", error);
     // We intentionally don't throw to avoid breaking the main user flow if logging fails
   }
 }

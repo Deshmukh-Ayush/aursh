@@ -5,7 +5,7 @@ import { organization } from "better-auth/plugins"
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL 
-    || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
+    || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")),
   database: drizzleAdapter(db, {
     provider: "pg",
   }),

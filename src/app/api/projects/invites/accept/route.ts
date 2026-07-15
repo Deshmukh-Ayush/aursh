@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
 import { logActivity } from "@/lib/activity";
-import { createNotification } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -93,20 +92,6 @@ export async function POST(req: NextRequest) {
       metadata: { email: session.user.email }
     });
 
-    const otherMembers = await db
-      .select()
-      .from(projectMember)
-      .where(eq(projectMember.projectId, invitation.projectId));
-
-    for (const m of otherMembers) {
-      if (m.userId === userId) continue;
-      await createNotification(
-        m.userId,
-        invitation.projectId,
-        "member_joined",
-        `${session.user.name || session.user.email} joined the project.`
-      );
-    }
 
     revalidatePath("/dashboard");
     return NextResponse.json({ success: true, projectId: invitation.projectId });

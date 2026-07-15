@@ -47,3 +47,78 @@ export async function sendProjectInvitationEmail(
     return { success: false, error };
   }
 }
+
+export async function sendActivityNotificationEmail(
+  email: string,
+  projectName: string,
+  activityMessage: string,
+  projectId: string,
+  orgPlan: "free" | "freelancer" | "agency" | undefined = "free",
+  orgLogo?: string | null,
+  orgColor?: string | null
+) {
+  const primaryColor = orgPlan !== "free" && orgColor ? orgColor : "#111111";
+  const showBranding = orgPlan !== "free" && orgLogo;
+  
+  // Base URL resolution similar to auth logic
+  const baseUrl = process.env.BETTER_AUTH_URL 
+    || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"));
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <body style="margin: 0; padding: 40px 20px; background-color: #FAFAFA; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #111111;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 520px; margin: 0 auto;">
+        <tr>
+          <td style="background-color: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px; padding: 40px; box-shadow: 0px 4px 24px rgba(0, 0, 0, 0.02);">
+            ${showBranding ? `<img src="${orgLogo}" alt="Logo" style="height: 32px; max-width: 140px; object-fit: contain; margin-bottom: 32px; display: block;" />` : `<div style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 32px; color: #111111;">Scrunity</div>`}
+            
+            <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: #111111; line-height: 1.3;">
+              New update in ${projectName}
+            </h2>
+            
+            <p style="margin: 0 0 32px 0; font-size: 15px; line-height: 1.6; color: #555555;">
+              ${activityMessage}
+            </p>
+            
+            <a href="${baseUrl}/projects/${projectId}" style="display: inline-block; padding: 12px 24px; background-color: ${primaryColor}; color: #FFFFFF; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500; letter-spacing: -0.01em;">
+              View Project
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top: 32px; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #999999; line-height: 1.5;">
+              You received this email because you are a member of the project ${projectName}.
+            </p>
+            ${orgPlan === "free" ? `
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #999999;">
+                Powered by <a href="${baseUrl}" style="color: #666666; text-decoration: none; font-weight: 500;">Scrunity</a>
+              </p>
+            ` : ''}
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: "Scrunity <onboarding@resend.dev>", // Testing domain
+      to: email,
+      subject: `Update: ${projectName}`,
+      html,
+    });
+
+    if (error) {
+      console.error("Resend API Error (Activity):", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Email sending error (Activity):", error);
+    return { success: false, error };
+  }
+}

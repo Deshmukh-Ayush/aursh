@@ -7,7 +7,6 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
-import { createNotification } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
 import { embedSignaturesInPdf, buildAuditTrailEvent } from "@/lib/pdf-signing";
@@ -80,10 +79,6 @@ export async function POST(req: NextRequest) {
       metadata: { fileName: file.name }
     });
 
-    const otherMembers = members.filter(m => m.userId !== session.user.id);
-    for (const m of otherMembers) {
-      await createNotification(m.userId, projectId, "contract_uploaded", `A new contract "${file.name}" has been uploaded.`);
-    }
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/contract`);
@@ -213,15 +208,6 @@ export async function PATCH(req: NextRequest) {
         metadata: { fullySigned: allSigned }
       });
 
-      const otherMembers = allSigs.filter(sig => sig.userId !== session.user.id);
-      for (const m of otherMembers) {
-        await createNotification(
-          m.userId, 
-          existing.projectId, 
-          "contract_signed", 
-          allSigned ? "The contract has been fully signed!" : `${session.user.name || "A user"} signed the contract.`
-        );
-      }
 
       revalidatePath(`/projects/${existing.projectId}`);
       revalidatePath(`/projects/${existing.projectId}/contract`);

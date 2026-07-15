@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
-import { createNotification } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -59,20 +58,6 @@ export async function POST(req: NextRequest) {
       metadata: { commentId: newComment.id, contextTitle }
     });
 
-    const otherMembers = await db
-      .select()
-      .from(projectMember)
-      .where(eq(projectMember.projectId, projectId));
-
-    for (const m of otherMembers) {
-      if (m.userId === userId) continue;
-      await createNotification(
-        m.userId,
-        projectId,
-        "comment_added" as any,
-        `${session.user.name || "A user"} commented on ${contextTitle === "project" ? "the project" : `"${contextTitle}"`}: "${body.substring(0, 50)}${body.length > 50 ? '...' : ''}"`
-      );
-    }
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/discussions`);

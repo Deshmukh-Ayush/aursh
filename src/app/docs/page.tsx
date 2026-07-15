@@ -155,6 +155,7 @@ export default async function DocsPage() {
 │       ├── discussions/        # CommentThread, CommentForm
 │       ├── files/              # FileUploader, FileList
 │       ├── settings/           # MembersTable, InviteForm
+│       ├── proposal/           # ProposalBuilder, ProposalClientView
 │       ├── contract-banner.tsx
 │       ├── mark-complete-button.tsx
 │       ├── timeline-area-chart.tsx
@@ -168,6 +169,7 @@ export default async function DocsPage() {
 │   ├── auth.ts                 # Better Auth server config
 │   ├── auth-client.ts          # Better Auth client config
 │   ├── email.ts                # Resend email helpers
+│   ├── pdf-signing.ts          # E-signature placement logic
 │   ├── activity.ts             # logActivity() helper
 │   ├── notifications.ts        # createNotification() helper
 │   └── utils.ts                # cn() classname merger
@@ -266,6 +268,8 @@ export default async function DocsPage() {
               ['/api/organizations/members', 'DELETE', 'Remove members from org'],
               ['/api/comments', 'POST/DELETE', 'Add or remove comments'],
               ['/api/deliverables', 'POST/PATCH', 'Create deliverable, update status'],
+              ['/api/deliverables/bulk', 'PATCH', 'Bulk update deliverables (drag-and-drop)'],
+              ['/api/proposals', 'POST/PATCH', 'Generate and update proposals'],
               ['/api/contracts', 'POST/PATCH/DELETE', 'Upload, sign, request signatures, delete'],
               ['/api/files', 'POST', 'Upload files'],
               ['/api/projects/invites', 'POST/DELETE', 'Create or revoke project invites'],
@@ -285,10 +289,20 @@ export default async function DocsPage() {
             rows={[
               ['DeliverablesContainer', 'Client component — view toggle (List/Board/Timeline), persists to localStorage'],
               ['DeliverableList', 'Card-based list with accordion comments'],
-              ['KanbanBoard', 'dnd-kit drag-and-drop board with 4 status columns'],
-              ['TimelineView', 'HTML/CSS Gantt chart with clickable bars + detail dialog'],
+              ['KanbanBoard', 'dnd-kit drag-and-drop board with granular KanbanColumn and KanbanCard'],
+              ['TimelineView', 'HTML/CSS Gantt chart with clickable TimelineBar + detail dialog'],
               ['DeliverableActions', 'Status transition buttons (respects role permissions)'],
               ['CreateDeliverableDialog', 'Form dialog for new deliverables'],
+            ]}
+          />
+
+          <H3>Proposals & Contracts</H3>
+          <Table
+            headers={['Component', 'Description']}
+            rows={[
+              ['ProposalBuilder', 'Agency view to assemble and price project proposals before signature'],
+              ['ProposalClientView', 'Client-facing proposal acceptance UI'],
+              ['ContractViewer', 'Displays the PDF document with embedded signatures'],
             ]}
           />
 

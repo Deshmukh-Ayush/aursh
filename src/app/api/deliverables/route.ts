@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
-import { createNotification } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -123,22 +122,7 @@ export async function PATCH(req: NextRequest) {
       metadata: { deliverableId, title: deliv.title, comment: comment || null }
     });
 
-    const otherMembers = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, deliv.projectId)));
 
-    for (const m of otherMembers) {
-      if (m.userId === userId) continue;
-      
-      let msg = "";
-      if (status === "in_review") msg = `Deliverable "${deliv.title}" was submitted for review.`;
-      if (status === "approved") msg = `Deliverable "${deliv.title}" was approved!`;
-      if (status === "revision_requested") msg = `Revision requested for "${deliv.title}". ${comment ? `Comment: ${comment}` : ''}`;
-      
-      await createNotification(m.userId, deliv.projectId, activityType, msg);
-    }
-    
     revalidatePath(`/projects/${deliv.projectId}`);
     revalidatePath(`/projects/${deliv.projectId}/deliverables`);
     return NextResponse.json({ success: true });
