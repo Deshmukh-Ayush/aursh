@@ -31,10 +31,8 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
             color: "hsl(142 71% 45%)",
           },
         }}
-        className="h-full w-full text-muted-foreground dark:text-foreground"
       >
         <AreaChart
-          accessibilityLayer
           data={data}
           margin={{
             left: -20,
@@ -50,7 +48,7 @@ export function TimelineAreaChart({ data }: { data: DataPoint[] }) {
             </linearGradient>
             
           </defs>
-          <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/30" />
+          <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis
             dataKey="date"
             tickLine={false}

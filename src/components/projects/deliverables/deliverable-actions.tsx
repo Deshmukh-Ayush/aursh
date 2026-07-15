@@ -32,8 +32,12 @@ export function DeliverableActions({
         toast.success(newStatus === 'approved' ? "Deliverable approved!" : "Submitted for review");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to update status");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.error || "Failed to update status");
+      } else {
+        toast.error("Failed to update status");
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -55,8 +59,12 @@ export function DeliverableActions({
         setComment("");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to request revision");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.error || "Failed to request revision");
+      } else {
+        toast.error("Failed to request revision");
+      }
     } finally {
       setIsUpdating(false);
     }

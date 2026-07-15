@@ -78,8 +78,8 @@ export async function embedSignaturesInPdf(
     }
   }
 
-  const pdfBytes = await pdfDoc.save();
-  return pdfBytes.buffer;
+  const finalBytes = await pdfDoc.save();
+  return finalBytes.buffer as ArrayBuffer;
 }
 
 export function buildAuditTrailEvent(action: string, by: string, extra: Record<string, string> = {}) {

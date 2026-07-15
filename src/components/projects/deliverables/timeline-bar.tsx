@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { format, differenceInDays, addDays, isPast } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, CheckCircle2, Eye, AlertCircle, Hourglass } from "lucide-react";
+import { MessageSquare, CheckCircle2, Eye, AlertCircle, Hourglass, Edit } from "lucide-react";
+import { DeliverableItem } from "./types";
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; bar: string; text: string; icon: typeof CheckCircle2 }> = {
   approved: { label: "Approved", bg: "bg-emerald-500/8", bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400", icon: CheckCircle2 },
@@ -13,7 +14,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; bar: string; te
 };
 
 interface TimelineBarProps {
-  deliv: any;
+  deliv: DeliverableItem;
   index: number;
   startDate: Date;
   totalDays: number;

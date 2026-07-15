@@ -20,21 +20,9 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; bar: string; te
   pending: { label: "Pending", bg: "bg-zinc-500/8", bar: "bg-zinc-400 dark:bg-zinc-500", text: "text-muted-foreground", icon: Hourglass },
 };
 
-type Deliverable = {
-  id: string;
-  createdAt: string;
-  dueDate?: string | null;
-  title: string;
-  status: string;
-  description?: string | null;
-};
+import { DeliverableItem, DeliverableComment } from "./types";
 
-type DeliverableComment = React.ComponentProps<typeof CommentThread>['comments'][number] & {
-  comment: {
-    deliverableId: string;
-    [key: string]: unknown;
-  };
-};
+
 
 export function TimelineView({
   deliverables: initialDeliverables,
@@ -43,18 +31,18 @@ export function TimelineView({
   projectId,
   userId
 }: {
-  deliverables: Deliverable[];
+  deliverables: DeliverableItem[];
   allComments: DeliverableComment[];
   memberRole: string;
   projectId: string;
   userId: string;
 }) {
-  const [items, setItems] = useState<Deliverable[]>(initialDeliverables);
-  const [prevInitial, setPrevInitial] = useState<Deliverable[]>(initialDeliverables);
+  const [items, setItems] = useState<DeliverableItem[]>(initialDeliverables);
+  const [prevInitial, setPrevInitial] = useState<DeliverableItem[]>(initialDeliverables);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [selectedDeliv, setSelectedDeliv] = useState<Deliverable | null>(null);
+  const [selectedDeliv, setSelectedDeliv] = useState<DeliverableItem | null>(null);
   const router = useRouter();
 
   // Reset local state if initial data changes and we're not dirty
@@ -115,7 +103,7 @@ export function TimelineView({
     setIsSaving(true);
     try {
       const updates = items.filter(item => {
-        const initial = initialDeliverables.find((i: Deliverable) => i.id === item.id);
+        const initial = initialDeliverables.find((i: DeliverableItem) => i.id === item.id);
         return !initial || initial.dueDate !== item.dueDate;
       }).map(item => ({
         id: item.id,

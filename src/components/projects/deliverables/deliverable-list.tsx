@@ -7,6 +7,15 @@ import { Calendar, Clock, MessageSquare } from "lucide-react";
 import { format, isPast } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CommentThread } from "@/components/projects/discussions/comment-thread";
+import { DeliverableItem } from "./types";
+
+interface DeliverableListProps {
+  deliverables: DeliverableItem[];
+  allComments: any[];
+  projectId: string;
+  memberRole: string;
+  userId: string;
+}
 
 export function DeliverableList({ 
   deliverables, 
@@ -14,13 +23,7 @@ export function DeliverableList({
   memberRole, 
   projectId,
   userId
-}: { 
-  deliverables: any[];
-  allComments: any[];
-  memberRole: string;
-  projectId: string;
-  userId: string;
-}) {
+}: DeliverableListProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved': return <Badge variant="default" className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 shadow-none font-medium">Approved</Badge>;

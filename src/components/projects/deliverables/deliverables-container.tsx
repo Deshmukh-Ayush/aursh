@@ -12,6 +12,8 @@ const VIEW_MODES = [
   { id: "timeline" as const, label: "Timeline", icon: GanttChartSquare },
 ];
 
+import { DeliverableItem } from "./types";
+
 export function DeliverablesContainer({ 
   deliverables, 
   allComments, 
@@ -19,7 +21,7 @@ export function DeliverablesContainer({
   projectId,
   userId
 }: { 
-  deliverables: any[];
+  deliverables: DeliverableItem[];
   allComments: any[];
   memberRole: string;
   projectId: string;

@@ -3,15 +3,17 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format, isPast } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Calendar, MessageSquare, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, MessageSquare, CheckCircle2, Clock, Eye, AlertCircle, Edit, Pencil } from "lucide-react";
+import { DeliverableItem } from "./types";
 import { Button } from "@/components/ui/button";
 
 interface KanbanCardProps {
-  item: any;
+  item: DeliverableItem;
   comments: number;
   disabled: boolean;
   memberRole: string;
-  onEdit?: (item: any) => void;
+  onEdit?: (item: DeliverableItem) => void;
 }
 
 function SortableItemComponent({ item, comments, disabled, memberRole, onEdit }: KanbanCardProps) {

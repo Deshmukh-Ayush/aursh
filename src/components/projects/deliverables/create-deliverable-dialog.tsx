@@ -46,8 +46,12 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
         setOpen(false);
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to create deliverable");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.error || "Failed to create deliverable");
+      } else {
+        toast.error("Failed to create deliverable");
+      }
     } finally {
       setIsSubmitting(false);
     }

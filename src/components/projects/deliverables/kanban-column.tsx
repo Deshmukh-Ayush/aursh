@@ -2,6 +2,8 @@ import React from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { KanbanCard } from "./kanban-card";
 
+import { DeliverableItem } from "./types";
+
 interface KanbanColumnProps {
   column: {
     id: string;
@@ -9,10 +11,10 @@ interface KanbanColumnProps {
     color: string;
     dotColor: string;
   };
-  items: any[];
+  items: DeliverableItem[];
   allComments: any[];
   memberRole: string;
-  onEdit?: (item: any) => void;
+  onEdit?: (item: DeliverableItem) => void;
 }
 
 export function KanbanColumn({ column, items, allComments, memberRole, onEdit }: KanbanColumnProps) {

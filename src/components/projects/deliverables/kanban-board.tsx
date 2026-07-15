@@ -12,6 +12,7 @@ import {
   DragStartEvent, 
   DragEndEvent 
 } from "@dnd-kit/core";
+import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { KanbanColumn } from "./kanban-column";
+import { DeliverableItem } from "./types";
 import { KanbanCard } from "./kanban-card";
 
 const COLUMNS = [
@@ -31,18 +33,20 @@ const COLUMNS = [
   { id: "approved", title: "Approved", color: "text-emerald-500", dotColor: "bg-emerald-500" }
 ];
 
+interface KanbanBoardProps {
+  deliverables: DeliverableItem[];
+  allComments: any[];
+  memberRole: string;
+  projectId: string;
+}
+
 export function KanbanBoard({ 
   deliverables: initialDeliverables, 
   allComments, 
   memberRole, 
   projectId
-}: { 
-  deliverables: any[];
-  allComments: any[];
-  memberRole: string;
-  projectId: string;
-}) {
-  const [items, setItems] = useState(initialDeliverables);
+}: KanbanBoardProps) {
+  const [items, setItems] = useState<DeliverableItem[]>(initialDeliverables);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -126,7 +130,7 @@ export function KanbanBoard({
     try {
       // We only want to send items that have actually changed
       const updates = items.filter(item => {
-        const initial = initialDeliverables.find((i: any) => i.id === item.id);
+        const initial = initialDeliverables.find((i: DeliverableItem) => i.id === item.id);
         return !initial || 
                initial.status !== item.status || 
                initial.title !== item.title || 
@@ -150,8 +154,12 @@ export function KanbanBoard({
       } else {
         setIsDirty(false);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to save board");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.error || "Failed to save board");
+      } else {
+        toast.error("Failed to save board");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -192,7 +200,7 @@ export function KanbanBoard({
                 allComments={allComments} 
                 memberRole={memberRole} 
                 onEdit={memberRole === 'owner' ? (item) => {
-                  setEditingItem({ ...item, dueDate: item.dueDate ? item.dueDate.split('T')[0] : "" });
+                  setEditingItem({ ...item, dueDate: item.dueDate ? String(item.dueDate).split('T')[0] : "" });
                   setEditDialogOpen(true);
                 } : undefined}
               />
