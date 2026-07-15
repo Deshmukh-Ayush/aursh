@@ -10,10 +10,16 @@ export type DeliverableItem = {
 };
 
 export type DeliverableComment = {
-  id: string;
   comment: {
-    deliverableId: string;
-    [key: string]: unknown;
+    id: string;
+    body: string;
+    createdAt: Date;
+    userId: string;
+    deliverableId: string | null;
+    projectId: string;
   };
-  [key: string]: unknown;
+  author: {
+    name: string;
+    image: string | null;
+  } | null;
 };
