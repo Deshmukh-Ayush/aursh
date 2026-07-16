@@ -9,6 +9,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
+  trustHost: true,
   plugins: [organization()],
   socialProviders: {
     google: {

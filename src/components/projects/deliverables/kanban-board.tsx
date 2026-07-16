@@ -17,6 +17,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,13 @@ export function KanbanBoard({
   const [revisionComment, setRevisionComment] = useState("");
   const [pendingRevisionUpdate, setPendingRevisionUpdate] = useState<{ id: string, status: string } | null>(null);
   
+  // Submission Drawer State
+  const [submissionDrawerOpen, setSubmissionDrawerOpen] = useState(false);
+  const [submissionTitle, setSubmissionTitle] = useState("");
+  const [submissionUrl, setSubmissionUrl] = useState("");
+  const [submissionNote, setSubmissionNote] = useState("");
+  const [pendingSubmissionUpdate, setPendingSubmissionUpdate] = useState<{ id: string, status: string } | null>(null);
+
   // Edit Dialog State
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -122,26 +130,40 @@ export function KanbanBoard({
       return;
     }
 
+    if (newStatus === "in_review" && activeItem.status !== "in_review") {
+      setPendingSubmissionUpdate({ id: activeItem.id, status: newStatus });
+      setSubmissionTitle(activeItem.title || "");
+      setSubmissionUrl(activeItem.submissionUrl || "");
+      setSubmissionNote(activeItem.submissionNote || "");
+      setSubmissionDrawerOpen(true);
+      return;
+    }
+
     handleStatusUpdate(activeItem.id, newStatus);
   };
 
   const handleSaveBulk = async () => {
     setIsSaving(true);
     try {
-      // We only want to send items that have actually changed
       const updates = items.filter(item => {
         const initial = initialDeliverables.find((i: DeliverableItem) => i.id === item.id);
         return !initial || 
                initial.status !== item.status || 
                initial.title !== item.title || 
                initial.description !== item.description || 
-               initial.dueDate !== item.dueDate;
+               initial.dueDate !== item.dueDate ||
+               initial.submissionTitle !== item.submissionTitle ||
+               initial.submissionUrl !== item.submissionUrl ||
+               initial.submissionNote !== item.submissionNote;
       }).map(item => ({
         id: item.id,
         status: item.status,
         title: item.title,
         description: item.description,
-        dueDate: item.dueDate
+        dueDate: item.dueDate,
+        submissionTitle: item.submissionTitle,
+        submissionUrl: item.submissionUrl,
+        submissionNote: item.submissionNote
       }));
 
       if (updates.length > 0) {
@@ -297,6 +319,74 @@ export function KanbanBoard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Drawer direction="left" open={submissionDrawerOpen} onOpenChange={setSubmissionDrawerOpen}>
+        <DrawerContent className="w-full max-w-sm sm:max-w-sm">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Submit Deliverable</DrawerTitle>
+            <DrawerDescription>Attach your work and add any notes for the client.</DrawerDescription>
+          </DrawerHeader>
+          
+          <div className="flex flex-col gap-5 p-4 py-2 overflow-y-auto">
+            <div className="grid gap-2">
+              <Label htmlFor="sub-title">Submission Title <span className="text-destructive">*</span></Label>
+              <Input 
+                id="sub-title" 
+                placeholder="e.g. Final Wireframes v1" 
+                value={submissionTitle} 
+                onChange={(e) => setSubmissionTitle(e.target.value)} 
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="sub-url">Attachment URL <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+              <Input 
+                id="sub-url" 
+                type="url"
+                placeholder="https://figma.com/..." 
+                value={submissionUrl} 
+                onChange={(e) => setSubmissionUrl(e.target.value)} 
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="sub-note">Note <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+              <Textarea 
+                id="sub-note" 
+                placeholder="Briefly describe what you're submitting..." 
+                value={submissionNote} 
+                onChange={(e) => setSubmissionNote(e.target.value)} 
+                rows={5}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          <DrawerFooter className="pt-4">
+            <Button 
+              disabled={!submissionTitle.trim()}
+              onClick={() => {
+                if (pendingSubmissionUpdate && submissionTitle.trim()) {
+                  setItems((prev) => prev.map((item) => item.id === pendingSubmissionUpdate.id ? { 
+                    ...item, 
+                    status: pendingSubmissionUpdate.status,
+                    submissionTitle,
+                    submissionUrl,
+                    submissionNote
+                  } : item));
+                  setIsDirty(true);
+                  setSubmissionDrawerOpen(false);
+                }
+              }}
+            >
+              Submit for Review
+            </Button>
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

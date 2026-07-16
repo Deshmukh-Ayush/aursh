@@ -7,6 +7,9 @@ export type DeliverableItem = {
   description?: string | null;
   position?: number | null;
   projectId?: string | null;
+  submissionTitle?: string | null;
+  submissionUrl?: string | null;
+  submissionNote?: string | null;
 };
 
 export type DeliverableComment = {

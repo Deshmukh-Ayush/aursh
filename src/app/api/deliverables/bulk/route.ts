@@ -53,6 +53,9 @@ export async function PATCH(req: NextRequest) {
             if (update.dueDate !== undefined) updatePayload.dueDate = update.dueDate ? new Date(update.dueDate) : null;
             if (update.title) updatePayload.title = update.title;
             if (update.description !== undefined) updatePayload.description = update.description;
+            if (update.submissionTitle !== undefined) updatePayload.submissionTitle = update.submissionTitle;
+            if (update.submissionUrl !== undefined) updatePayload.submissionUrl = update.submissionUrl;
+            if (update.submissionNote !== undefined) updatePayload.submissionNote = update.submissionNote;
             
             return db.update(deliverable)
                 .set(updatePayload)
