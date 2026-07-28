@@ -1,8 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { ProjectMemberSummary } from "./project-overview-types";
+import type { OverviewMember } from "./project-overview-types";
 
 type ProjectOverviewAvatarStackProps = {
-  members: ProjectMemberSummary[];
+  members: OverviewMember[];
   limit?: number;
 };
 

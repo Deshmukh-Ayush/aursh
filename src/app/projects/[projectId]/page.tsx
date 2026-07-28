@@ -1,12 +1,15 @@
 import { db } from "@/utils/db";
-import { project, activityLog, user as userTable } from "@/db/schema";
+import { project, activityLog, user as userTable, proposal } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { ContractBanner } from "@/components/projects/contract-banner";
+import { ProjectOverviewHero } from "@/components/projects/overview/project-overview-hero";
+import { ProjectOverviewAttention } from "@/components/projects/overview/project-overview-attention";
+import { ProjectOverviewMomentumChart } from "@/components/projects/overview/project-overview-momentum-chart";
+import { ProjectOverviewPipeline } from "@/components/projects/overview/project-overview-pipeline";
+import { ProjectOverviewStatusChart } from "@/components/projects/overview/project-overview-status-chart";
+import { ProjectOverviewTeam } from "@/components/projects/overview/project-overview-team";
 import { ProjectOverviewActivity } from "@/components/projects/overview/project-overview-activity";
-import { ProjectOverviewHeader } from "@/components/projects/overview/project-overview-header";
-import { ProjectOverviewKpis } from "@/components/projects/overview/project-overview-kpis";
-import { ProjectOverviewLinks } from "@/components/projects/overview/project-overview-links";
-import { ProjectOverviewProgress } from "@/components/projects/overview/project-overview-progress";
+import { ProjectOverviewStagger } from "@/components/projects/overview/project-overview-stagger";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -21,117 +24,189 @@ export default async function ProjectOverviewPage({
 
   const { projectId } = await params;
 
-  // Fetch Project with all necessary relations
-  const proj = await db.query.project.findFirst({
-    where: eq(project.id, projectId),
-    with: {
-      members: {
-        with: {
-          user: true,
-        }
+  // `async-parallel`: start independent queries concurrently
+  const [proj, recentActivity] = await Promise.all([
+    db.query.project.findFirst({
+      where: eq(project.id, projectId),
+      with: {
+        members: { with: { user: true } },
+        deliverables: { orderBy: (deliverables, { asc }) => [asc(deliverables.createdAt)] },
+        files: true,
+        contracts: true,
       },
-      deliverables: {
-        orderBy: (deliverables, { asc }) => [asc(deliverables.createdAt)]
-      },
-      files: true,
-      contracts: true,
-    }
-  });
+    }),
+    db
+      .select({ log: activityLog, actor: userTable })
+      .from(activityLog)
+      .leftJoin(userTable, eq(activityLog.userId, userTable.id))
+      .where(eq(activityLog.projectId, projectId))
+      .orderBy(desc(activityLog.createdAt))
+      .limit(8),
+  ]);
 
   if (!proj) return <div>Project not found</div>;
 
-  // Fetch recent activity
-  const recentActivity = await db
-    .select({ log: activityLog, actor: userTable })
-    .from(activityLog)
-    .leftJoin(userTable, eq(activityLog.userId, userTable.id))
-    .where(eq(activityLog.projectId, projectId))
-    .orderBy(desc(activityLog.createdAt))
-    .limit(5);
+  // Fetch latest accepted proposal (separate query to avoid over-fetching)
+  const latestProposal = await db.query.proposal.findFirst({
+    where: eq(proposal.projectId, projectId),
+    orderBy: (p, { desc }) => [desc(p.createdAt)],
+  });
 
-  const currentUserMember = proj.members.find(m => m.user.id === session.user.id);
-  const isOwner = currentUserMember?.role === 'owner';
+  const currentUserMember = proj.members.find((m) => m.user.id === session.user.id);
+  const userRole = currentUserMember?.role ?? "agency";
+  const isOwner = userRole === "owner";
 
-  const totalDelivs = proj.deliverables.length;
-  const approvedDelivs = proj.deliverables.filter(d => d.status === 'approved').length;
-  const inReviewDelivs = proj.deliverables.filter(d => d.status === 'in_review').length;
-  const revisionDelivs = proj.deliverables.filter(d => d.status === 'revision_requested').length;
-  const pendingDelivs = totalDelivs - approvedDelivs - inReviewDelivs - revisionDelivs;
-  const completionPct = totalDelivs > 0 ? Math.round((approvedDelivs / totalDelivs) * 100) : 0;
+  // `js-combine-iterations`: single pass for all deliverable metrics
+  let approvedCount = 0;
+  let totalCount = proj.deliverables.length;
+  const attentionItems: typeof proj.deliverables = [];
+  let nextDeadline: { title: string; date: string } | null = null;
+  const now = Date.now();
 
-  const canComplete = isOwner && proj.status !== 'completed' && totalDelivs > 0 && approvedDelivs === totalDelivs;
-  
-  const daysActive = Math.max(1, Math.round((new Date().getTime() - new Date(proj.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
+  for (const d of proj.deliverables) {
+    if (d.status === "approved") approvedCount++;
 
-  // Compute Area Chart Data
-  const chartData = [];
-  const startDate = new Date(proj.createdAt).getTime();
-  const endDate = new Date().getTime();
-  const totalDuration = Math.max(endDate - startDate, 1000 * 60 * 60 * 24 * 6);
-  const numPoints = 7;
-  const interval = totalDuration / (numPoints - 1);
-
-  for (let i = 0; i < numPoints; i++) {
-    const pointDate = new Date(startDate + interval * i);
-    let completedAtPoint = 0;
-    
-    proj.deliverables.forEach(d => {
-       if (d.status === 'approved' && new Date(d.updatedAt).getTime() <= pointDate.getTime()) {
-         completedAtPoint++;
-       }
-    });
-
-    if (i === numPoints - 1) {
-      completedAtPoint = approvedDelivs;
+    if (d.status === "in_review" || d.status === "revision_requested") {
+      attentionItems.push(d);
     }
 
-    chartData.push({
-      date: pointDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      completed: completedAtPoint,
-      expected: totalDelivs
-    });
+    if (d.dueDate) {
+      const dueTime = new Date(d.dueDate).getTime();
+      if (dueTime > now) {
+        if (!nextDeadline || dueTime < new Date(nextDeadline.date).getTime()) {
+          nextDeadline = { title: d.title, date: d.dueDate.toISOString() };
+        }
+      }
+    }
   }
 
+  const completionPct = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
+  const canComplete = isOwner && proj.status !== "completed" && totalCount > 0 && approvedCount === totalCount;
+  const daysActive = Math.max(1, Math.round((Date.now() - new Date(proj.createdAt).getTime()) / 86400000));
+
   const activeContract = proj.contracts[0];
-  const contractStatus = activeContract ? activeContract.status as "draft" | "pending_signature" | "signed" : "none";
+  const contractStatus = activeContract ? (activeContract.status as "draft" | "pending_signature" | "signed") : "none";
+
+  // `server-serialization`: serialize only what components need
+  const serializedDeliverables = proj.deliverables.map((d) => ({
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    status: d.status as "pending" | "in_review" | "approved" | "revision_requested",
+    dueDate: d.dueDate ? d.dueDate.toISOString() : null,
+    submissionTitle: d.submissionTitle,
+    createdAt: d.createdAt.toISOString(),
+    updatedAt: d.updatedAt.toISOString(),
+  }));
+
+  const serializedAttention = attentionItems.map((d) => ({
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    status: d.status as "pending" | "in_review" | "approved" | "revision_requested",
+    dueDate: d.dueDate ? d.dueDate.toISOString() : null,
+    submissionTitle: d.submissionTitle,
+    createdAt: d.createdAt.toISOString(),
+    updatedAt: d.updatedAt.toISOString(),
+  }));
+
+  const serializedActivity = recentActivity.map((a) => ({
+    log: {
+      id: a.log.id,
+      type: a.log.type,
+      metadata: a.log.metadata as Record<string, any> | null,
+      createdAt: a.log.createdAt.toISOString(),
+    },
+    actor: a.actor
+      ? { id: a.actor.id, name: a.actor.name, image: a.actor.image }
+      : null,
+  }));
+
+  const serializedProposal = latestProposal
+    ? {
+        id: latestProposal.id,
+        title: latestProposal.title,
+        price: latestProposal.price,
+        currency: latestProposal.currency,
+        status: latestProposal.status as "draft" | "sent" | "accepted" | "declined",
+        acceptedAt: latestProposal.acceptedAt?.toISOString() ?? null,
+        createdAt: latestProposal.createdAt.toISOString(),
+      }
+    : null;
+
+  const serializedContract = activeContract
+    ? {
+        id: activeContract.id,
+        status: activeContract.status,
+        fileName: activeContract.fileName,
+        createdAt: activeContract.createdAt.toISOString(),
+      }
+    : null;
+
+  const serializedProject = {
+    id: proj.id,
+    name: proj.name,
+    description: proj.description,
+    status: proj.status,
+    createdAt: proj.createdAt.toISOString(),
+    members: proj.members.map((m) => ({
+      id: m.id,
+      role: m.role,
+      user: {
+        id: m.user.id,
+        name: m.user.name,
+        image: m.user.image,
+        email: m.user.email,
+      },
+    })),
+    deliverables: serializedDeliverables,
+    contracts: serializedContract ? [serializedContract] : [],
+  };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <ContractBanner
         projectId={projectId}
         status={contractStatus}
-        role={currentUserMember?.role as "owner" | "client" | "agency"}
+        role={userRole as "owner" | "client" | "agency"}
       />
 
-      <ProjectOverviewHeader
-        project={proj}
-        projectId={projectId}
-        canComplete={canComplete}
-        daysActive={daysActive}
-      />
+      <ProjectOverviewStagger>
+        {/* Level 1: KPIs */}
+        <ProjectOverviewHero
+          project={serializedProject}
+          projectId={projectId}
+          completionPct={completionPct}
+          daysActive={daysActive}
+          canComplete={canComplete}
+          nextDeadline={nextDeadline}
+          proposal={serializedProposal}
+          contract={serializedContract}
+          userRole={userRole}
+        />
 
-      <ProjectOverviewKpis
-        project={proj}
-        completionPct={completionPct}
-        approvedDelivs={approvedDelivs}
-        totalDelivs={totalDelivs}
-        contractStatus={contractStatus}
-      />
+        {/* Level 2: Hero Chart (Momentum) */}
+        <ProjectOverviewMomentumChart recentActivity={serializedActivity} />
 
-      <ProjectOverviewProgress
-        projectId={projectId}
-        chartData={chartData}
-        totalDelivs={totalDelivs}
-        approvedDelivs={approvedDelivs}
-        inReviewDelivs={inReviewDelivs}
-        revisionDelivs={revisionDelivs}
-        pendingDelivs={pendingDelivs}
-      />
+        {/* Attention Row (Optional) */}
+        {serializedAttention.length > 0 && (
+          <ProjectOverviewAttention projectId={projectId} items={serializedAttention} />
+        )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <ProjectOverviewLinks projectId={projectId} totalDelivs={totalDelivs} totalFiles={proj.files.length} />
-        <ProjectOverviewActivity projectId={projectId} recentActivity={recentActivity} />
-      </div>
+        {/* Level 3: Breakdown (Donut + Pipeline) */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ProjectOverviewStatusChart deliverables={serializedDeliverables} />
+          <div className="lg:col-span-2">
+            <ProjectOverviewPipeline projectId={projectId} deliverables={serializedDeliverables} />
+          </div>
+        </div>
+
+        {/* Level 4: Details (Team + Activity) */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <ProjectOverviewTeam members={serializedProject.members} />
+          <ProjectOverviewActivity projectId={projectId} recentActivity={serializedActivity} />
+        </div>
+      </ProjectOverviewStagger>
     </div>
   );
 }
