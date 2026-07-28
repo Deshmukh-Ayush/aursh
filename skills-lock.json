@@ -2,10 +2,58 @@
   "version": 1,
   "skills": {
     "animation-vocabulary": {
-      "source": "emilkowalski/skills",
+      "source": "emilkowalski/skill",
       "sourceType": "github",
       "skillPath": "skills/animation-vocabulary/SKILL.md",
       "computedHash": "280c6688ef2568ad92f40c4dc638f0cc5cde0f49bdd6debd097410aa9945f44f"
+    },
+    "apple-design": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "0d19303902efa64eace10e6b183eb29ef3220d424c1a7fd1eafc52adde216932"
+    },
+    "better-accessibility": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-accessibility/SKILL.md",
+      "computedHash": "a7b0b70403af4625052410d239a8683b35221efbf6b61b396110ce000da05e26"
+    },
+    "better-colors": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-colors/SKILL.md",
+      "computedHash": "094fbf1d8e31d225179f5d3ca80246b08b3dd9154f4058d7ee86a95e1139e563"
+    },
+    "better-interface": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-interface/SKILL.md",
+      "computedHash": "90e23bcfdea67e937a17ce43d91467f67ab71120803161ba0c2dabeb47066cd7"
+    },
+    "better-layout": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-layout/SKILL.md",
+      "computedHash": "e4eda446af4127a9b0ea97f0cc1e7c77cc1120b91fce25e3947af5e0884b74e5"
+    },
+    "better-typography": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-typography/SKILL.md",
+      "computedHash": "bbe024b4a78a56cd08b6d2e90d53bf268b559262c20665a440931645ed1861d4"
+    },
+    "better-ui": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-ui/SKILL.md",
+      "computedHash": "3d745409bc2de890c04c110ea9d43a305b33abb500a5c664f26d44774a02c79f"
+    },
+    "better-writing": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-writing/SKILL.md",
+      "computedHash": "450dc38b88fc7207044bf918e52a29422ad7a3de71517119cfd12fb65c7b05ee"
     },
     "build-dashboard": {
       "source": "anthropics/knowledge-work-plugins",
@@ -14,16 +62,22 @@
       "computedHash": "c6f7389af8916262ce81073af1f4d960e3b86b696a51bd1916b140401991f6e7"
     },
     "emil-design-eng": {
-      "source": "emilkowalski/skills",
+      "source": "emilkowalski/skill",
       "sourceType": "github",
       "skillPath": "skills/emil-design-eng/SKILL.md",
-      "computedHash": "ac3fc5b4e206488ffc408a2806f829bb2e5eaf518fded09be34790685c2b3a0d"
+      "computedHash": "87067d79205fdedc6d682891027dd9c7335486c4b4dc2e785638941a9d2e6061"
     },
     "emilkowal-animations": {
       "source": "pproenca/dot-skills",
       "sourceType": "github",
       "skillPath": "skills/.experimental/emilkowal-animations/SKILL.md",
       "computedHash": "f945576c4e815ae3a986f4314d27385f59804a4ff1e2de521d836ce282e8d639"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "computedHash": "c6b1d0f6d03a11f8772b1cef4ca5cc88301ae8641ac2697c85ffa87eb458e40a"
     },
     "frontend-design": {
       "source": "anthropics/skills",
@@ -32,10 +86,10 @@
       "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
     },
     "improve-animations": {
-      "source": "emilkowalski/skills",
+      "source": "emilkowalski/skill",
       "sourceType": "github",
       "skillPath": "skills/improve-animations/SKILL.md",
-      "computedHash": "ff9991a8d6dabb24411daaf6de570e3b6826323459d514d90d7f6371bbdbdbe1"
+      "computedHash": "9cd956e91139211efa5e17fc5e1675b9a3f711ef38cbc92aa8f3fa5b626b7e12"
     },
     "make-interfaces-feel-better": {
       "source": "jakubkrehel/make-interfaces-feel-better",
@@ -49,11 +103,23 @@
       "skillPath": "skills/next-best-practices/SKILL.md",
       "computedHash": "f4678aef4ffc10a5ea64a91e57abe5a5081af813b06d58d565caf3e8ef56e26c"
     },
+    "pick-ui-library": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/pick-ui-library/SKILL.md",
+      "computedHash": "1a0a6819d13fb5361cf5cdc923f46a1effc37cb61ecb908419eedb0e11f428fe"
+    },
+    "prototype": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/prototype/SKILL.md",
+      "computedHash": "b1216a31a08fb02871f5b4ace7f31d0a1e2d9c86ddca74a37ed97d975f7bcaa2"
+    },
     "review-animations": {
-      "source": "emilkowalski/skills",
+      "source": "emilkowalski/skill",
       "sourceType": "github",
       "skillPath": "skills/review-animations/SKILL.md",
-      "computedHash": "26bec85a9bfe7cfbfd500ff1ffebc7819ac0cef75cf068c4a97b5af865ccccf7"
+      "computedHash": "6f8d633d7884c1390eff7af4bfaf7a450e798f117e1d49a555e00819dc877f64"
     },
     "userinterface-wiki": {
       "source": "raphaelsalaja/userinterface-wiki",
