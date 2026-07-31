@@ -4,17 +4,27 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { sendProjectInvitationEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
     const { projectId, email } = await req.json();
+    const reqHeaders = await headers();
+    
+    // Rate limit check: 5 requests per 10 minutes per IP
+    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = rateLimit(`invite_${ip}`, 5, 10 * 60 * 1000);
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: "Too many invites sent. Please try again later." }, { status: 429 });
+    }
+
     if (!email || !email.trim() || !email.includes('@')) {
       return NextResponse.json({ error: "Valid email is required." }, { status: 400 });
     }
 
-    const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -50,6 +60,12 @@ export async function POST(req: NextRequest) {
       expiresAt,
       status: "pending",
     });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const inviteLink = `${baseUrl}/invite/${token}`;
+    
+    // Fetch org details for branding if needed (optional, just passing nulls for now to ensure delivery)
+    await sendProjectInvitationEmail(email.trim().toLowerCase(), proj.name, inviteLink);
 
     revalidatePath(`/projects/${projectId}/settings`);
     

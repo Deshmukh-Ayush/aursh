@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { LayoutList, LayoutGrid, GanttChartSquare } from "lucide-react";
-import { KanbanBoard } from "./kanban-board";
+import dynamic from "next/dynamic";
 import { DeliverableList } from "./deliverable-list";
-import { TimelineView } from "./timeline-view";
+
+const KanbanBoard = dynamic(() => import("./kanban-board").then(mod => mod.KanbanBoard), { ssr: false });
+const TimelineView = dynamic(() => import("./timeline-view").then(mod => mod.TimelineView), { ssr: false });
 
 const VIEW_MODES = [
   { id: "list" as const, label: "List", icon: LayoutList },

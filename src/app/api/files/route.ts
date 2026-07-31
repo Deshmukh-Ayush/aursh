@@ -7,16 +7,38 @@ import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { logActivity } from "@/lib/activity";
+import { rateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const reqHeaders = await headers();
+    
+    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = rateLimit(`upload_${ip}`, 10, 60 * 1000);
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: "Too many uploads. Please try again later." }, { status: 429 });
+    }
+
     const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const projectId = formData.get("projectId") as string;
+    const file = formData.get("file") as File | null;
+    const projectId = formData.get("projectId") as string | null;
 
     if (!file || !projectId) {
       return NextResponse.json({ error: "File and Project ID are required." }, { status: 400 });
+    }
+
+    const fileSchema = z.object({
+      size: z.number().max(25 * 1024 * 1024, "File size must be less than 25MB"),
+    });
+
+    const validationResult = fileSchema.safeParse({
+      size: file.size,
+    });
+
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
 
     const [proj] = await db.select().from(project).where(eq(project.id, projectId));
@@ -24,7 +46,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cannot upload files to a completed project." }, { status: 400 });
     }
 
-    const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
 
     if (!session || !session.user) {

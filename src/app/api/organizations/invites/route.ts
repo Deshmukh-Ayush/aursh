@@ -4,17 +4,35 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { sendProjectInvitationEmail } from "@/lib/email";
 import crypto from "crypto";
+import { rateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    if (!email || !email.trim() || !email.includes('@')) {
-      return NextResponse.json({ error: "Valid email is required." }, { status: 400 });
+    const payload = await req.json();
+    
+    const postSchema = z.object({
+      email: z.string().email("Valid email is required"),
+    });
+
+    const validationResult = postSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
 
+    const { email } = validationResult.data;
+
     const reqHeaders = await headers();
+    
+    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = rateLimit(`org_invite_${ip}`, 5, 60 * 1000); // 5 per min
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: "Too many invitations. Please try again later." }, { status: 429 });
+    }
+
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user || !session.session.activeOrganizationId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -69,6 +87,12 @@ export async function POST(req: NextRequest) {
       status: "pending",
       expiresAt,
     });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const inviteLink = `${baseUrl}/invite/org/${inviteId}`;
+    
+    // Send email using the project invite template for now
+    await sendProjectInvitationEmail(email.trim().toLowerCase(), org.name, inviteLink, org.plan as any);
 
     revalidatePath("/dashboard/settings");
     

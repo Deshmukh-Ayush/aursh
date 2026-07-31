@@ -285,7 +285,10 @@ export const projectMember = pgTable("project_member", {
     .references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("pm_project_idx").on(table.projectId),
+  index("pm_user_idx").on(table.userId)
+]);
 
 export const projectInvitation = pgTable("project_invitation", {
   id: text("id").primaryKey(),
@@ -359,7 +362,9 @@ export const contract = pgTable("contract", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("contract_project_idx").on(table.projectId)
+]);
 
 export const signature = pgTable("signature", {
   id: text("id").primaryKey(),
@@ -388,7 +393,9 @@ export const files = pgTable("files", {
   size: integer("size").notNull(),
   mimeType: text("mime_type").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("files_project_idx").on(table.projectId)
+]);
 
 export const deliverable = pgTable("deliverable", {
   id: text("id").primaryKey(),
@@ -403,7 +410,9 @@ export const deliverable = pgTable("deliverable", {
   createdBy: text("created_by").references(() => user.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("deliv_project_idx").on(table.projectId)
+]);
 
 import { jsonb } from "drizzle-orm/pg-core";
 
@@ -422,7 +431,9 @@ export const activityLog = pgTable("activity_log", {
   }).notNull(),
   metadata: jsonb("metadata"), // Flexible JSON for things like filenames, deliverable titles, revision comments
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("activity_project_idx").on(table.projectId)
+]);
 
 export const notification = pgTable("notification", {
   id: text("id").primaryKey(),
@@ -440,7 +451,10 @@ export const notification = pgTable("notification", {
   message: text("message").notNull(),
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("notif_user_idx").on(table.userId),
+  index("notif_project_idx").on(table.projectId)
+]);
 
 export const comment = pgTable("comment", {
   id: text("id").primaryKey(),
@@ -449,7 +463,10 @@ export const comment = pgTable("comment", {
   userId: text("user_id").references(() => user.id).notNull(),
   body: text("body").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("comment_project_idx").on(table.projectId),
+  index("comment_deliv_idx").on(table.deliverableId)
+]);
 
 export const commentRelations = relations(comment, ({ one }) => ({
   project: one(project, { fields: [comment.projectId], references: [project.id] }),

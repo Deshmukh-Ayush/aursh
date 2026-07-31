@@ -80,28 +80,30 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
     // 4. Distribute to all other members
     const org = proj.organization;
     
-    for (const member of proj.members) {
-      if (member.userId === userId) continue; // Skip the actor
-      
-      // In-app Notification
-      await createNotification(
-        member.userId,
-        projectId,
-        type as any,
-        activityMessage
-      );
+    const notifications = proj.members
+      .filter(m => m.userId !== userId) // Skip the actor
+      .map(async (member) => {
+        // In-app Notification
+        await createNotification(
+          member.userId,
+          projectId,
+          type as any,
+          activityMessage
+        );
 
-      // Email Notification
-      await sendActivityNotificationEmail(
-        member.user.email,
-        proj.name,
-        activityMessage,
-        projectId,
-        org?.plan as any,
-        org?.logoUrl,
-        org?.brandColor
-      );
-    }
+        // Email Notification
+        await sendActivityNotificationEmail(
+          member.user.email,
+          proj.name,
+          activityMessage,
+          projectId,
+          org?.plan as any,
+          org?.logoUrl,
+          org?.brandColor
+        );
+      });
+
+    await Promise.all(notifications);
 
   } catch (error) {
     console.error("Failed to log activity and dispatch notifications:", error);

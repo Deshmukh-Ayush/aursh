@@ -6,6 +6,8 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { sendProjectInvitationEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -19,6 +21,13 @@ export async function POST(req: NextRequest) {
     }
 
     const reqHeaders = await headers();
+    
+    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = rateLimit(`project_${ip}`, 5, 60 * 1000); // 5 projects per minute
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+
     const session = await auth.api.getSession({ headers: reqHeaders });
 
     if (!session || !session.user || !session.session.activeOrganizationId) {
@@ -106,11 +115,21 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { projectId, newName, description, status } = await req.json();
+    const payload = await req.json();
 
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
+    const patchSchema = z.object({
+      projectId: z.string().min(1, "Project ID is required"),
+      newName: z.string().optional(),
+      description: z.string().optional(),
+      status: z.enum(["active", "completed"]).optional(),
+    });
+
+    const validationResult = patchSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
+
+    const { projectId, newName, description, status } = validationResult.data;
 
     if (newName === undefined && status === undefined && description === undefined) {
       return NextResponse.json({ error: "No update fields provided." }, { status: 400 });

@@ -4,17 +4,30 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { projectId, data } = await req.json();
+    const payload = await req.json();
 
-    if (!projectId || !data || !data.title) {
-      return NextResponse.json({ error: "Project ID and title are required." }, { status: 400 });
+    const postSchema = z.object({
+      projectId: z.string().min(1, "Project ID is required"),
+      data: z.object({
+        title: z.string().min(1, "Title is required"),
+        description: z.string().optional().nullable(),
+        dueDate: z.string().optional().nullable(),
+      }),
+    });
+
+    const validationResult = postSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
+
+    const { projectId, data } = validationResult.data;
 
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
@@ -71,11 +84,20 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { deliverableId, status, comment } = await req.json();
+    const payload = await req.json();
 
-    if (!deliverableId || !status) {
-      return NextResponse.json({ error: "Deliverable ID and status are required." }, { status: 400 });
+    const patchSchema = z.object({
+      deliverableId: z.string().min(1, "Deliverable ID is required"),
+      status: z.enum(["pending", "in_review", "approved", "revision_requested"]),
+      comment: z.string().optional().nullable(),
+    });
+
+    const validationResult = patchSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
+
+    const { deliverableId, status, comment } = validationResult.data;
 
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });

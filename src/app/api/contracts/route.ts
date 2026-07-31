@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
 import { embedSignaturesInPdf, buildAuditTrailEvent } from "@/lib/pdf-signing";
+import { z } from "zod";
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,18 +50,18 @@ export async function POST(req: NextRequest) {
     const newContractId = crypto.randomUUID();
     const members = await db.select().from(projectMember).where(eq(projectMember.projectId, projectId));
 
-    if (existing.length > 0) {
-      await db.delete(contract).where(eq(contract.id, existing[0].id));
-    }
-
     const signatureInserts = members.map(m => ({
       id: crypto.randomUUID(),
       contractId: newContractId,
       userId: m.userId,
     }));
 
-    await db.batch([
-      db.insert(contract).values({
+    await db.transaction(async (tx) => {
+      if (existing.length > 0) {
+        await tx.delete(contract).where(eq(contract.id, existing[0].id));
+      }
+
+      await tx.insert(contract).values({
         id: newContractId,
         projectId,
         fileUrl: blob.url,
@@ -68,9 +69,12 @@ export async function POST(req: NextRequest) {
         documentHash: docHash,
         status: "draft",
         uploadedBy: session.user.id,
-      }),
-      ...(signatureInserts.length > 0 ? [db.insert(signature).values(signatureInserts)] : [])
-    ]);
+      });
+
+      if (signatureInserts.length > 0) {
+        await tx.insert(signature).values(signatureInserts);
+      }
+    });
 
     await logActivity({
       projectId,
@@ -91,12 +95,22 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { contractId, action, signatureData = null, signatureMethod = null, orgPlan = "free" } = body;
+    const payload = await req.json();
 
-    if (!contractId || !action) {
-      return NextResponse.json({ error: "Contract ID and action are required" }, { status: 400 });
+    const patchSchema = z.object({
+      contractId: z.string().min(1, "Contract ID is required"),
+      action: z.enum(["request_signatures", "sign"]),
+      signatureData: z.string().optional().nullable(),
+      signatureMethod: z.string().optional().nullable(),
+      orgPlan: z.enum(["free", "freelancer", "agency"]).optional().default("free"),
+    });
+
+    const validationResult = patchSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
+
+    const { contractId, action, signatureData, signatureMethod, orgPlan } = validationResult.data;
 
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
@@ -148,11 +162,11 @@ export async function PATCH(req: NextRequest) {
           signedAt: new Date(),
           ...(isPaidPlan && {
              signatureData,
-             signatureMethod,
+             signatureMethod: signatureMethod as string | null,
              ipAddress,
              userAgent,
              documentHash: currentDocHash,
-             auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod })]
+             auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod: signatureMethod as string })]
           })
         })
         .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));

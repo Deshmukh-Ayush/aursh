@@ -7,16 +7,35 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
-    const { projectId, body, deliverableId } = await req.json();
-
-    if (!projectId || !body) {
-      return NextResponse.json({ error: "Project ID and body are required." }, { status: 400 });
+    const reqHeaders = await headers();
+    
+    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = rateLimit(`comment_${ip}`, 10, 60 * 1000);
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: "Too many comments. Please try again later." }, { status: 429 });
     }
 
-    const reqHeaders = await headers();
+    const payload = await req.json();
+    
+    const commentSchema = z.object({
+      projectId: z.string().min(1, "Project ID is required"),
+      body: z.string().min(1, "Comment body cannot be empty"),
+      deliverableId: z.string().optional().nullable(),
+    });
+
+    const validationResult = commentSchema.safeParse(payload);
+    
+    if (!validationResult.success) {
+      return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
+    }
+    
+    const { projectId, body, deliverableId } = validationResult.data;
+
     const session = await auth.api.getSession({ headers: reqHeaders });
 
     if (!session || !session.user) {

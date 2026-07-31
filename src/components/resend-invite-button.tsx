@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { toast } from "sonner";
 
-export function ResendInviteButton({ projectId }: { projectId: string }) {
+export function ResendInviteButton({ projectId, email }: { projectId: string, email: string }) {
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -13,7 +13,7 @@ export function ResendInviteButton({ projectId }: { projectId: string }) {
     e.preventDefault(); // Prevent the parent <Link> from navigating
     setIsSending(true);
     try {
-      const res = await axios.post('/api/projects/invites/resend', { projectId });
+      const res = await axios.post('/api/projects/invites/resend', { projectId, email });
       if (res.data.success) {
         setSent(true);
         toast.success("Invitation resent successfully");

@@ -12,7 +12,8 @@ export async function sendProjectInvitationEmail(
 ) {
   try {
     const { data, error } = await resend.emails.send({
-      from: "Scrunity <onboarding@resend.dev>", // Using Resend's testing domain by default
+      from: process.env.EMAIL_FROM || "Scrunity <noreply@scrunity.com>",
+      replyTo: "support@scrunity.com", // Using Resend's testing domain by default
       to: email,
       subject: `You have been invited to join ${projectName}`,
       html: `
@@ -105,7 +106,8 @@ export async function sendActivityNotificationEmail(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "Scrunity <onboarding@resend.dev>", // Testing domain
+      from: process.env.EMAIL_FROM || "Scrunity <noreply@scrunity.com>",
+      replyTo: "support@scrunity.com", // Testing domain
       to: email,
       subject: `Update: ${projectName}`,
       html,
