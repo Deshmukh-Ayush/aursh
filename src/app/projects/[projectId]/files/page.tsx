@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Files",
+  description: "Upload and manage project files and deliverable attachments.",
+};
+
 import { db } from "@/utils/db";
 import { files, user } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";

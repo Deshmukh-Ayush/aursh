@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Proposal",
+  description: "Create, review, and manage project proposals.",
+};
+
 import { db } from "@/utils/db";
 import { proposal, projectMember } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";

@@ -6,6 +6,12 @@ import { Footer } from "@/components/landing/footer";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Scrunity — B2B Client Workspace",
+  description: "Scrunity is a B2B client workspace for agencies and freelancers. Manage projects, proposals, contracts, and deliverables with your clients in one place.",
+};
 
 export default async function Page() {
   const reqHeaders = await headers();

@@ -132,6 +132,9 @@ export async function PATCH(req: NextRequest) {
       if (isPaidPlan) {
         // Fetch and verify PDF
         const pdfRes = await fetch(existing.fileUrl);
+        if (!pdfRes.ok) {
+          throw new Error(`Failed to fetch contract PDF: ${pdfRes.status} ${pdfRes.statusText}`);
+        }
         originalBuffer = await pdfRes.arrayBuffer();
         currentDocHash = hashDocument(originalBuffer);
 

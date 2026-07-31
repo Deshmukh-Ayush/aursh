@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Geist_Mono, Inter, Instrument_Serif } from "next/font/google"
 
 import "./globals.css"
@@ -6,6 +7,14 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Agentation } from "agentation";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Scrunity",
+    default: "Scrunity — B2B Client Workspace",
+  },
+  description: "Scrunity is a B2B client workspace for agencies and freelancers to manage projects, contracts, deliverables, and client collaboration in one place.",
+}
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 

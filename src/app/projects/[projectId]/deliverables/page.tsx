@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Deliverables",
+  description: "Track and manage project deliverables, reviews, and approvals.",
+};
+
 import { db } from "@/utils/db";
 import { deliverable, projectMember, comment, user } from "@/db/schema";
 import { eq, and, desc, isNotNull, asc } from "drizzle-orm";

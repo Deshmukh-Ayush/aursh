@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Activity",
+  description: "View all project activity and audit log.",
+};
+
 import { db } from "@/utils/db";
 import { activityLog, user } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";

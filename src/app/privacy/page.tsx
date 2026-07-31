@@ -1,5 +1,11 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal information.",
+};
 
 export default function PrivacyPage() {
   return (

@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Discussions",
+  description: "View and participate in project discussions and comment threads.",
+};
+
 import { db } from "@/utils/db";
 import { comment, user, projectMember, project } from "@/db/schema";
 import { eq, and, isNull, asc } from "drizzle-orm";

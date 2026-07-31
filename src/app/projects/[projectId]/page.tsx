@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { db } from "@/utils/db";
 import { project, activityLog, user as userTable, proposal } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -12,6 +13,11 @@ import { ProjectOverviewActivity } from "@/components/projects/overview/project-
 import { ProjectOverviewStagger } from "@/components/projects/overview/project-overview-stagger";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+
+export const metadata: Metadata = {
+  title: "Overview",
+  description: "Project overview with key metrics, activity, and deliverable progress.",
+};
 
 export default async function ProjectOverviewPage({
   params,

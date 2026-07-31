@@ -7,6 +7,12 @@ import { headers } from "next/headers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AcceptInviteButton } from "@/components/invite/accept-invite-button";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Project Invitation",
+  description: "You've been invited to collaborate on a project in Scrunity.",
+};
 
 
 export default async function InvitePage ({ params }: { params: Promise<{ token: string }> }) {

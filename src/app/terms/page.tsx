@@ -1,5 +1,11 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "Read Scrunity's terms of service governing your use of the platform.",
+};
 
 export default function TermsPage() {
   return (

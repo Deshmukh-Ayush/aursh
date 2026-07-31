@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contract",
+  description: "Review, upload, and sign project contracts.",
+};
+
 import { db } from "@/utils/db";
 import { contract, signature, projectMember, user, project, organization } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
