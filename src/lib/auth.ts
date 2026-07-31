@@ -10,6 +10,7 @@ export const auth = betterAuth({
     provider: "pg",
   }),
   trustHost: true,
+  trustedOrigins: ["https://scrunity.com", "https://www.scrunity.com", "https://beta.scrunity.com", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
   plugins: [organization()],
   socialProviders: {
     google: {
