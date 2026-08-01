@@ -30,7 +30,7 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
 
   // Fetch project to get orgId
   const proj = await db.select().from(project).where(eq(project.id, projectId));
-  const org = await db.select().from(organization).where(eq(organization.id, proj[0].organizationId));
+  const org = await db.select().from(organization).where(eq(organization.id, proj[0].organizationId as string));
   const orgPlan = org[0]?.plan || "free";
 
   // Fetch contract

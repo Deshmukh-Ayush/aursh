@@ -5,10 +5,10 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
 interface DashboardHeaderProps {
-  activeOrgId?: string | null;
+  activeWorkspaceId?: string | null;
 }
 
-export function DashboardHeader({ activeOrgId }: DashboardHeaderProps) {
+export function DashboardHeader({ activeWorkspaceId }: DashboardHeaderProps) {
   return (
     <div className="flex justify-between items-center">
       <div>
@@ -21,13 +21,13 @@ export function DashboardHeader({ activeOrgId }: DashboardHeaderProps) {
       <div className="flex items-center gap-4">
         <SignOutButton />
 
-        {activeOrgId ? (
+        {activeWorkspaceId ? (
           <>
-            <WorkspaceSwitcher activeOrgId={activeOrgId} />
-            <Link href="/dashboard/settings">
+            <WorkspaceSwitcher activeWorkspaceId={activeWorkspaceId} />
+            <Link href={`/w/${activeWorkspaceId}/dashboard/settings`}>
               <Button variant="outline">Settings</Button>
             </Link>
-            <CreateProjectDialog />
+            <CreateProjectDialog workspaceId={activeWorkspaceId} />
           </>
         ) : null}
       </div>

@@ -49,23 +49,23 @@ export const Onboard = () => {
       await authClient.organization.setActive({ organizationId: data.id });
     }
 
-    router.push("/dashboard");
+    router.push("/workspace");
   };
 
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
       <div className="w-full max-w-md space-y-6">
         <div>
-          <h1 className="text-2xl font-medium">Create your organization</h1>
+          <h1 className="text-2xl font-medium">Create your company profile</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Set up your workspace to get started.
+            Set up your company to get started.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="org-name" className="text-sm font-medium">
-              Organization name
+              Company Name
             </label>
             <input
               id="org-name"

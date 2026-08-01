@@ -77,36 +77,43 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
     const actorName = actor?.user.name || "Someone";
     const activityMessage = getActivityMessage(type, metadata, actorName);
 
-    // 4. Distribute to all other members
+    // 4. Distribute to all other members asynchronously (Non-blocking)
     const org = proj.organization;
     
-    const notifications = proj.members
+    const notificationPromises = proj.members
       .filter(m => m.userId !== userId) // Skip the actor
       .map(async (member) => {
-        // In-app Notification
-        await createNotification(
-          member.userId,
-          projectId,
-          type as any,
-          activityMessage
-        );
+        try {
+          // In-app Notification
+          await createNotification(
+            member.userId,
+            projectId,
+            type as any,
+            activityMessage
+          );
 
-        // Email Notification
-        await sendActivityNotificationEmail(
-          member.user.email,
-          proj.name,
-          activityMessage,
-          projectId,
-          org?.plan as any,
-          org?.logoUrl,
-          org?.brandColor
-        );
+          // Email Notification
+          await sendActivityNotificationEmail(
+            member.user.email,
+            proj.name,
+            activityMessage,
+            projectId,
+            org?.plan as any,
+            org?.logoUrl,
+            org?.brandColor
+          );
+        } catch (err) {
+          console.error(`Failed to dispatch notification for user ${member.userId}:`, err);
+        }
       });
 
-    await Promise.all(notifications);
+    // Fire-and-forget: do not block the API response on Resend HTTP calls
+    Promise.allSettled(notificationPromises).catch((err) => {
+      console.error("Background notification dispatch error:", err);
+    });
 
   } catch (error) {
-    console.error("Failed to log activity and dispatch notifications:", error);
+    console.error("Failed to log activity:", error);
     // We intentionally don't throw to avoid breaking the main user flow if logging fails
   }
 }

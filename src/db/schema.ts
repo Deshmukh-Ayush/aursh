@@ -201,6 +201,7 @@ export const organizationRelations = relations(
     members: many(member),
     invitations: many(invitation),
     teams: many(team),
+    workspaces: many(workspace),
   })
 );
 
@@ -257,13 +258,36 @@ export const teamMemberRelations = relations(
   })
 );
 
+export const workspace = pgTable("workspace", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const workspaceRelations = relations(workspace, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [workspace.organizationId],
+    references: [organization.id],
+  }),
+  projects: many(project),
+}));
+
 export const project = pgTable("project", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   organizationId: text("organization_id")
-    .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .references(() => workspace.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("active"),
   createdBy: text("created_by")
     .notNull()
@@ -309,6 +333,10 @@ export const projectRelations = relations(project, ({ one, many }) => ({
   organization: one(organization, {
     fields: [project.organizationId],
     references: [organization.id],
+  }),
+  workspace: one(workspace, {
+    fields: [project.workspaceId],
+    references: [workspace.id],
   }),
   creator: one(user, {
     fields: [project.createdBy],

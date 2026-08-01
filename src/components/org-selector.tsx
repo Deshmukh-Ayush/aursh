@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Building2, Plus, ArrowRight, Loader2 } from "lucide-react";
@@ -9,20 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export function OrgSelector() {
   const router = useRouter();
-  const [orgs, setOrgs] = useState<any[]>([]);
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    authClient.organization.list().then(({ data }) => {
-      if (data) setOrgs(data);
-      setIsLoading(false);
-    });
+    fetch("/api/workspaces")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setWorkspaces(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load workspaces", err);
+        setIsLoading(false);
+      });
   }, []);
 
-  const handleSelect = async (orgId: string) => {
-    setIsLoading(true);
-    await authClient.organization.setActive({ organizationId: orgId });
-    router.refresh();
+  const handleSelect = (workspaceId: string) => {
+    router.push(`/w/${workspaceId}/dashboard`);
   };
 
   if (isLoading) {
@@ -34,7 +37,7 @@ export function OrgSelector() {
     );
   }
 
-  if (orgs.length === 0) {
+  if (workspaces.length === 0) {
     return (
       <div className="w-full max-w-lg mx-auto text-left">
         <Card className="border-primary/20 shadow-lg bg-card">
@@ -44,11 +47,11 @@ export function OrgSelector() {
             </div>
             <CardTitle className="text-2xl font-bold">Welcome to Scrunity</CardTitle>
             <CardDescription className="text-base mt-2">
-              To get started, create your agency workspace. This is where you'll manage clients, projects, and deliverables.
+              To get started, create your first workspace. This is where you'll manage clients, projects, and deliverables.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center pb-8 pt-4">
-            <Button size="lg" onClick={() => router.push("/onboarding")} className="h-12 px-8 text-base shadow-md group">
+            <Button size="lg" onClick={() => router.push("/workspace")} className="h-12 px-8 text-base shadow-md group">
               Create Workspace
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
@@ -61,24 +64,20 @@ export function OrgSelector() {
   return (
     <div className="w-full max-w-3xl mx-auto mt-2">
       <div className="grid gap-4 md:grid-cols-2">
-        {orgs.map((org) => (
+        {workspaces.map((ws) => (
           <Card 
-            key={org.id} 
+            key={ws.id} 
             className="group cursor-pointer hover:border-primary/50 transition-colors shadow-sm hover:shadow-md"
-            onClick={() => handleSelect(org.id)}
+            onClick={() => handleSelect(ws.id)}
           >
             <CardContent className="p-6 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-                  {org.logoUrl ? (
-                    <img src={org.logoUrl} alt={org.name} className="h-8 w-8 object-contain rounded-md" />
-                  ) : (
-                    <span className="text-lg font-bold uppercase">{org.name.charAt(0)}</span>
-                  )}
+                  <span className="text-lg font-bold uppercase">{ws.name.charAt(0)}</span>
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-semibold text-lg">{org.name}</span>
-                  <span className="text-sm text-muted-foreground">{org.plan === 'paid' ? 'Pro Workspace' : 'Free Workspace'}</span>
+                  <span className="font-semibold text-lg">{ws.name}</span>
+                  <span className="text-sm text-muted-foreground">Workspace</span>
                 </div>
               </div>
               <Button variant="ghost" size="icon" className="group-hover:bg-primary/10 group-hover:text-primary">
@@ -90,7 +89,7 @@ export function OrgSelector() {
 
         <Card 
           className="group cursor-pointer border-dashed hover:border-primary/50 transition-colors bg-muted/30 hover:bg-muted/50"
-          onClick={() => router.push("/onboarding")}
+          onClick={() => router.push("/workspace")}
         >
           <CardContent className="p-6 flex flex-col items-center justify-center h-full text-muted-foreground group-hover:text-foreground">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-background border mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm">

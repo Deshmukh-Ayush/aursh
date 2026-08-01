@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${invitation.token}`;
 
-    const [org] = await db.select().from(organization).where(eq(organization.id, proj.organizationId));
+    const [org] = await db.select().from(organization).where(eq(organization.id, proj.organizationId as string));
 
     await sendProjectInvitationEmail(
       invitation.email, 

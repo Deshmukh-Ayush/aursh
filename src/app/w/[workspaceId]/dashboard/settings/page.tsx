@@ -2,13 +2,14 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/utils/db";
-import { organization, member, user } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { workspace, organization, member, user } from "@/db/schema";
 import { OrgSettingsForm } from "@/components/dashboard/org-settings-form";
 import { BillingPlans } from "@/components/dashboard/billing-plans";
 import { OrgMembersManager } from "@/components/dashboard/org-members-manager";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ params }: { params: Promise<{ workspaceId: string }> }) {
+  const { workspaceId } = await params;
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
 
@@ -16,14 +17,32 @@ export default async function SettingsPage() {
     redirect("/sign-in");
   }
 
-  const activeOrgId = session.session?.activeOrganizationId;
+  let activeOrgId = session.session?.activeOrganizationId;
+
+  if (workspaceId) {
+    const [currentWorkspace] = await db
+      .select({ orgId: workspace.organizationId })
+      .from(workspace)
+      .where(eq(workspace.id, workspaceId));
+    
+    if (currentWorkspace) {
+      activeOrgId = currentWorkspace.orgId;
+    }
+  }
+
+  if (!activeOrgId) {
+    const orgs = await auth.api.listOrganizations({ headers: reqHeaders });
+    if (orgs && orgs.length > 0) {
+      activeOrgId = orgs[0].id;
+    }
+  }
 
   if (!activeOrgId) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center max-w-2xl mx-auto mt-12 border rounded-xl bg-muted/20">
         <h2 className="text-xl font-semibold">No Active Organization</h2>
         <p className="text-muted-foreground mt-2">
-          You need to select an active organization from the dashboard to view settings.
+          You need an active organization to view settings.
         </p>
       </div>
     );

@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { sendProjectInvitationEmail } from "@/lib/email";
-import { rateLimit } from "@/lib/rate-limit";
+import { inviteRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     
     // Rate limit check: 5 requests per 10 minutes per IP
     const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
-    const rateLimitResult = rateLimit(`invite_${ip}`, 5, 10 * 60 * 1000);
+    const rateLimitResult = await checkRateLimit(inviteRateLimiter, `invite_${ip}`);
     if (!rateLimitResult.success) {
       return NextResponse.json({ error: "Too many invites sent. Please try again later." }, { status: 429 });
     }

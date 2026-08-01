@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Building2, Check, ChevronsUpDown, Loader2, Plus, ArrowLeftRight } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus, ArrowLeftRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,29 +14,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function WorkspaceSwitcher({ activeOrgId }: { activeOrgId: string }) {
+export function WorkspaceSwitcher({ activeWorkspaceId }: { activeWorkspaceId: string }) {
   const router = useRouter();
-  const [orgs, setOrgs] = useState<any[]>([]);
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSwitching, setIsSwitching] = useState(false);
 
   useEffect(() => {
-    authClient.organization.list().then(({ data }) => {
-      if (data) setOrgs(data);
-      setIsLoading(false);
-    });
+    fetch("/api/workspaces")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setWorkspaces(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load workspaces", err);
+        setIsLoading(false);
+      });
   }, []);
 
-  const handleSelect = async (orgId: string | null) => {
+  const handleSelect = (workspaceId: string) => {
     setIsSwitching(true);
-    // If null is passed, it clears the active organization
-    await authClient.organization.setActive({ organizationId: orgId as string });
-    router.refresh();
-    // Reset switching state after a delay to allow refresh to happen
+    router.push(`/w/${workspaceId}/dashboard`);
+    // Reset switching state after a delay to allow navigation
     setTimeout(() => setIsSwitching(false), 1000);
   };
 
-  const activeOrg = orgs.find((org) => org.id === activeOrgId);
+  const activeWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId);
 
   if (isLoading) {
     return (
@@ -61,13 +64,13 @@ export function WorkspaceSwitcher({ activeOrgId }: { activeOrgId: string }) {
         >
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-primary shrink-0">
-              {activeOrg?.logoUrl ? (
-                <img src={activeOrg.logoUrl} alt={activeOrg.name} className="h-5 w-5 object-contain rounded" />
+              {activeWorkspace ? (
+                <span className="text-[10px] font-bold uppercase">{activeWorkspace.name.charAt(0)}</span>
               ) : (
-                <Building2 className="h-3 w-3" />
+                <span className="text-[10px] font-bold">W</span>
               )}
             </div>
-            <span className="truncate">{activeOrg?.name || "Select Workspace"}</span>
+            <span className="truncate">{activeWorkspace?.name || "Select Workspace"}</span>
           </div>
           {isSwitching ? (
             <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
@@ -81,37 +84,26 @@ export function WorkspaceSwitcher({ activeOrgId }: { activeOrgId: string }) {
           Workspaces
         </DropdownMenuLabel>
         <DropdownMenuGroup>
-          {orgs.map((org) => (
+          {workspaces.map((ws) => (
             <DropdownMenuItem 
-              key={org.id} 
-              onSelect={() => handleSelect(org.id)}
+              key={ws.id} 
+              onSelect={() => handleSelect(ws.id)}
               className="cursor-pointer flex items-center justify-between"
             >
               <div className="flex items-center gap-2 overflow-hidden">
                 <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-primary shrink-0">
-                  {org.logoUrl ? (
-                    <img src={org.logoUrl} alt={org.name} className="h-5 w-5 object-contain rounded" />
-                  ) : (
-                    <span className="text-[10px] font-bold uppercase">{org.name.charAt(0)}</span>
-                  )}
+                  <span className="text-[10px] font-bold uppercase">{ws.name.charAt(0)}</span>
                 </div>
-                <span className="truncate">{org.name}</span>
+                <span className="truncate">{ws.name}</span>
               </div>
-              {org.id === activeOrgId && <Check className="h-4 w-4 text-primary" />}
+              {ws.id === activeWorkspaceId && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem 
-            onSelect={() => handleSelect(null)}
-            className="cursor-pointer"
-          >
-            <ArrowLeftRight className="mr-2 h-4 w-4 text-muted-foreground" />
-            <span>View all workspaces</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onSelect={() => router.push("/onboarding")}
+            onSelect={() => router.push("/workspace?new=true")}
             className="cursor-pointer"
           >
             <Plus className="mr-2 h-4 w-4 text-muted-foreground" />

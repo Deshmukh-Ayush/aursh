@@ -26,7 +26,7 @@ import type {
   DashboardStats,
 } from "@/types/dash-types";
 
-export const Dash = async () => {
+export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
 
@@ -51,9 +51,9 @@ export const Dash = async () => {
 
   let agencyProjectsData: DashboardAgencyProject[] = [];
 
-  if (activeOrgId) {
+  if (workspaceId) {
     const rawProjects = await db.query.project.findMany({
-      where: eq(project.organizationId, activeOrgId),
+      where: eq(project.workspaceId, workspaceId),
       with: {
         invitations: {
           orderBy: (inv, { desc }) => [desc(inv.createdAt)],
@@ -92,7 +92,7 @@ export const Dash = async () => {
   let newProjectsLastWeek = 0;
   let newDeliverablesThisWeek = 0;
 
-  if (activeOrgId) {
+  if (workspaceId) {
     const fourteenDaysAgo = subDays(new Date(), 14);
     const sevenDaysAgo = subDays(new Date(), 7);
 
@@ -102,7 +102,7 @@ export const Dash = async () => {
       .innerJoin(project, eq(activityLog.projectId, project.id))
       .where(
         and(
-          eq(project.organizationId, activeOrgId),
+          eq(project.workspaceId, workspaceId),
           gte(activityLog.createdAt, fourteenDaysAgo),
         ),
       );
@@ -195,11 +195,11 @@ export const Dash = async () => {
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 p-4 md:p-8">
-      <DashboardHeader activeOrgId={activeOrgId} />
+      <DashboardHeader activeWorkspaceId={workspaceId} />
 
       <ClientProjects projects={clientProjects} activityData={activityData} />
 
-      {!activeOrgId ? (
+      {!workspaceId ? (
         <EmptyWorkspace hasOrganization={false} hasProjects={false} />
       ) : (
         <div className="mt-2 space-y-8">

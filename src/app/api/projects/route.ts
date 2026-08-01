@@ -15,9 +15,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const name = formData.get("name") as string;
     const clientEmail = formData.get("clientEmail") as string;
+    const workspaceId = formData.get("workspaceId") as string;
 
-    if (!name || !clientEmail) {
-      return NextResponse.json({ error: "Name and Client Email are required." }, { status: 400 });
+    if (!name || !clientEmail || !workspaceId) {
+      return NextResponse.json({ error: "Name, Client Email, and Workspace ID are required." }, { status: 400 });
     }
 
     const reqHeaders = await headers();
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
         id: projectId,
         name,
         organizationId: orgId,
+        workspaceId,
         createdBy: userId,
         status: "active",
       }),

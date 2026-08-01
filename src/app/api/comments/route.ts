@@ -8,14 +8,14 @@ import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
-import { rateLimit } from "@/lib/rate-limit";
+import { commentRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   try {
     const reqHeaders = await headers();
     
     const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
-    const rateLimitResult = rateLimit(`comment_${ip}`, 10, 60 * 1000);
+    const rateLimitResult = await checkRateLimit(commentRateLimiter, `comment_${ip}`);
     if (!rateLimitResult.success) {
       return NextResponse.json({ error: "Too many comments. Please try again later." }, { status: 429 });
     }

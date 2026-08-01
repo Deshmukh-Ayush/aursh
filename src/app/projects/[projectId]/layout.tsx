@@ -30,7 +30,7 @@ export default async function ProjectLayout({
   const [org] = await db
     .select()
     .from(organization)
-    .where(eq(organization.id, proj.organizationId));
+    .where(eq(organization.id, proj.organizationId as string));
 
   // Verify membership (Explicit or Implicit)
   let role: "agency" | "client" | "owner" | null = null;

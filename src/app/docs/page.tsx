@@ -28,7 +28,7 @@ export default async function DocsPage() {
   const session = await auth.api.getSession({ headers: reqHeaders });
 
   if (!session || !DEVELOPER_EMAILS.includes(session.user.email)) {
-    redirect("/dashboard");
+    redirect("/workspace");
   }
 
   return (
@@ -129,14 +129,15 @@ export default async function DocsPage() {
           <CodeBlock>{`src/
 ├── app/                        # Next.js App Router
 │   ├── layout.tsx              # Root layout (ThemeProvider, Sonner)
-│   ├── page.tsx                # Landing page (redirects to /dashboard)
+│   ├── page.tsx                # Landing page (redirects to /workspace)
 │   ├── globals.css             # Design tokens, base styles, utilities
 │   │
-│   ├── sign-in/                # Auth page (Google OAuth)
-│   ├── onboarding/             # Post-signup org creation flow
-│   ├── dashboard/              # Main dashboard (project list, org management)
-│   ├── invite/                 # Project invite accept page
-│   │
+│   ├── onboarding/             # Company (Organization) setup page
+│   ├── workspace/              # Workspace creation and list page
+│   ├── w/                      # Dynamic Workspace routes
+│   │   └── [workspaceId]/      # Workspace context
+│   │       ├── dashboard/      # Workspace dashboard (project list, stats)
+│   │       └── settings/       # Workspace & org settings
 │   ├── projects/[projectId]/   # ⬇ Project workspace (sidebar layout)
 │   │   ├── layout.tsx          # Auth guard, sidebar, role resolution
 │   │   ├── mobile-header.tsx   # Sheet-based mobile nav
@@ -180,13 +181,14 @@ export default async function DocsPage() {
 ├── db/
 │   └── schema.ts               # All Drizzle table + relation definitions
 │
-├── lib/
-│   ├── auth.ts                 # Better Auth server config
-│   ├── auth-client.ts          # Better Auth client config
-│   ├── email.ts                # Resend email helpers
-│   ├── pdf-signing.ts          # E-signature placement logic
-│   ├── activity.ts             # logActivity() helper
-│   ├── notifications.ts        # createNotification() helper
+├── lib/                        # Core utilities & domain services
+│   ├── auth.ts                 # Better Auth server configuration
+│   ├── auth-client.ts          # Better Auth client hooks
+│   ├── tenant-context.ts       # Unified Tenant & Workspace Context Resolver
+│   ├── ratelimit.ts            # Upstash Redis Sliding-Window Rate Limiter
+│   ├── activity.ts             # Non-blocking Activity Logger & Dispatches
+│   ├── email.ts                # Resend Transactional Email Helper
+│   ├── notifications.ts        # In-app Notification Creation
 │   └── utils.ts                # cn() classname merger
 │
 └── utils/

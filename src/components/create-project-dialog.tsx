@@ -16,7 +16,7 @@ import {
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
-export function CreateProjectDialog() {
+export function CreateProjectDialog({ workspaceId }: { workspaceId: string }) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +29,7 @@ export function CreateProjectDialog() {
 
     try {
       const formData = new FormData(e.currentTarget);
+      formData.append("workspaceId", workspaceId);
       const res = await axios.post('/api/projects', formData);
       
       if (res.data.success) {

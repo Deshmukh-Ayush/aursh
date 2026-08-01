@@ -7,7 +7,7 @@ import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { logActivity } from "@/lib/activity";
-import { rateLimit } from "@/lib/rate-limit";
+import { uploadRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const reqHeaders = await headers();
     
     const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
-    const rateLimitResult = rateLimit(`upload_${ip}`, 10, 60 * 1000);
+    const rateLimitResult = await checkRateLimit(uploadRateLimiter, `upload_${ip}`);
     if (!rateLimitResult.success) {
       return NextResponse.json({ error: "Too many uploads. Please try again later." }, { status: 429 });
     }
