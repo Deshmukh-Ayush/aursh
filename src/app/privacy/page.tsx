@@ -1,5 +1,4 @@
-import { Navbar } from "@/components/landing/navbar";
-import { Footer } from "@/components/landing/footer";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,9 +8,13 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="dark flex min-h-svh flex-col bg-background font-sans selection:bg-primary/20">
-      <Navbar />
-      <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-32 md:py-40">
+    <div className="dark flex min-h-svh flex-col bg-black text-foreground antialiased font-sans selection:bg-white/20">
+      <header className="px-6 py-4 border-b border-stone-800">
+        <Link href="/" className="text-sm font-medium text-stone-400 hover:text-stone-100 transition-colors">
+          &larr; Back to Scrunity
+        </Link>
+      </header>
+      <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-16 md:py-24">
         <div className="space-y-12">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground text-balance">
@@ -79,7 +82,9 @@ export default function PrivacyPage() {
           </div>
         </div>
       </main>
-      <Footer />
+      <footer className="px-6 py-6 border-t border-stone-800 text-center text-xs text-stone-500">
+        &copy; {new Date().getFullYear()} Scrunity. All rights reserved.
+      </footer>
     </div>
   );
 }
