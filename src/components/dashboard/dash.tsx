@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { format, subDays } from "date-fns";
+import { getTenantContext } from "@/lib/tenant-context";
 
 import { ActivityChart } from "./activity-chart";
 import { DashboardHeader } from "@/components/dashboard/dash/dash-header";
@@ -26,15 +27,15 @@ import type {
   DashboardStats,
 } from "@/types/dash-types";
 
-export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
+export const Dash = async () => {
   const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
+  const ctx = await getTenantContext(reqHeaders);
 
-  if (!session || !session.user) {
+  if (ctx.error || !ctx.user) {
     redirect("/sign-in");
   }
 
-  const activeOrgId = session.session?.activeOrganizationId;
+  const activeOrgId = ctx.organizationId;
 
   const clientProjectsData = await db
     .select({
@@ -43,7 +44,7 @@ export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
     })
     .from(projectMember)
     .innerJoin(project, eq(projectMember.projectId, project.id))
-    .where(and(eq(projectMember.userId, session.user.id), eq(projectMember.role, "client")));
+    .where(and(eq(projectMember.userId, ctx.user.id), eq(projectMember.role, "client")));
 
   const clientProjects: DashboardClientProject[] = clientProjectsData.map(({ proj }) => ({
     proj,
@@ -51,9 +52,9 @@ export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
 
   let agencyProjectsData: DashboardAgencyProject[] = [];
 
-  if (workspaceId) {
+  if (activeOrgId) {
     const rawProjects = await db.query.project.findMany({
-      where: eq(project.workspaceId, workspaceId),
+      where: eq(project.organizationId, activeOrgId),
       with: {
         invitations: {
           orderBy: (inv, { desc }) => [desc(inv.createdAt)],
@@ -92,7 +93,7 @@ export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
   let newProjectsLastWeek = 0;
   let newDeliverablesThisWeek = 0;
 
-  if (workspaceId) {
+  if (activeOrgId) {
     const fourteenDaysAgo = subDays(new Date(), 14);
     const sevenDaysAgo = subDays(new Date(), 7);
 
@@ -102,7 +103,7 @@ export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
       .innerJoin(project, eq(activityLog.projectId, project.id))
       .where(
         and(
-          eq(project.workspaceId, workspaceId),
+          eq(project.organizationId, activeOrgId),
           gte(activityLog.createdAt, fourteenDaysAgo),
         ),
       );
@@ -195,11 +196,11 @@ export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-8 p-4 md:p-8">
-      <DashboardHeader activeWorkspaceId={workspaceId} />
+      <DashboardHeader hasOrganization={Boolean(activeOrgId)} />
 
       <ClientProjects projects={clientProjects} activityData={activityData} />
 
-      {!workspaceId ? (
+      {!activeOrgId ? (
         <EmptyWorkspace hasOrganization={false} hasProjects={false} />
       ) : (
         <div className="mt-2 space-y-8">
@@ -209,7 +210,7 @@ export const Dash = async ({ workspaceId }: { workspaceId: string }) => {
 
           <div className="space-y-4">
             <h3 className="mb-4 border-b pb-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              My Agency Workspace
+              Agency Projects
             </h3>
 
             <EmptyWorkspace

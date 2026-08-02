@@ -14,7 +14,7 @@ type CommentType = {
     id: string;
     body: string;
     createdAt: Date;
-    userId: string;
+    userId: string | null;
   };
   author: {
     name: string | null;

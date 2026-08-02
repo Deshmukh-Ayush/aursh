@@ -22,7 +22,7 @@ export default async function Page() {
   const session = await auth.api.getSession({ headers: reqHeaders });
 
   if (session?.user) {
-    redirect("/workspace");
+    redirect("/dashboard");
   }
 
   return (
@@ -50,7 +50,9 @@ export default async function Page() {
             and more. Join the waitlist to get early access.
           </p>
         </header>
-        <Button className="mt-4">Get Started</Button>
+        <Link href="/sign-in" className="mt-4 inline-block">
+          <Button>Get Started</Button>
+        </Link>
         <div className="mt-8 sm:mt-12">
         <footer className="mt-12 sm:absolute sm:bottom-4">
           <p className="text-neutral-400 text-sm">

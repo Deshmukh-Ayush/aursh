@@ -2,34 +2,32 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { SignOutButton } from "@/components/sign-out-button";
-import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
 interface DashboardHeaderProps {
-  activeWorkspaceId?: string | null;
+  hasOrganization?: boolean;
 }
 
-export function DashboardHeader({ activeWorkspaceId }: DashboardHeaderProps) {
+export function DashboardHeader({ hasOrganization = true }: DashboardHeaderProps) {
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          Manage your workspaces and client collaboration.
+          Manage your projects and client collaboration.
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <SignOutButton />
 
-        {activeWorkspaceId ? (
+        {hasOrganization && (
           <>
-            <WorkspaceSwitcher activeWorkspaceId={activeWorkspaceId} />
-            <Link href={`/w/${activeWorkspaceId}/dashboard/settings`}>
+            <Link href="/dashboard/settings">
               <Button variant="outline">Settings</Button>
             </Link>
-            <CreateProjectDialog workspaceId={activeWorkspaceId} />
+            <CreateProjectDialog />
           </>
-        ) : null}
+        )}
       </div>
     </div>
   );

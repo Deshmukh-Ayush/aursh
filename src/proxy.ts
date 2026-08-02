@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const protectedPaths = ["/w", "/workspace", "/onboarding", "/dashboard"];
+const protectedPaths = ["/onboarding", "/dashboard"];
 
 export async function proxy(request: NextRequest) {
   try {
@@ -27,29 +27,20 @@ export async function proxy(request: NextRequest) {
     const organizations = await auth.api.listOrganizations({
       headers: request.headers,
     });
-    const hasOrganization =
-      Array.isArray(organizations) && organizations.length > 0;
+    const hasOrganization = Array.isArray(organizations) && organizations.length > 0;
 
     if (isSignIn) {
       return NextResponse.redirect(
-        new URL(hasOrganization ? "/workspace" : "/onboarding", request.url),
+        new URL(hasOrganization ? "/dashboard" : "/onboarding", request.url),
       );
     }
 
-    // Require Organization for /w and /workspace
-    if ((pathname.startsWith("/w") || pathname.startsWith("/workspace")) && !hasOrganization) {
+    if (pathname.startsWith("/dashboard") && !hasOrganization) {
       return NextResponse.redirect(new URL("/onboarding", request.url));
     }
 
-    // Don't let users with an organization go to /onboarding
     if (pathname.startsWith("/onboarding") && hasOrganization) {
-      return NextResponse.redirect(new URL("/workspace", request.url));
-    }
-
-    if (pathname === "/dashboard") {
-      return NextResponse.redirect(
-        new URL(hasOrganization ? "/workspace" : "/onboarding", request.url),
-      );
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
     return NextResponse.next();
@@ -60,5 +51,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/sign-in", "/w/:path*", "/workspace", "/onboarding", "/dashboard"],
+  matcher: ["/sign-in", "/onboarding", "/dashboard", "/dashboard/:path*"],
 };

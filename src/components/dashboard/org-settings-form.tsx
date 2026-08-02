@@ -12,14 +12,12 @@ import { Loader2 } from "lucide-react";
 
 type Org = {
   id: string;
-  brandColor?: string | null;
   plan: string;
   logoUrl?: string | null;
 };
 
 export function OrgSettingsForm({ org }: { org: Org }) {
   const [isSaving, setIsSaving] = useState(false);
-  const [brandColor, setBrandColor] = useState(org.brandColor || "#000000");
 
   const canWhitelabel = org.plan === "agency";
 
@@ -51,7 +49,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>White-Label Branding</CardTitle>
-            <CardDescription>Customize the workspace experience for your clients. Available on Agency plan.</CardDescription>
+            <CardDescription>Upload your custom logo for client portals and emails. Available on Agency plan.</CardDescription>
           </div>
           <Badge variant={canWhitelabel ? "default" : "secondary"} className="capitalize">
             {org.plan} Plan
@@ -83,30 +81,6 @@ export function OrgSettingsForm({ org }: { org: Org }) {
               </p>
             )}
             <p className="text-xs text-muted-foreground">Upload a PNG, JPG, or SVG (max 2MB).</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="brandColor">Brand Accent Color</Label>
-            <div className="flex items-center gap-4">
-              <Input 
-                id="brandColor" 
-                name="brandColor" 
-                type="color" 
-                value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
-                disabled={!canWhitelabel}
-                className="w-16 h-10 p-1"
-              />
-              <Input 
-                type="text" 
-                value={brandColor}
-                onChange={(e) => setBrandColor(e.target.value)}
-                disabled={!canWhitelabel}
-                className="flex-1 max-w-[200px]"
-                pattern="^#+([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">This color will be used for buttons, links, and highlights.</p>
           </div>
 
         </CardContent>

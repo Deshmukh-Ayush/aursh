@@ -33,7 +33,6 @@ export async function PATCH(req: NextRequest) {
       const formData = await req.formData();
       const orgId = formData.get("orgId") as string;
       const file = formData.get("logo") as File | null;
-      const brandColor = formData.get("brandColor") as string | null;
 
       if (!orgId) return NextResponse.json({ error: "Organization ID required" }, { status: 400 });
 
@@ -66,7 +65,6 @@ export async function PATCH(req: NextRequest) {
       await db.update(organization)
         .set({
           logoUrl: logoUrl,
-          brandColor: brandColor || org.brandColor,
           updatedAt: new Date(),
         })
         .where(eq(organization.id, orgId));

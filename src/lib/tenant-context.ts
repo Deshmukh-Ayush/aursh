@@ -1,27 +1,25 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/utils/db";
-import { workspace, organization, member } from "@/db/schema";
+import { member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 
-export interface WorkspaceContextResult {
+export interface TenantContextResult {
   session: any;
   user: any;
   organizationId: string;
-  workspaceId?: string;
   memberRole?: "owner" | "agency" | "client" | string;
   error?: string;
   status?: number;
 }
 
 /**
- * Deep module that resolves session, organization, workspace, and member role in one unified call.
+ * Deep module that resolves session, active organization, and member role in one unified call.
  * Eliminates duplicate session/org fallback boilerplate across API routes and Server Components.
  */
 export async function getTenantContext(
-  reqHeaders?: Headers,
-  targetWorkspaceId?: string
-): Promise<WorkspaceContextResult> {
+  reqHeaders?: Headers
+): Promise<TenantContextResult> {
   const reqH = reqHeaders || (await headers());
   const session = await auth.api.getSession({ headers: reqH });
 
@@ -30,18 +28,6 @@ export async function getTenantContext(
   }
 
   let organizationId = session.session?.activeOrganizationId;
-
-  // If workspaceId is provided, resolve organization directly from the workspace
-  if (targetWorkspaceId) {
-    const [foundWs] = await db
-      .select({ orgId: workspace.organizationId })
-      .from(workspace)
-      .where(eq(workspace.id, targetWorkspaceId));
-
-    if (foundWs) {
-      organizationId = foundWs.orgId;
-    }
-  }
 
   // Fallback: list user's organizations if activeOrganizationId is not set on session
   if (!organizationId) {
@@ -71,7 +57,6 @@ export async function getTenantContext(
     session,
     user: session.user,
     organizationId,
-    workspaceId: targetWorkspaceId,
     memberRole: orgMember?.role,
   };
 }

@@ -7,13 +7,12 @@ export async function sendProjectInvitationEmail(
   projectName: string,
   inviteLink: string,
   orgPlan: "free" | "freelancer" | "agency" | undefined = "free",
-  orgLogo?: string | null,
-  orgColor?: string | null
+  orgLogo?: string | null
 ) {
   try {
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || "Scrunity <noreply@scrunity.com>",
-      replyTo: "support@scrunity.com", // Using Resend's testing domain by default
+      replyTo: "support@scrunity.com",
       to: email,
       subject: `You have been invited to join ${projectName}`,
       html: `
@@ -21,8 +20,8 @@ export async function sendProjectInvitationEmail(
           ${orgPlan !== "free" && orgLogo ? `<img src="${orgLogo}" alt="Logo" style="max-height: 40px; margin-bottom: 20px;" />` : ''}
           <h2 style="margin-top: 0;">Project Invitation</h2>
           <p>You have been invited to join the project <strong>${projectName}</strong>.</p>
-          <p>Click the link below to accept the invitation and access the workspace:</p>
-          <a href="${inviteLink}" style="display: inline-block; padding: 12px 24px; background-color: ${orgPlan !== "free" && orgColor ? orgColor : '#000'}; color: #fff; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold;">
+          <p>Click the link below to accept the invitation and access the project:</p>
+          <a href="${inviteLink}" style="display: inline-block; padding: 12px 24px; background-color: #111111; color: #fff; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold;">
             Accept Invitation
           </a>
           <p style="margin-top: 30px; font-size: 12px; color: #666;">
@@ -55,13 +54,11 @@ export async function sendActivityNotificationEmail(
   activityMessage: string,
   projectId: string,
   orgPlan: "free" | "freelancer" | "agency" | undefined = "free",
-  orgLogo?: string | null,
-  orgColor?: string | null
+  orgLogo?: string | null
 ) {
-  const primaryColor = orgPlan !== "free" && orgColor ? orgColor : "#111111";
+  const primaryColor = "#111111";
   const showBranding = orgPlan !== "free" && orgLogo;
   
-  // Base URL resolution similar to auth logic
   const baseUrl = process.env.BETTER_AUTH_URL 
     || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"));
 
@@ -88,15 +85,15 @@ export async function sendActivityNotificationEmail(
           </td>
         </tr>
         <tr>
-          <td style="padding-top: 32px; text-align: center;">
+          <td style="padding-top: 24px; text-align: center;">
             <p style="margin: 0; font-size: 12px; color: #999999; line-height: 1.5;">
-              You received this email because you are a member of the project ${projectName}.
+              You received this email because you're a member of ${projectName}.
             </p>
             ${orgPlan === "free" ? `
               <p style="margin: 8px 0 0 0; font-size: 12px; color: #999999;">
                 Powered by <a href="${baseUrl}" style="color: #666666; text-decoration: none; font-weight: 500;">Scrunity</a>
               </p>
-            ` : ''}
+            ` : ""}
           </td>
         </tr>
       </table>
@@ -107,20 +104,20 @@ export async function sendActivityNotificationEmail(
   try {
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || "Scrunity <noreply@scrunity.com>",
-      replyTo: "support@scrunity.com", // Testing domain
+      replyTo: "support@scrunity.com",
       to: email,
-      subject: `Update: ${projectName}`,
+      subject: `Update on ${projectName}`,
       html,
     });
 
     if (error) {
-      console.error("Resend API Error (Activity):", error);
+      console.error("Resend API Error:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error("Email sending error (Activity):", error);
+    console.error("Email sending error:", error);
     return { success: false, error };
   }
 }

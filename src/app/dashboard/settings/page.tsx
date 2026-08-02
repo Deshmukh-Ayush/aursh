@@ -1,41 +1,22 @@
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/utils/db";
 import { eq, and } from "drizzle-orm";
-import { workspace, organization, member, user } from "@/db/schema";
+import { organization, member, user } from "@/db/schema";
+import { getTenantContext } from "@/lib/tenant-context";
 import { OrgSettingsForm } from "@/components/dashboard/org-settings-form";
 import { BillingPlans } from "@/components/dashboard/billing-plans";
 import { OrgMembersManager } from "@/components/dashboard/org-members-manager";
 
-export default async function SettingsPage({ params }: { params: Promise<{ workspaceId: string }> }) {
-  const { workspaceId } = await params;
+export default async function SettingsPage() {
   const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
+  const ctx = await getTenantContext(reqHeaders);
 
-  if (!session || !session.user) {
+  if (ctx.error || !ctx.user) {
     redirect("/sign-in");
   }
 
-  let activeOrgId = session.session?.activeOrganizationId;
-
-  if (workspaceId) {
-    const [currentWorkspace] = await db
-      .select({ orgId: workspace.organizationId })
-      .from(workspace)
-      .where(eq(workspace.id, workspaceId));
-    
-    if (currentWorkspace) {
-      activeOrgId = currentWorkspace.orgId;
-    }
-  }
-
-  if (!activeOrgId) {
-    const orgs = await auth.api.listOrganizations({ headers: reqHeaders });
-    if (orgs && orgs.length > 0) {
-      activeOrgId = orgs[0].id;
-    }
-  }
+  const activeOrgId = ctx.organizationId;
 
   if (!activeOrgId) {
     return (
@@ -56,7 +37,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ works
   const [orgMember] = await db
     .select()
     .from(member)
-    .where(and(eq(member.organizationId, activeOrgId), eq(member.userId, session.user.id)));
+    .where(and(eq(member.organizationId, activeOrgId), eq(member.userId, ctx.user.id)));
 
   if (!orgMember || orgMember.role !== "owner") {
     return (

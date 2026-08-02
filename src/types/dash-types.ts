@@ -10,7 +10,7 @@ export interface DashboardProject {
   description: string | null;
   organizationId: string | null;
   status: DashboardProjectStatus;
-  createdBy: string;
+  createdBy: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }

@@ -10,15 +10,16 @@ import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
+import { getTenantContext } from "@/lib/tenant-context";
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const name = formData.get("name") as string;
     const clientEmail = formData.get("clientEmail") as string;
-    const workspaceId = formData.get("workspaceId") as string;
 
-    if (!name || !clientEmail || !workspaceId) {
-      return NextResponse.json({ error: "Name, Client Email, and Workspace ID are required." }, { status: 400 });
+    if (!name || !clientEmail) {
+      return NextResponse.json({ error: "Name and Client Email are required." }, { status: 400 });
     }
 
     const reqHeaders = await headers();
@@ -29,14 +30,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
     }
 
-    const session = await auth.api.getSession({ headers: reqHeaders });
+    const ctx = await getTenantContext(reqHeaders);
 
-    if (!session || !session.user || !session.session.activeOrganizationId) {
-      return NextResponse.json({ error: "Unauthorized or no active organization." }, { status: 401 });
+    if (ctx.error || !ctx.user || !ctx.organizationId) {
+      return NextResponse.json({ error: ctx.error || "Unauthorized or no active organization." }, { status: ctx.status || 401 });
     }
 
-    const userId = session.user.id;
-    const orgId = session.session.activeOrganizationId;
+    const userId = ctx.user.id;
+    const orgId = ctx.organizationId;
 
     const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
     if (!org) return NextResponse.json({ error: "Organization not found." }, { status: 404 });
@@ -64,7 +65,6 @@ export async function POST(req: NextRequest) {
         id: projectId,
         name,
         organizationId: orgId,
-        workspaceId,
         createdBy: userId,
         status: "active",
       }),
@@ -103,8 +103,7 @@ export async function POST(req: NextRequest) {
       name, 
       inviteLink,
       org?.plan as "free" | "freelancer" | "agency" | undefined,
-      org?.logoUrl,
-      org?.brandColor
+      org?.logoUrl
     );
 
     revalidatePath("/dashboard");

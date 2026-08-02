@@ -190,9 +190,10 @@ export async function PATCH(req: NextRequest) {
              // But actually we did: signatureRelations has `user`. 
            } catch(e) {} // ignore for now to write raw query
 
-           const users = await db.query.user.findMany({
-              where: (u, { inArray }) => inArray(u.id, allSigs.map(s => s.userId))
-           });
+           const userIds = allSigs.map(s => s.userId).filter((id): id is string => Boolean(id));
+           const users = userIds.length > 0 ? await db.query.user.findMany({
+              where: (u, { inArray }) => inArray(u.id, userIds)
+           }) : [];
 
            const sigItems = allSigs.map(sig => {
               const u = users.find(u => u.id === sig.userId);

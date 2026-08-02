@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index, jsonb } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -102,7 +102,6 @@ export const organization = pgTable("organization", {
 
   plan: text("plan", { enum: ["free", "freelancer", "agency"] }).default("free").notNull(),
   logoUrl: text("logo_url"), // Custom logo URL
-  brandColor: text("brand_color"), // Custom brand color hex
 
   metadata: text("metadata"),
 
@@ -132,7 +131,10 @@ export const member = pgTable("member", {
   role: text("role").notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("member_org_idx").on(table.organizationId),
+  index("member_user_idx").on(table.userId),
+]);
 
 export const invitation = pgTable("invitation", {
   id: text("id").primaryKey(),
@@ -140,8 +142,7 @@ export const invitation = pgTable("invitation", {
   email: text("email").notNull(),
 
   inviterId: text("inviter_id")
-    .notNull()
-    .references(() => user.id),
+    .references(() => user.id, { onDelete: "set null" }),
 
   organizationId: text("organization_id")
     .notNull()
@@ -151,12 +152,15 @@ export const invitation = pgTable("invitation", {
 
   role: text("role").notNull(),
 
-  status: text("status").notNull(),
+  status: text("status", { enum: ["pending", "accepted", "declined", "expired"] }).default("pending").notNull(),
 
   expiresAt: timestamp("expires_at").notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("invitation_org_idx").on(table.organizationId),
+  index("invitation_inviter_idx").on(table.inviterId),
+]);
 
 export const team = pgTable("team", {
   id: text("id").primaryKey(),
@@ -175,7 +179,9 @@ export const team = pgTable("team", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("team_org_idx").on(table.organizationId),
+]);
 
 export const teamMember = pgTable("team_member", {
   id: text("id").primaryKey(),
@@ -193,7 +199,10 @@ export const teamMember = pgTable("team_member", {
     }),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("tm_team_idx").on(table.teamId),
+  index("tm_member_idx").on(table.memberId),
+]);
 
 export const organizationRelations = relations(
   organization,
@@ -201,7 +210,7 @@ export const organizationRelations = relations(
     members: many(member),
     invitations: many(invitation),
     teams: many(team),
-    workspaces: many(workspace),
+    projects: many(project),
   })
 );
 
@@ -258,46 +267,25 @@ export const teamMemberRelations = relations(
   })
 );
 
-export const workspace = pgTable("workspace", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull(),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
-
-export const workspaceRelations = relations(workspace, ({ one, many }) => ({
-  organization: one(organization, {
-    fields: [workspace.organizationId],
-    references: [organization.id],
-  }),
-  projects: many(project),
-}));
-
 export const project = pgTable("project", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   organizationId: text("organization_id")
-    .references(() => organization.id, { onDelete: "cascade" }),
-  workspaceId: text("workspace_id")
-    .references(() => workspace.id, { onDelete: "cascade" }),
-  status: text("status").notNull().default("active"),
-  createdBy: text("created_by")
     .notNull()
-    .references(() => user.id),
+    .references(() => organization.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["active", "completed", "archived"] }).notNull().default("active"),
+  createdBy: text("created_by")
+    .references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("project_org_idx").on(table.organizationId),
+  index("project_creator_idx").on(table.createdBy),
+]);
 
 export const projectMember = pgTable("project_member", {
   id: text("id").primaryKey(),
@@ -321,22 +309,20 @@ export const projectInvitation = pgTable("project_invitation", {
     .references(() => project.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
   token: text("token").notNull().unique(),
-  status: text("status").notNull().default("pending"),
+  status: text("status", { enum: ["pending", "accepted", "declined", "expired"] }).notNull().default("pending"),
   invitedBy: text("invited_by")
-    .notNull()
-    .references(() => user.id),
+    .references(() => user.id, { onDelete: "set null" }),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("proj_invitation_project_idx").on(table.projectId),
+  index("proj_invitation_inviter_idx").on(table.invitedBy),
+]);
 
 export const projectRelations = relations(project, ({ one, many }) => ({
   organization: one(organization, {
     fields: [project.organizationId],
     references: [organization.id],
-  }),
-  workspace: one(workspace, {
-    fields: [project.workspaceId],
-    references: [workspace.id],
   }),
   creator: one(user, {
     fields: [project.createdBy],
@@ -379,19 +365,19 @@ export const contract = pgTable("contract", {
     .references(() => project.id, { onDelete: "cascade" }),
   fileUrl: text("file_url").notNull(),
   fileName: text("file_name").notNull(),
-  status: text("status").notNull().default("draft"),
+  status: text("status", { enum: ["draft", "pending_signature", "signed"] }).notNull().default("draft"),
   signedDocumentUrl: text("signed_document_url"),
   documentHash: text("document_hash"),
   uploadedBy: text("uploaded_by")
-    .notNull()
-    .references(() => user.id),
+    .references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 }, (table) => [
-  index("contract_project_idx").on(table.projectId)
+  index("contract_project_idx").on(table.projectId),
+  index("contract_uploader_idx").on(table.uploadedBy)
 ]);
 
 export const signature = pgTable("signature", {
@@ -400,8 +386,7 @@ export const signature = pgTable("signature", {
     .notNull()
     .references(() => contract.id, { onDelete: "cascade" }),
   userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+    .references(() => user.id, { onDelete: "set null" }),
   signedAt: timestamp("signed_at"),
   signatureData: text("signature_data"),
   ipAddress: text("ip_address"),
@@ -410,19 +395,23 @@ export const signature = pgTable("signature", {
   signatureMethod: text("signature_method"), // 'draw' | 'type' | 'upload'
   auditTrail: jsonb("audit_trail"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("signature_contract_idx").on(table.contractId),
+  index("signature_user_idx").on(table.userId),
+]);
 
 export const files = pgTable("files", {
   id: text("id").primaryKey(),
   projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
-  uploadedBy: text("uploaded_by").references(() => user.id).notNull(),
+  uploadedBy: text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   url: text("url").notNull(),
   size: integer("size").notNull(),
   mimeType: text("mime_type").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
-  index("files_project_idx").on(table.projectId)
+  index("files_project_idx").on(table.projectId),
+  index("files_uploader_idx").on(table.uploadedBy)
 ]);
 
 export const deliverable = pgTable("deliverable", {
@@ -435,47 +424,39 @@ export const deliverable = pgTable("deliverable", {
   submissionUrl: text("submission_url"),
   submissionNote: text("submission_note"),
   dueDate: timestamp("due_date"),
-  createdBy: text("created_by").references(() => user.id).notNull(),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  index("deliv_project_idx").on(table.projectId)
+  index("deliv_project_idx").on(table.projectId),
+  index("deliv_creator_idx").on(table.createdBy)
 ]);
 
-import { jsonb } from "drizzle-orm/pg-core";
+export const activityTypes = [
+  "contract_uploaded", "contract_signed", "file_uploaded", 
+  "deliverable_created", "deliverable_approved", "revision_requested", 
+  "deliverable_completed", "project_completed", "member_joined",
+  "deliverable_in_review", "comment_added",
+  "proposal_sent", "proposal_accepted", "proposal_declined"
+] as const;
 
 export const activityLog = pgTable("activity_log", {
   id: text("id").primaryKey(),
   projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
-  userId: text("user_id").references(() => user.id), // The actor
-  type: text("type", { 
-    enum: [
-      "contract_uploaded", "contract_signed", "file_uploaded", 
-      "deliverable_created", "deliverable_approved", "revision_requested", 
-      "deliverable_completed", "project_completed", "member_joined",
-      "deliverable_in_review", "comment_added",
-      "proposal_sent", "proposal_accepted", "proposal_declined"
-    ] 
-  }).notNull(),
-  metadata: jsonb("metadata"), // Flexible JSON for things like filenames, deliverable titles, revision comments
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }), // The actor
+  type: text("type", { enum: activityTypes }).notNull(),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
-  index("activity_project_idx").on(table.projectId)
+  index("activity_project_idx").on(table.projectId),
+  index("activity_user_idx").on(table.userId)
 ]);
 
 export const notification = pgTable("notification", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
   projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
-  type: text("type", { 
-    enum: [
-      "contract_uploaded", "contract_signed", "file_uploaded", 
-      "deliverable_created", "deliverable_approved", "revision_requested", 
-      "deliverable_completed", "project_completed", "member_joined",
-      "deliverable_in_review", "comment_added",
-      "proposal_sent", "proposal_accepted", "proposal_declined"
-    ] 
-  }).notNull(),
+  type: text("type", { enum: activityTypes }).notNull(),
   message: text("message").notNull(),
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -488,12 +469,13 @@ export const comment = pgTable("comment", {
   id: text("id").primaryKey(),
   projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
   deliverableId: text("deliverable_id").references(() => deliverable.id, { onDelete: "cascade" }), // nullable
-  userId: text("user_id").references(() => user.id).notNull(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   body: text("body").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("comment_project_idx").on(table.projectId),
-  index("comment_deliv_idx").on(table.deliverableId)
+  index("comment_deliv_idx").on(table.deliverableId),
+  index("comment_user_idx").on(table.userId)
 ]);
 
 export const commentRelations = relations(comment, ({ one }) => ({
@@ -579,14 +561,16 @@ export const proposal = pgTable("proposal", {
   acceptedAt: timestamp("accepted_at"),
   declinedAt: timestamp("declined_at"),
   createdBy: text("created_by")
-    .notNull()
-    .references(() => user.id),
+    .references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("proposal_project_idx").on(table.projectId),
+  index("proposal_creator_idx").on(table.createdBy),
+]);
 
 export const proposalLineItems = pgTable("proposal_line_items", {
   id: text("id").primaryKey(),
@@ -599,7 +583,9 @@ export const proposalLineItems = pgTable("proposal_line_items", {
   total: integer("total").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("proposal_items_proposal_idx").on(table.proposalId),
+]);
 
 export const proposalRelations = relations(proposal, ({ one, many }) => ({
   project: one(project, {
@@ -619,4 +605,3 @@ export const proposalLineItemsRelations = relations(proposalLineItems, ({ one })
     references: [proposal.id],
   }),
 }));
-

@@ -28,7 +28,7 @@ export default async function DocsPage() {
   const session = await auth.api.getSession({ headers: reqHeaders });
 
   if (!session || !DEVELOPER_EMAILS.includes(session.user.email)) {
-    redirect("/workspace");
+    redirect("/dashboard");
   }
 
   return (
@@ -92,7 +92,7 @@ export default async function DocsPage() {
         {/* ─── OVERVIEW ─── */}
         <Section id="overview" title="What is Scrunity?">
           <P>
-            Scrunity is a client-contractor project management platform. Agencies create organizations, invite clients to specific projects, manage deliverables, share files, sign contracts, and track progress — all in one workspace.
+            Scrunity is a client-contractor project management platform. Agencies create organizations, invite clients to specific projects, manage deliverables, share files, sign contracts, and track progress — all in one place.
           </P>
           <P>Key user roles:</P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
@@ -129,15 +129,12 @@ export default async function DocsPage() {
           <CodeBlock>{`src/
 ├── app/                        # Next.js App Router
 │   ├── layout.tsx              # Root layout (ThemeProvider, Sonner)
-│   ├── page.tsx                # Landing page (redirects to /workspace)
+│   ├── page.tsx                # Landing page (redirects to /dashboard)
 │   ├── globals.css             # Design tokens, base styles, utilities
 │   │
 │   ├── onboarding/             # Company (Organization) setup page
-│   ├── workspace/              # Workspace creation and list page
-│   ├── w/                      # Dynamic Workspace routes
-│   │   └── [workspaceId]/      # Workspace context
-│   │       ├── dashboard/      # Workspace dashboard (project list, stats)
-│   │       └── settings/       # Workspace & org settings
+│   ├── dashboard/              # Main dashboard (project list, stats)
+│   │   └── settings/           # Organization & billing settings
 │   ├── projects/[projectId]/   # ⬇ Project workspace (sidebar layout)
 │   │   ├── layout.tsx          # Auth guard, sidebar, role resolution
 │   │   ├── mobile-header.tsx   # Sheet-based mobile nav
@@ -161,7 +158,7 @@ export default async function DocsPage() {
 │
 ├── components/
 │   ├── ui/                     # shadcn/ui primitives (Button, Card, etc.)
-│   ├── project-sidebar.tsx     # Workspace sidebar nav
+│   ├── project-sidebar.tsx     # Project sidebar nav
 │   ├── org-selector.tsx        # Org switcher dropdown
 │   ├── create-project-dialog.tsx
 │   ├── theme-provider.tsx
@@ -184,7 +181,7 @@ export default async function DocsPage() {
 ├── lib/                        # Core utilities & domain services
 │   ├── auth.ts                 # Better Auth server configuration
 │   ├── auth-client.ts          # Better Auth client hooks
-│   ├── tenant-context.ts       # Unified Tenant & Workspace Context Resolver
+│   ├── tenant-context.ts       # Unified Tenant & Organization Context Resolver
 │   ├── ratelimit.ts            # Upstash Redis Sliding-Window Rate Limiter
 │   ├── activity.ts             # Non-blocking Activity Logger & Dispatches
 │   ├── email.ts                # Resend Transactional Email Helper
@@ -214,7 +211,7 @@ export default async function DocsPage() {
           <Table
             headers={['Table', 'Purpose']}
             rows={[
-              ['organization', 'Agencies. Has plan (free/paid), logoUrl, brandColor'],
+              ['organization', 'Agencies. Has plan (free/paid), logoUrl'],
               ['member', 'Org members with role (owner/admin/member)'],
               ['invitation', 'Org-level invites'],
               ['team / team_member', 'Team grouping within orgs (optional)'],
@@ -327,7 +324,7 @@ export default async function DocsPage() {
           <Table
             headers={['Component', 'Description']}
             rows={[
-              ['ProjectSidebar', 'Collapsible workspace navigation, state persisted to localStorage, uses Tooltips for collapsed state'],
+              ['ProjectSidebar', 'Collapsible project navigation, state persisted to localStorage, uses Tooltips for collapsed state'],
               ['MobileHeader', 'Sheet-based mobile navigation header'],
             ]}
           />

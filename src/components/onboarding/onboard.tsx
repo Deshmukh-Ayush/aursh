@@ -49,7 +49,8 @@ export const Onboard = () => {
       await authClient.organization.setActive({ organizationId: data.id });
     }
 
-    router.push("/workspace");
+    router.push("/dashboard");
+    router.refresh();
   };
 
   return (

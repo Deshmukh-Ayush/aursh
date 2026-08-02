@@ -99,8 +99,7 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
             activityMessage,
             projectId,
             org?.plan as any,
-            org?.logoUrl,
-            org?.brandColor
+            org?.logoUrl
           );
         } catch (err) {
           console.error(`Failed to dispatch notification for user ${member.userId}:`, err);

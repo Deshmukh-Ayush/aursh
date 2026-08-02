@@ -42,8 +42,7 @@ export async function POST(req: NextRequest) {
       proj.name, 
       inviteLink,
       org?.plan as "free" | "freelancer" | "agency" | undefined,
-      org?.logoUrl,
-      org?.brandColor
+      org?.logoUrl
     );
 
     return NextResponse.json({ success: true });
