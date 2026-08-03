@@ -12,7 +12,15 @@ type ActivityType =
   | "deliverable_completed" 
   | "project_completed" 
   | "member_joined"
-  | "deliverable_in_review";
+  | "deliverable_in_review"
+  | "comment_added"
+  | "proposal_sent"
+  | "proposal_accepted"
+  | "proposal_declined"
+  | "payment_requested"
+  | "payment_completed"
+  | "payment_overdue"
+  | "milestone_created";
 
 interface LogActivityParams {
   projectId: string;

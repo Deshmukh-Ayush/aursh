@@ -308,6 +308,8 @@ export const projectRelations = relations(project, ({ one, many }) => ({
   }),
   members: many(projectMember),
   invitations: many(projectInvitation),
+  paymentMilestones: many(paymentMilestone),
+  payments: many(payment),
 }));
 
 export const projectMemberRelations = relations(projectMember, ({ one }) => ({
@@ -387,18 +389,20 @@ export const deliverable = pgTable("deliverable", {
 
 import { jsonb } from "drizzle-orm/pg-core";
 
+export const activityTypes = [
+  "contract_uploaded", "contract_signed", "file_uploaded", 
+  "deliverable_created", "deliverable_approved", "revision_requested", 
+  "deliverable_completed", "project_completed", "member_joined",
+  "deliverable_in_review", "comment_added",
+  "proposal_sent", "proposal_accepted", "proposal_declined",
+  "payment_requested", "payment_completed", "payment_overdue", "milestone_created"
+] as const;
+
 export const activityLog = pgTable("activity_log", {
   id: text("id").primaryKey(),
   projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }).notNull(),
   userId: text("user_id").references(() => user.id), // The actor
-  type: text("type", { 
-    enum: [
-      "contract_uploaded", "contract_signed", "file_uploaded", 
-      "deliverable_created", "deliverable_approved", "revision_requested", 
-      "deliverable_completed", "project_completed", "member_joined",
-      "deliverable_in_review"
-    ] 
-  }).notNull(),
+  type: text("type", { enum: activityTypes }).notNull(),
   metadata: jsonb("metadata"), // Flexible JSON for things like filenames, deliverable titles, revision comments
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -439,4 +443,55 @@ export const signatureRelations = relations(signature, ({ one }) => ({
     fields: [signature.userId],
     references: [user.id],
   }),
+}));
+
+export const paymentMilestone = pgTable("payment_milestone", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  proposalId: text("proposal_id"),
+  deliverableId: text("deliverable_id").references(() => deliverable.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  amount: integer("amount").notNull(),
+  currency: text("currency").default("INR").notNull(),
+  triggerType: text("trigger_type", { enum: ["upfront", "on_approval", "on_date", "manual"] }).notNull().default("manual"),
+  dueDate: timestamp("due_date"),
+  status: text("status", { enum: ["upcoming", "due", "overdue", "paid", "waived"] }).notNull().default("upcoming"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+}, (table) => [
+  index("pm_project_idx").on(table.projectId),
+  index("pm_proposal_idx").on(table.proposalId),
+  index("pm_deliverable_idx").on(table.deliverableId),
+]);
+
+export const payment = pgTable("payment", {
+  id: text("id").primaryKey(),
+  milestoneId: text("milestone_id").notNull().references(() => paymentMilestone.id, { onDelete: "cascade" }),
+  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  currency: text("currency").default("INR").notNull(),
+  paymentMethod: text("payment_method").default("upi"), // upi, bank_transfer, card, cash, manual
+  referenceNote: text("reference_note"), // UTR, transaction hash, bank ref, or note
+  dodoPaymentId: text("dodo_payment_id"), // optional for future gateway webhooks
+  dodoCheckoutId: text("dodo_checkout_id"), // optional for future gateway webhooks
+  status: text("status", { enum: ["pending", "succeeded", "failed"] }).notNull().default("succeeded"),
+  paidAt: timestamp("paid_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("pay_milestone_idx").on(table.milestoneId),
+  index("pay_project_idx").on(table.projectId),
+]);
+
+export const paymentMilestoneRelations = relations(paymentMilestone, ({ one, many }) => ({
+  project: one(project, { fields: [paymentMilestone.projectId], references: [project.id] }),
+  deliverable: one(deliverable, { fields: [paymentMilestone.deliverableId], references: [deliverable.id] }),
+  payments: many(payment),
+}));
+
+export const paymentRelations = relations(payment, ({ one }) => ({
+  milestone: one(paymentMilestone, { fields: [payment.milestoneId], references: [paymentMilestone.id] }),
+  project: one(project, { fields: [payment.projectId], references: [project.id] }),
 }));

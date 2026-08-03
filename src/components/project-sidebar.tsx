@@ -10,11 +10,13 @@ import {
   Activity, 
   MessageSquare, 
   LayoutDashboard,
-  Settings
+  Settings,
+  CreditCard
 } from "lucide-react";
 
 const navItems = [
   { name: "Overview", href: "", icon: LayoutDashboard },
+  { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Contract", href: "/contract", icon: FileText },
   { name: "Files", href: "/files", icon: Files },
   { name: "Deliverables", href: "/deliverables", icon: CheckSquare },

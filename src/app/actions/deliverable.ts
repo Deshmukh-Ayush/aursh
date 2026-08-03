@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/utils/db";
-import { deliverable, projectMember, project } from "@/db/schema";
+import { deliverable, projectMember, project, paymentMilestone } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -104,8 +104,30 @@ export async function updateDeliverableStatusAction(deliverableId: string, statu
       metadata: { deliverableId, title: deliv.title, comment: comment || null }
     });
 
-    // We do NOT mark project completed here. That is a separate action on the overview page.
-    
+    // Auto-trigger linked payment milestone to "due" upon approval
+    if (status === 'approved') {
+      const linkedMilestones = await db
+        .select()
+        .from(paymentMilestone)
+        .where(eq(paymentMilestone.deliverableId, deliverableId));
+
+      for (const m of linkedMilestones) {
+        if (m.status === 'upcoming') {
+          await db.update(paymentMilestone)
+            .set({ status: 'due', updatedAt: new Date() })
+            .where(eq(paymentMilestone.id, m.id));
+
+          await logActivity({
+            projectId: deliv.projectId,
+            userId,
+            type: "payment_requested",
+            metadata: { milestoneTitle: m.title, amount: m.amount, reason: "deliverable_approved" }
+          });
+        }
+      }
+      revalidatePath(`/projects/${deliv.projectId}/payments`);
+    }
+
     revalidatePath(`/projects/${deliv.projectId}`);
     revalidatePath(`/projects/${deliv.projectId}/deliverables`);
     return { success: true };
