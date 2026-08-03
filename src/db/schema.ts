@@ -571,9 +571,9 @@ export const paymentMilestone = pgTable("payment_milestone", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
 }, (table) => [
-  index("pm_project_idx").on(table.projectId),
-  index("pm_proposal_idx").on(table.proposalId),
-  index("pm_deliverable_idx").on(table.deliverableId),
+  index("pay_milestone_project_idx").on(table.projectId),
+  index("pay_milestone_proposal_idx").on(table.proposalId),
+  index("pay_milestone_deliv_idx").on(table.deliverableId),
 ]);
 
 export const payment = pgTable("payment", {
