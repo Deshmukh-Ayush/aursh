@@ -21,9 +21,9 @@ export default async function Page() {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
 
-  if (session?.user) {
-    redirect("/dashboard");
-  }
+  // if (session?.user) {
+  //   redirect("/dashboard");
+  // }
 
   return (
       <div className="dark min-h-screen w-full bg-neutral-950">
@@ -54,10 +54,18 @@ export default async function Page() {
           <Button>Get Started</Button>
         </Link>
         <div className="mt-8 sm:mt-12">
-        <footer className="mt-12 sm:absolute sm:bottom-4">
+        <footer className="mt-12 sm:absolute sm:bottom-4 flex items-center justify-between w-full">
           <p className="text-neutral-400 text-sm">
             Scrunity © 2026
           </p>
+          <div>
+            <Link href="/privacy" className="text-neutral-400 text-sm">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-neutral-400 text-sm ml-4">
+              Terms of Service
+            </Link>
+          </div>
         </footer>
         </div>
       </Container>

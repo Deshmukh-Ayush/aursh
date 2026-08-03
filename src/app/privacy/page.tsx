@@ -2,17 +2,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal information.",
+  title: "Privacy Policy | Scrunity",
+  description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal and financial information.",
 };
 
 export default function PrivacyPage() {
   return (
     <div className="dark flex min-h-svh flex-col bg-black text-foreground antialiased font-sans selection:bg-white/20">
-      <header className="px-6 py-4 border-b border-stone-800">
+      <header className="px-6 py-4 border-b border-stone-800 flex items-center justify-between">
         <Link href="/" className="text-sm font-medium text-stone-400 hover:text-stone-100 transition-colors">
           &larr; Back to Scrunity
         </Link>
+        <span className="text-xs text-stone-500 font-mono">beta.scrunity.com</span>
       </header>
       <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-16 md:py-24">
         <div className="space-y-12">
@@ -20,63 +21,60 @@ export default function PrivacyPage() {
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground text-balance">
               Privacy Policy
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
 
-          <div className="space-y-8 text-muted-foreground leading-relaxed">
-            <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground tracking-tight">1. Information We Collect</h2>
+          <div className="space-y-8 text-stone-300 leading-relaxed text-sm md:text-base">
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">1. Information We Collect</h2>
               <p>
-                We collect information you provide directly to us, including but not limited to:
+                We collect personal and business information necessary to provide project management, contract signing, and payment tracking services:
               </p>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Account information (name, email address, profile details).</li>
-                <li>Project data, uploaded files, and deliverables.</li>
-                <li>Electronic signature records and associated metadata.</li>
-                <li>Communication and comments within the platform.</li>
+              <ul className="list-disc pl-6 space-y-1.5 text-stone-400">
+                <li><strong className="text-stone-200">Account Credentials:</strong> Full name, email address, profile photo, and organization metadata.</li>
+                <li><strong className="text-stone-200">Project & Legal Data:</strong> Uploaded contracts, Statements of Work, NDAs, deliverables, and discussion messages.</li>
+                <li><strong className="text-stone-200">Audit & E-Signatures:</strong> IP addresses, timestamps, signature images, and SHA-256 document hashes for legal verification.</li>
+                <li><strong className="text-stone-200">Payment Data:</strong> Billing contact details, payment milestone statuses, transaction IDs, and currency amounts.</li>
               </ul>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground tracking-tight">2. How We Use Your Information</h2>
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">2. Payment Processing & Merchant of Record</h2>
               <p>
-                We use the information we collect to provide, maintain, and improve Scrunity. This includes:
+                Subscription payments and milestone payment processing on Scrunity are securely facilitated by our Merchant of Record partner, <strong className="text-stone-100">Dodo Payments</strong>.
               </p>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Facilitating the signing and storage of contracts.</li>
-                <li>Sending you technical notices, updates, and security alerts.</li>
-                <li>Responding to your comments, questions, and customer service requests.</li>
-                <li>Monitoring and analyzing trends, usage, and activities in connection with our Service.</li>
-              </ul>
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground tracking-tight">3. Data Security</h2>
-              <p>
-                We take reasonable measures to help protect information about you from loss, theft, misuse, unauthorized access, disclosure, alteration, and destruction. However, no internet transmission is completely secure, and we cannot guarantee the absolute security of your data.
+              <p className="text-stone-400">
+                When you make a payment or complete a milestone checkout on Scrunity, Dodo Payments collects and processes payment credentials (including Credit/Debit Card numbers, UPI IDs, or Netbanking details). Scrunity does not directly store full credit card numbers or sensitive banking credentials on our servers.
               </p>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground tracking-tight">4. Third-Party Services</h2>
-              <p>
-                We may share your information with third-party vendors, consultants, and other service providers who need access to such information to carry out work on our behalf (e.g., hosting providers, email delivery services). These third parties are bound by strict confidentiality agreements.
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">3. How We Use Your Information</h2>
+              <p className="text-stone-400">
+                We utilize collected information solely to facilitate project collaboration, generate legal audit logs, issue payment checkout links, deliver automated notifications, and maintain platform security.
               </p>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground tracking-tight">5. Your Rights</h2>
-              <p>
-                Depending on your location, you may have certain rights regarding your personal information, including the right to access, correct, or delete your data. You may update your account information at any time by logging into your account settings.
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">4. Data Storage & Security</h2>
+              <p className="text-stone-400">
+                We enforce industry-standard security measures including HTTPS/TLS encryption in transit, encrypted storage, and restricted database access to protect your documents and financial records against unauthorized access.
               </p>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-foreground tracking-tight">6. Contact Us</h2>
-              <p>
-                If you have any questions about this Privacy Policy, please contact us at support@scrunity.sh.
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">5. Third-Party Service Providers</h2>
+              <p className="text-stone-400">
+                We share data with trusted infrastructure providers (database hosting, document storage, email delivery via Resend, and payment infrastructure via Dodo Payments) under strict data protection protocols.
+              </p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">6. Contact & Support</h2>
+              <p className="text-stone-400">
+                For questions or data deletion requests regarding this Privacy Policy, please reach out to us at <a href="mailto:support@scrunity.com" className="text-stone-200 underline underline-offset-4">support@scrunity.com</a>.
               </p>
             </section>
           </div>
