@@ -371,7 +371,7 @@ export const contract = pgTable("contract", {
   fileName: text("file_name").notNull(),
   documentType: text("document_type", { enum: ["sow", "nda", "noc", "msa", "addendum", "other"] }).default("sow").notNull(),
   uploadedByRole: text("uploaded_by_role", { enum: ["agency", "client"] }).default("agency").notNull(),
-  status: text("status", { enum: ["draft", "sent", "partially_signed", "fully_signed"] }).default("draft").notNull(),
+  status: text("status", { enum: ["draft", "sent", "partially_signed", "fully_signed", "pending_signature", "signed"] }).default("draft").notNull(),
   signedDocumentUrl: text("signed_document_url"),
   documentHash: text("document_hash"),
   uploadedBy: text("uploaded_by")
