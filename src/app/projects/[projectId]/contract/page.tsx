@@ -1,152 +1,124 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contracts & Agreements",
+  description: "Review, upload, and e-sign statements of work, NDAs, and project agreements.",
+};
+
 import { db } from "@/utils/db";
-import { contract, signature, projectMember, user } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { contract, signature, projectMember, user, project, organization } from "@/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { UploadContractForm } from "./upload-contract-form";
-import { ContractActionButtons } from "./contract-action-buttons";
+import { redirect } from "next/navigation";
+import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
 
 export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return null;
+  if (!session) return redirect("/sign-in");
 
   const resolvedParams = await params;
   const projectId = resolvedParams.projectId;
   const userId = session.user.id;
 
-  // Check role
-  const member = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-  const role = member[0]?.role;
+  // `async-parallel`: fetch member and project details concurrently
+  const [memberRows, projRows] = await Promise.all([
+    db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId))),
+    db.select().from(project).where(eq(project.id, projectId)),
+  ]);
 
-  // Fetch contract
-  const existingContracts = await db.select().from(contract).where(eq(contract.projectId, projectId));
-  const activeContract = existingContracts[0];
+  const member = memberRows[0];
+  const proj = projRows[0];
 
-  if (!activeContract) {
-    if (role === 'owner') {
-      return (
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Project Contract</CardTitle>
-            <CardDescription>Upload a PDF contract for your client to review and sign.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UploadContractForm projectId={projectId} />
-          </CardContent>
-        </Card>
-      );
-    } else {
-      return (
-        <div className="flex flex-col items-center justify-center p-16 text-center border border-dashed rounded-xl bg-background/50">
-          <div className="rounded-full bg-muted p-4 mb-4">
-            <svg className="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium">No Contract Yet</h3>
-          <p className="text-muted-foreground mt-1">The project owner has not uploaded a contract yet.</p>
-        </div>
-      );
-    }
+  if (!proj) return redirect("/dashboard");
+
+  let role: "owner" | "agency" | "client" = "agency";
+  if (member) {
+    role = member.role as "owner" | "agency" | "client";
+  } else if (session.session?.activeOrganizationId === proj.organizationId) {
+    role = "agency";
+  } else {
+    return redirect("/dashboard");
   }
 
-  // Contract exists, fetch signatures
-  const signatures = await db
+  // Fetch org plan
+  const [org] = await db.select().from(organization).where(eq(organization.id, proj.organizationId));
+  const orgPlan = org?.plan || "free";
+
+  // Fetch all contracts for this project
+  const allContracts = await db
     .select({
-      sig: signature,
-      usr: user
+      contract: contract,
+      uploader: user,
     })
-    .from(signature)
-    .innerJoin(user, eq(signature.userId, user.id))
-    .where(eq(signature.contractId, activeContract.id));
+    .from(contract)
+    .leftJoin(user, eq(contract.uploadedBy, user.id))
+    .where(eq(contract.projectId, projectId))
+    .orderBy(desc(contract.createdAt));
 
-  const mySignature = signatures.find(s => s.sig.userId === userId);
-  
+  const contractIds = allContracts.map((c) => c.contract.id);
+
+  // Fetch all signatures and linked users
+  let allSignatures: Array<{
+    sig: typeof signature.$inferSelect;
+    usr: typeof user.$inferSelect | null;
+  }> = [];
+
+  if (contractIds.length > 0) {
+    allSignatures = await db
+      .select({
+        sig: signature,
+        usr: user,
+      })
+      .from(signature)
+      .leftJoin(user, eq(signature.userId, user.id))
+      .where(inArray(signature.contractId, contractIds));
+  }
+
+  // `js-combine-iterations`: group signatures by contractId
+  const signaturesByContract = new Map<string, typeof allSignatures>();
+  for (const s of allSignatures) {
+    const list = signaturesByContract.get(s.sig.contractId) || [];
+    list.push(s);
+    signaturesByContract.set(s.sig.contractId, list);
+  }
+
+  // `server-serialization`: structure contracts payload for ContractVaultClient
+  const serializedContracts: ContractWithSignatures[] = allContracts.map((c) => {
+    const sigs = signaturesByContract.get(c.contract.id) || [];
+    return {
+      contract: {
+        id: c.contract.id,
+        projectId: c.contract.projectId,
+        fileName: c.contract.fileName,
+        fileUrl: c.contract.fileUrl,
+        documentType: (c.contract.documentType || "sow") as any,
+        uploadedByRole: (c.contract.uploadedByRole || "agency") as any,
+        status: c.contract.status as any,
+        signedDocumentUrl: c.contract.signedDocumentUrl,
+        documentHash: c.contract.documentHash,
+        createdAt: c.contract.createdAt,
+      },
+      uploaderName: c.uploader?.name || "Unknown",
+      signatures: sigs.map((s) => ({
+        sigId: s.sig.id,
+        userId: s.sig.userId,
+        userName: s.usr?.name || "Unknown",
+        userEmail: s.usr?.email || "Unknown",
+        userImage: s.usr?.image || null,
+        signedAt: s.sig.signedAt,
+      })),
+    };
+  });
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold tracking-tight">Contract</h2>
-          <Badge variant={
-            activeContract.status === 'signed' ? 'default' : 
-            activeContract.status === 'pending_signature' ? 'secondary' : 'outline'
-          } className="capitalize font-medium">
-            {activeContract.status.replace('_', ' ')}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2 overflow-hidden flex flex-col h-[700px] shadow-sm">
-          <div className="bg-muted/50 px-4 py-3 text-sm text-muted-foreground border-b flex justify-between items-center">
-            <span className="font-medium flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-              {activeContract.fileName}
-            </span>
-            <a href={activeContract.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 font-medium hover:underline">Download</a>
-          </div>
-          <iframe 
-            src={activeContract.fileUrl} 
-            className="w-full flex-1 border-0" 
-            title="Contract Document"
-          />
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="h-fit shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                Signatures
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {signatures.map(s => (
-                  <div key={s.sig.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                    <span className="text-sm font-medium">{s.usr.name}</span>
-                    {s.sig.signedAt ? (
-                      <Badge variant="default" className="text-xs bg-emerald-500 hover:bg-emerald-600">Signed</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">Waiting</Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Draft State Action */}
-              {activeContract.status === 'draft' && (
-                <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-dashed flex flex-col items-center text-center gap-4">
-                  <p className="text-sm text-muted-foreground">
-                    Contract is currently a draft. Signatures cannot be collected until requested.
-                  </p>
-                  <ContractActionButtons 
-                    contractId={activeContract.id} 
-                    status={activeContract.status} 
-                    role={role} 
-                    hasSigned={!!mySignature?.sig.signedAt} 
-                  />
-                </div>
-              )}
-
-              {/* Pending Signature State Action */}
-              {activeContract.status === 'pending_signature' && !mySignature?.sig.signedAt && (
-                <div className="mt-6">
-                  <ContractActionButtons 
-                    contractId={activeContract.id} 
-                    status={activeContract.status} 
-                    role={role} 
-                    hasSigned={!!mySignature?.sig.signedAt} 
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    <ContractVaultClient
+      projectId={projectId}
+      contracts={serializedContracts}
+      currentUserId={userId}
+      userRole={role}
+      orgPlan={orgPlan}
+    />
   );
 }

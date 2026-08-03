@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Files",
+  description: "Upload and manage project files and deliverable attachments.",
+};
+
 import { db } from "@/utils/db";
 import { files, user } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { UploadFileButton } from "./upload-file-button";
+import { UploadFileButton } from "@/components/projects/files/upload-file-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileIcon, Download, FileText } from "lucide-react";
 
@@ -60,7 +67,7 @@ export default async function FilesPage({
               <CardContent className="p-0">
                 <div className="flex items-center justify-between p-4 sm:px-6">
                   <div className="flex items-center gap-4 truncate">
-                    <div className="bg-muted p-2 rounded-lg flex-shrink-0">
+                    <div className="bg-muted p-2 rounded-lg shrink-0">
                       <FileIcon className="w-6 h-6 text-primary" />
                     </div>
                     <div className="truncate">
@@ -79,7 +86,7 @@ export default async function FilesPage({
                     download 
                     target="_blank" 
                     rel="noreferrer"
-                    className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors ml-4 flex-shrink-0 bg-primary/5 hover:bg-primary/10 px-3 py-2 rounded-md"
+                    className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors ml-4 shrink-0 bg-primary/5 hover:bg-primary/10 px-3 py-2 rounded-md"
                   >
                     <Download className="w-4 h-4" />
                     <span className="hidden sm:inline">Download</span>

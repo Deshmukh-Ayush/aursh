@@ -1,12 +1,12 @@
-# Aursh
+# Scrunity
 
-**Website:** aursh.sh
+**Website:** Scrunity.sh
 
-## What is Aursh?
+## What is Scrunity?
 
-Aursh is an open-source client collaboration platform for agencies, freelancers, and their clients.
+Scrunity is an open-source client collaboration platform for agencies, freelancers, and their clients.
 
-The goal of Aursh is to replace the fragmented workflow currently spread across multiple tools such as:
+The goal of Scrunity is to replace the fragmented workflow currently spread across multiple tools such as:
 
 - Email
 - WhatsApp
@@ -17,7 +17,7 @@ The goal of Aursh is to replace the fragmented workflow currently spread across 
 - Trello
 - Notion
 
-Aursh provides a single shared workspace where both parties can manage the entire lifecycle of a project from agreement to delivery.
+Scrunity provides a single shared workspace where both parties can manage the entire lifecycle of a project from agreement to delivery.
 
 ---
 
@@ -32,15 +32,15 @@ Agencies and freelancers typically manage client work using several disconnected
 - Files are spread across multiple systems
 - Communication is fragmented
 
-Aursh aims to centralize the entire workflow.
+Scrunity aims to centralize the entire workflow.
 
 ---
 
 ## Vision
 
-Aursh is not just a document-signing platform.
+Scrunity is not just a document-signing platform.
 
-Aursh is a shared project workspace where agreements become projects. The signed agreement should become the source of truth for:
+Scrunity is a shared project workspace where agreements become projects. The signed agreement should become the source of truth for:
 
 - Scope
 - Deliverables

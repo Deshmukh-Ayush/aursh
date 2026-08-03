@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Activity",
+  description: "View all project activity and audit log.",
+};
+
 import { db } from "@/utils/db";
 import { activityLog, user } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -33,7 +40,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
     .where(eq(activityLog.projectId, projectId))
     .orderBy(desc(activityLog.createdAt));
 
-  const getActivityConfig = (type: string, metadata: any) => {
+  const getActivityConfig = (type: string, metadata: Record<string, unknown>) => {
     switch (type) {
       case "contract_uploaded":
         return { icon: <FileText className="w-5 h-5 text-blue-500" />, text: `uploaded the contract (${metadata?.fileName})` };
@@ -74,7 +81,8 @@ export default async function ActivityPage({ params }: { params: Promise<{ proje
           ) : (
             <div className="relative border-l border-muted ml-3 space-y-8 pb-4">
               {logs.map(({ log, actor }) => {
-                const config = getActivityConfig(log.type, log.metadata);
+                const metadata = (log.metadata as Record<string, unknown>) || {};
+                const config = getActivityConfig(log.type, metadata);
                 
                 return (
                   <div key={log.id} className="relative pl-8">

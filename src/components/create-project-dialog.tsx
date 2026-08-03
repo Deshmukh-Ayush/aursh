@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { createProjectAction } from "@/app/actions/project";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 
 export function CreateProjectDialog() {
@@ -22,19 +22,23 @@ export function CreateProjectDialog() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    const result = await createProjectAction(formData);
-
-    setIsLoading(false);
-
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setOpen(false);
-      router.refresh();
+    try {
+      const formData = new FormData(e.currentTarget);
+      const res = await axios.post('/api/projects', formData);
+      
+      if (res.data.success) {
+        setOpen(false);
+        router.refresh();
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -50,7 +54,7 @@ export function CreateProjectDialog() {
             Start a new project and invite your client to collaborate.
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {error && (
               <div className="text-sm font-medium text-destructive">{error}</div>

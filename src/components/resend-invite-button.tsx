@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { resendInviteAction } from "@/app/actions/project";
+import axios from "axios";
 import { toast } from "sonner";
 
-export function ResendInviteButton({ projectId }: { projectId: string }) {
+export function ResendInviteButton({ projectId, email }: { projectId: string, email: string }) {
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -13,17 +13,15 @@ export function ResendInviteButton({ projectId }: { projectId: string }) {
     e.preventDefault(); // Prevent the parent <Link> from navigating
     setIsSending(true);
     try {
-      const result = await resendInviteAction(projectId);
-      if (result?.error) {
-        toast.error(result.error);
-      } else {
+      const res = await axios.post('/api/projects/invites/resend', { projectId, email });
+      if (res.data.success) {
         setSent(true);
         toast.success("Invitation resent successfully");
         setTimeout(() => setSent(false), 3000);
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("A server or network error occurred. Please check Vercel logs.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.error || "A server or network error occurred.");
     } finally {
       setIsSending(false);
     }
