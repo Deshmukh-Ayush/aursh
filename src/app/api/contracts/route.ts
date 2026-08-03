@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const projectId = formData.get("projectId") as string;
     const file = formData.get('file') as File;
+    const documentType = (formData.get('documentType') as string) || 'sow';
 
     if (!projectId || !file) {
       return NextResponse.json({ error: "Project ID and file are required" }, { status: 400 });
@@ -33,12 +34,25 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const existing = await db.select().from(contract).where(eq(contract.projectId, projectId));
-    if (existing.length > 0 && existing[0].status === 'signed') {
-      return NextResponse.json({ error: "Contract is already signed and locked." }, { status: 400 });
+    const userId = session.user.id;
+
+    // Check member role
+    const members = await db.select().from(projectMember).where(eq(projectMember.projectId, projectId));
+    const currentMember = members.find(m => m.userId === userId);
+    
+    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
+    
+    let uploadedByRole: "agency" | "client" = "agency";
+    if (currentMember?.role === 'client') {
+      uploadedByRole = "client";
+    } else if (currentMember?.role === 'owner' || currentMember?.role === 'agency' || (proj && session.session?.activeOrganizationId === proj.organizationId)) {
+      uploadedByRole = "agency";
     }
 
-    const blob = await put(`contracts/${projectId}/${file.name}`, file, {
+    const validDocTypes = ["sow", "nda", "noc", "msa", "addendum", "other"];
+    const safeDocType = validDocTypes.includes(documentType) ? (documentType as any) : "sow";
+
+    const blob = await put(`contracts/${projectId}/${Date.now()}_${file.name}`, file, {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
@@ -48,7 +62,6 @@ export async function POST(req: NextRequest) {
     const docHash = hashDocument(fileBuffer);
 
     const newContractId = crypto.randomUUID();
-    const members = await db.select().from(projectMember).where(eq(projectMember.projectId, projectId));
 
     const signatureInserts = members.map(m => ({
       id: crypto.randomUUID(),
@@ -57,18 +70,16 @@ export async function POST(req: NextRequest) {
     }));
 
     await db.transaction(async (tx) => {
-      if (existing.length > 0) {
-        await tx.delete(contract).where(eq(contract.id, existing[0].id));
-      }
-
       await tx.insert(contract).values({
         id: newContractId,
         projectId,
         fileUrl: blob.url,
         fileName: file.name,
+        documentType: safeDocType,
+        uploadedByRole,
         documentHash: docHash,
         status: "draft",
-        uploadedBy: session.user.id,
+        uploadedBy: userId,
       });
 
       if (signatureInserts.length > 0) {
@@ -78,15 +89,14 @@ export async function POST(req: NextRequest) {
 
     await logActivity({
       projectId,
-      userId: session.user.id,
+      userId,
       type: "contract_uploaded",
-      metadata: { fileName: file.name }
+      metadata: { fileName: file.name, documentType: safeDocType, uploadedByRole }
     });
-
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/contract`);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, contractId: newContractId });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Failed to upload contract." }, { status: 500 });

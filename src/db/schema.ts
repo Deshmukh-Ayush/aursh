@@ -365,6 +365,12 @@ export const contract = pgTable("contract", {
     .references(() => project.id, { onDelete: "cascade" }),
   fileUrl: text("file_url").notNull(),
   fileName: text("file_name").notNull(),
+  documentType: text("document_type", { 
+    enum: ["sow", "nda", "noc", "msa", "addendum", "other"] 
+  }).notNull().default("sow"),
+  uploadedByRole: text("uploaded_by_role", { 
+    enum: ["agency", "client"] 
+  }).notNull().default("agency"),
   status: text("status", { enum: ["draft", "pending_signature", "signed"] }).notNull().default("draft"),
   signedDocumentUrl: text("signed_document_url"),
   documentHash: text("document_hash"),
