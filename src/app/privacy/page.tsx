@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Scrunity",
-  description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal and financial information.",
+  description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal, analytics, and financial information.",
 };
 
 export default function PrivacyPage() {
@@ -30,13 +30,14 @@ export default function PrivacyPage() {
             <section className="space-y-3">
               <h2 className="text-xl font-semibold text-foreground tracking-tight">1. Information We Collect</h2>
               <p>
-                We collect personal and business information necessary to provide project management, contract signing, and payment tracking services:
+                We collect personal, business, and usage information necessary to provide project management, contract signing, payment tracking, and platform analytics:
               </p>
               <ul className="list-disc pl-6 space-y-1.5 text-stone-400">
                 <li><strong className="text-stone-200">Account Credentials:</strong> Full name, email address, profile photo, and organization metadata.</li>
                 <li><strong className="text-stone-200">Project & Legal Data:</strong> Uploaded contracts, Statements of Work, NDAs, deliverables, and discussion messages.</li>
                 <li><strong className="text-stone-200">Audit & E-Signatures:</strong> IP addresses, timestamps, signature images, and SHA-256 document hashes for legal verification.</li>
                 <li><strong className="text-stone-200">Payment Data:</strong> Billing contact details, payment milestone statuses, transaction IDs, and currency amounts.</li>
+                <li><strong className="text-stone-200">Usage Analytics & Telemetry:</strong> Device type, browser type, page views, click interactions, and feature usage patterns via analytics providers (e.g. PostHog).</li>
               </ul>
             </section>
 
@@ -51,28 +52,35 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-foreground tracking-tight">3. How We Use Your Information</h2>
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">3. Analytics & Product Optimization</h2>
               <p className="text-stone-400">
-                We utilize collected information solely to facilitate project collaboration, generate legal audit logs, issue payment checkout links, deliver automated notifications, and maintain platform security.
+                We use privacy-conscious analytics tools (such as PostHog) to understand how users interact with Scrunity, diagnose performance bottlenecks, and improve product workflows. This data is collected to optimize user experience and is never sold to third-party ad networks.
               </p>
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-foreground tracking-tight">4. Data Storage & Security</h2>
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">4. How We Use Your Information</h2>
+              <p className="text-stone-400">
+                We utilize collected information solely to facilitate project collaboration, generate legal audit logs, issue payment checkout links, deliver automated notifications, perform product analytics, and maintain platform security.
+              </p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">5. Data Storage & Security</h2>
               <p className="text-stone-400">
                 We enforce industry-standard security measures including HTTPS/TLS encryption in transit, encrypted storage, and restricted database access to protect your documents and financial records against unauthorized access.
               </p>
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-foreground tracking-tight">5. Third-Party Service Providers</h2>
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">6. Third-Party Service Providers</h2>
               <p className="text-stone-400">
-                We share data with trusted infrastructure providers (database hosting, document storage, email delivery via Resend, and payment infrastructure via Dodo Payments) under strict data protection protocols.
+                We share data with trusted infrastructure providers (database hosting, document storage, email delivery via Resend, analytics via PostHog, and payment infrastructure via Dodo Payments) under strict data protection protocols.
               </p>
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-xl font-semibold text-foreground tracking-tight">6. Contact & Support</h2>
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">7. Contact & Support</h2>
               <p className="text-stone-400">
                 For questions or data deletion requests regarding this Privacy Policy, please reach out to us at <a href="mailto:support@scrunity.com" className="text-stone-200 underline underline-offset-4">support@scrunity.com</a>.
               </p>
