@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, FileText, Send, CheckCircle2, XCircle, Clock, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Drawer } from "vaul";
 import { ProposalBuilder } from "./proposal-builder";
 import { ProposalClientView } from "./proposal-client-view";
 import axios from "axios";
@@ -61,7 +61,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
     switch (status) {
       case "draft":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
             <Clock className="w-3.5 h-3.5" /> Draft
           </span>
         );
@@ -285,37 +285,46 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
         </div>
       )}
 
-      {/* Build Proposal Dialog */}
-      <Dialog open={isBuilderOpen} onOpenChange={setIsBuilderOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background text-foreground border-border">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Build Project Proposal</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Define the scope and line items for this project. Line items will automatically become deliverables & payment milestones upon client acceptance.
-            </DialogDescription>
-          </DialogHeader>
-          <ProposalBuilder projectId={projectId} onComplete={() => setIsBuilderOpen(false)} />
-        </DialogContent>
-      </Dialog>
+      {/* Build Proposal Drawer (Vaul Bottom-to-Top) */}
+      <Drawer.Root open={isBuilderOpen} onOpenChange={setIsBuilderOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 transition-opacity" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 max-h-[92vh] z-50 flex flex-col rounded-t-[24px] bg-background border-t border-border/40 shadow-2xl overflow-hidden focus:outline-hidden">
+            <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted-foreground/30 my-3" />
+            <div className="overflow-y-auto px-4 sm:px-8 pb-10 pt-2 max-w-4xl mx-auto w-full flex-1">
+              <Drawer.Title className="text-xl font-bold text-foreground">Build Project Proposal</Drawer.Title>
+              <Drawer.Description className="text-xs text-muted-foreground mb-6">
+                Define line items & scope for this project. Line items will automatically become deliverables & payment milestones upon client acceptance.
+              </Drawer.Description>
+              <ProposalBuilder projectId={projectId} onComplete={() => setIsBuilderOpen(false)} />
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
 
-      {/* Preview Proposal Dialog */}
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background text-foreground border-border">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Proposal Preview</DialogTitle>
-          </DialogHeader>
-          {selectedProposal && (
-            <ProposalClientView
-              proposal={selectedProposal}
-              role={role}
-              onAccepted={() => {
-                setIsPreviewOpen(false);
-                router.refresh();
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Preview Proposal Drawer (Vaul Bottom-to-Top) */}
+      <Drawer.Root open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 transition-opacity" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 max-h-[92vh] z-50 flex flex-col rounded-t-[24px] bg-background border-t border-border/40 shadow-2xl overflow-hidden focus:outline-hidden">
+            <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted-foreground/30 my-3" />
+            <div className="overflow-y-auto px-4 sm:px-8 pb-10 pt-2 max-w-4xl mx-auto w-full flex-1">
+              <Drawer.Title className="sr-only">Proposal Details</Drawer.Title>
+              <Drawer.Description className="sr-only">View project proposal details and line items</Drawer.Description>
+              {selectedProposal && (
+                <ProposalClientView
+                  proposal={selectedProposal}
+                  role={role}
+                  onAccepted={() => {
+                    setIsPreviewOpen(false);
+                    router.refresh();
+                  }}
+                />
+              )}
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   );
 }
