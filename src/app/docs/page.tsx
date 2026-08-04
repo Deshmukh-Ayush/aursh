@@ -14,7 +14,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Developer Docs",
-  description: "Internal developer documentation for Scrunity — architecture, schema, API routes, and conventions.",
+  description: "Internal developer documentation for Scrunity — architecture, schema, API routes, payment milestones, and conventions.",
 };
 
 // Gate: only allow specific developer emails
@@ -57,7 +57,7 @@ export default async function DocsPage() {
             Developer Documentation
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground max-w-160 text-pretty">
-            Everything you need to know before writing your first line of code. Architecture, conventions, database schema, and patterns.
+            Technical architecture, DB schemas, API endpoints, payment milestones, e-signature engines, and code conventions for Scrunity.
           </p>
         </header>
 
@@ -69,14 +69,15 @@ export default async function DocsPage() {
               ['Tech Stack', '#stack'],
               ['Folder Structure', '#folders'],
               ['Database Schema', '#schema'],
+              ['Payment Milestones Engine', '#payments'],
+              ['Contract & E-Signature Vault', '#contracts'],
               ['Authentication', '#auth'],
-              ['Server Actions', '#actions'],
               ['API Routes', '#api'],
-              ['Components', '#components'],
+              ['Component Architecture', '#components'],
               ['Notifications', '#notifications'],
               ['Environment Variables', '#env'],
               ['Dev Commands', '#commands'],
-              ['Conventions', '#conventions'],
+              ['Conventions & Design System', '#conventions'],
             ].map(([label, href]) => (
               <a
                 key={href}
@@ -92,13 +93,13 @@ export default async function DocsPage() {
         {/* ─── OVERVIEW ─── */}
         <Section id="overview" title="What is Scrunity?">
           <P>
-            Scrunity is a client-contractor project management platform. Agencies create organizations, invite clients to specific projects, manage deliverables, share files, sign contracts, and track progress — all in one place.
+            Scrunity is an AI-powered client collaboration and revenue protection platform for agencies, freelancers, and clients. It replaces fragmented tools (DocuSign, Trello, WhatsApp, Excel invoices) with a unified source of truth.
           </P>
           <P>Key user roles:</P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><Code>owner</Code> — The agency user who created the project. Full permissions.</li>
-            <li><Code>client</Code> — Invited user. Can submit deliverables for review, sign contracts, leave comments.</li>
-            <li><Code>agency</Code> — Implicit role for org members who aren&apos;t explicit project members.</li>
+            <li><Code>owner</Code> — Agency owner who created the project. Full administrative control over scope, contracts, and payment tracking.</li>
+            <li><Code>agency</Code> — Agency team member. Can create deliverables, send proposals, upload agreements, and record payment milestones.</li>
+            <li><Code>client</Code> — Invited client stakeholder. Can upload agreements (e.g. NDA, NOC), sign contracts, review deliverables, request revisions, and verify payments.</li>
           </ul>
         </Section>
 
@@ -107,19 +108,18 @@ export default async function DocsPage() {
           <Table
             headers={['Layer', 'Technology', 'Notes']}
             rows={[
-              ['Framework', 'Next.js 16 (App Router)', 'RSC by default, async params'],
+              ['Framework', 'Next.js 16 (App Router)', 'RSC by default, async params, Turbopack'],
               ['Language', 'TypeScript 5', 'Strict mode'],
-              ['Database', 'Neon (Postgres)', 'Serverless driver @neondatabase/serverless'],
-              ['ORM', 'Drizzle ORM', 'Schema in src/db/schema.ts, push-based migrations'],
+              ['Database', 'Neon (Serverless Postgres)', 'Serverless driver @neondatabase/serverless'],
+              ['ORM', 'Drizzle ORM', 'Schema in src/db/schema.ts, drizzle-kit push'],
               ['Auth', 'Better Auth', 'Google OAuth + organization plugin'],
-              ['Storage', 'Vercel Blob', 'For contracts and file uploads'],
-              ['Email', 'Resend', 'Transactional emails (invites, notifications)'],
-              ['Styling', 'Tailwind CSS 4', 'With shadcn/ui components'],
-              ['Charts', 'Recharts', 'Area charts, pie charts on dashboard'],
-              ['Drag & Drop', 'dnd-kit', 'Kanban board for deliverables'],
+              ['SaaS Merchant of Record', 'Dodo Payments', 'MoR for Scrunity SaaS subscriptions'],
+              ['Animations', 'Framer Motion', 'Apple/Emil spring animations & morphing tabs'],
+              ['Storage', 'Vercel Blob', 'For PDF contracts and project file uploads'],
+              ['Email', 'Resend', 'Transactional emails for invites and activity notifications'],
+              ['Styling', 'Tailwind CSS 4', 'Neutral monochrome palette'],
               ['Icons', 'Lucide React', ''],
               ['Toasts', 'Sonner', ''],
-              ['Data Fetching', 'SWR', 'Client-side polling (notifications)'],
             ]}
           />
         </Section>
@@ -129,227 +129,126 @@ export default async function DocsPage() {
           <CodeBlock>{`src/
 ├── app/                        # Next.js App Router
 │   ├── layout.tsx              # Root layout (ThemeProvider, Sonner)
-│   ├── page.tsx                # Landing page (redirects to /dashboard)
-│   ├── globals.css             # Design tokens, base styles, utilities
+│   ├── page.tsx                # Landing page
+│   ├── globals.css             # Base styles, typography, neutral tokens
+│   ├── terms/                  # Terms of Service page (MoR, refund policy, e-signatures)
+│   ├── privacy/                # Privacy Policy page (analytics, encryption, disclosures)
 │   │
-│   ├── onboarding/             # Company (Organization) setup page
-│   ├── dashboard/              # Main dashboard (project list, stats)
-│   │   └── settings/           # Organization & billing settings
-│   ├── projects/[projectId]/   # ⬇ Project workspace (sidebar layout)
+│   ├── onboarding/             # Organization setup flow
+│   ├── dashboard/              # Main dashboard (projects, financial KPIs, stats)
+│   │   └── settings/           # Org & billing settings
+│   ├── projects/[projectId]/   # ⬇ Project workspace
 │   │   ├── layout.tsx          # Auth guard, sidebar, role resolution
-│   │   ├── mobile-header.tsx   # Sheet-based mobile nav
-│   │   ├── page.tsx            # Overview (KPIs, chart, activity feed)
-│   │   ├── contract/           # Contract upload, view, sign
-│   │   ├── deliverables/       # List, Kanban, Timeline views
-│   │   ├── files/              # File uploads & downloads
+│   │   ├── page.tsx            # Overview (Financials card, activity feed)
+│   │   ├── payments/           # Financial KPI cards, milestone tracking & verification
+│   │   ├── contract/           # Dual Contract Vault, e-signatures, preview
+│   │   ├── deliverables/       # List, Kanban, and Timeline Gantt views
+│   │   ├── files/              # File uploads & storage
 │   │   ├── discussions/        # Threaded comments
 │   │   ├── activity/           # Full activity log
 │   │   └── settings/           # Project settings, members, invites
 │   │
 │   ├── api/                    # Route Handlers
-│   │   ├── auth/[...all]/      # Better Auth catch-all
+│   │   ├── milestones/         # Milestone CRUD (/api/milestones)
+│   │   │   └── mark-paid/      # Manual Payment Verification (/api/milestones/mark-paid)
+│   │   ├── contracts/          # Contracts POST/PATCH/DELETE
+│   │   ├── deliverables/       # Deliverables POST/PATCH & milestone release trigger
+│   │   ├── proposals/          # Proposal generation & line items
 │   │   ├── notifications/      # GET unread, POST mark-read
 │   │   ├── projects/           # Projects API CRUD & Members/Invites
-│   │   ├── organizations/      # Orgs API CRUD & Members/Invites
-│   │   ├── comments/           # Comments POST/DELETE
-│   │   ├── deliverables/       # Deliverables POST/PATCH
-│   │   ├── contracts/          # Contracts POST/PATCH/DELETE
-│   │   └── files/              # Files POST
+│   │   └── organizations/      # Orgs API CRUD & Members/Invites
 │
 ├── components/
-│   ├── ui/                     # shadcn/ui primitives (Button, Card, etc.)
-│   ├── project-sidebar.tsx     # Project sidebar nav
-│   ├── org-selector.tsx        # Org switcher dropdown
-│   ├── create-project-dialog.tsx
-│   ├── theme-provider.tsx
-│   └── projects/               # ⬇ Project-specific components
-│       ├── contracts/          # ContractViewer, UploadForm, SignButton
-│       ├── deliverables/       # DeliverableList, KanbanBoard, TimelineView
-│       ├── discussions/        # CommentThread, CommentForm
-│       ├── files/              # FileUploader, FileList
-│       ├── settings/           # MembersTable, InviteForm
-│       ├── proposal/           # ProposalBuilder, ProposalClientView
-│       ├── contract-banner.tsx
-│       ├── mark-complete-button.tsx
-│       ├── timeline-area-chart.tsx
-│       ├── progress-chart.tsx
-│       └── topbar-notifications.tsx
+│   ├── project-sidebar.tsx     # Project sidebar nav with Payments link
+│   ├── projects/
+│   │   ├── payments/           # PaymentsViewClient, KPI bar, verification modal
+│   │   ├── contracts/          # ContractVaultClient, signature modal, upload dialog
+│   │   ├── deliverables/       # DeliverableList, KanbanBoard, TimelineView
+│   │   ├── discussions/        # CommentThread, CommentForm
+│   │   └── proposal/           # ProposalBuilder, ProposalClientView
 │
 ├── db/
-│   └── schema.ts               # All Drizzle table + relation definitions
+│   └── schema.ts               # Drizzle table & relation definitions
 │
-├── lib/                        # Core utilities & domain services
-│   ├── auth.ts                 # Better Auth server configuration
-│   ├── auth-client.ts          # Better Auth client hooks
-│   ├── tenant-context.ts       # Unified Tenant & Organization Context Resolver
-│   ├── ratelimit.ts            # Upstash Redis Sliding-Window Rate Limiter
-│   ├── activity.ts             # Non-blocking Activity Logger & Dispatches
-│   ├── email.ts                # Resend Transactional Email Helper
-│   ├── notifications.ts        # In-app Notification Creation
-│   └── utils.ts                # cn() classname merger
-│
-└── utils/
-    └── db.ts                   # Drizzle client (neon serverless)`}</CodeBlock>
+└── lib/
+    ├── auth.ts                 # Better Auth server configuration
+    ├── activity.ts             # Non-blocking Activity Logger
+    ├── pdf-signing.ts          # PDF E-Signature stamper & hash generator
+    └── tenant-context.ts       # Unified Tenant Context Resolver`}</CodeBlock>
         </Section>
 
         {/* ─── DATABASE SCHEMA ─── */}
         <Section id="schema" title="Database Schema">
-          <P>All tables are defined in <Code>src/db/schema.ts</Code> using Drizzle&apos;s <Code>pgTable</Code>. There are no migration files — we use <Code>drizzle-kit push</Code> to sync schema changes directly.</P>
+          <P>All tables are defined in <Code>src/db/schema.ts</Code> using Drizzle&apos;s <Code>pgTable</Code>.</P>
 
-          <H3>Auth Tables (managed by Better Auth)</H3>
+          <H3>Payment & Financial Tables</H3>
           <Table
-            headers={['Table', 'Purpose']}
+            headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
-              ['user', 'User accounts (id, name, email, image)'],
-              ['session', 'Login sessions with activeOrganizationId'],
-              ['account', 'OAuth provider links (Google)'],
-              ['verification', 'Email verification tokens'],
+              ['payment_milestone', 'projectId, title, amount, currency, triggerType, status, deliverableId', 'Milestone statuses: upcoming | due | overdue | paid | waived'],
+              ['payment', 'milestoneId, projectId, amount, currency, paymentMethod, referenceNote, status, paidAt', 'Stores payment receipt verification & UTR reference notes'],
             ]}
           />
 
-          <H3>Organization Tables</H3>
+          <H3>Contract & E-Signature Tables</H3>
           <Table
-            headers={['Table', 'Purpose']}
+            headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
-              ['organization', 'Agencies. Has plan (free/paid), logoUrl'],
-              ['member', 'Org members with role (owner/admin/member)'],
-              ['invitation', 'Org-level invites'],
-              ['team / team_member', 'Team grouping within orgs (optional)'],
+              ['contract', 'projectId, fileUrl, fileName, documentType, uploadedByRole, status, signedDocumentUrl, documentHash', 'Supports sow | nda | noc | msa | addendum | other'],
+              ['signature', 'contractId, userId, signatureData, signatureMethod, ipAddress, userAgent, documentHash, auditTrail', 'Records bi-directional e-signature execution & cryptographic audit logs'],
             ]}
           />
 
-          <H3>Project Tables</H3>
+          <H3>Proposal & Project Tables</H3>
           <Table
-            headers={['Table', 'Key Columns', 'Notes']}
+            headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
-              ['project', 'name, description, organizationId, status, createdBy', 'Status: active | completed'],
-              ['project_member', 'projectId, userId, role', 'Role: owner | client | agency'],
-              ['project_invitation', 'projectId, email, token, status', 'Token-based invite links'],
-              ['contract', 'projectId, fileUrl, fileName, status', 'Status: draft | pending_signature | signed'],
-              ['signature', 'contractId, userId, signedAt', 'Each party signs separately'],
-              ['deliverable', 'projectId, title, status, dueDate', 'Status: pending | in_review | approved | revision_requested'],
-              ['comment', 'projectId, deliverableId?, userId, body', 'deliverableId nullable for general discussions'],
-              ['files', 'projectId, name, url, size, mimeType', 'Stored on Vercel Blob'],
-              ['activity_log', 'projectId, userId, type, metadata', '11 event types, JSONB metadata'],
-              ['notification', 'userId, projectId, type, message, read', 'Per-user, matches activity_log types'],
+              ['proposal', 'projectId, title, price, currency, status', 'Status: draft | sent | accepted | declined'],
+              ['proposal_line_items', 'proposalId, description, quantity, unitPrice, total', 'Line items converted to deliverables and payment milestones'],
+              ['deliverable', 'projectId, title, status, dueDate, submissionTitle, submissionUrl', 'Status: pending | in_review | approved | revision_requested'],
+              ['activity_log', 'projectId, userId, type, metadata', 'Includes payment_requested, payment_completed, milestone_created'],
             ]}
           />
-
-          <H3>Entity Relationship</H3>
-          <CodeBlock>{`Organization ─┬── has many → Project
-              │                 ├── has many → ProjectMember
-              │                 ├── has many → Deliverable ── has many → Comment
-              │                 ├── has many → Contract ── has many → Signature
-              │                 ├── has many → Files
-              │                 ├── has many → ActivityLog
-              │                 └── has many → Notification
-              │
-              └── has many → Member (org-level)
-                              └── belongs to → User`}</CodeBlock>
         </Section>
 
-        {/* ─── AUTH ─── */}
-        <Section id="auth" title="Authentication">
-          <P>Auth is handled by <Code>better-auth</Code> with the <Code>organization</Code> plugin.</P>
+        {/* ─── PAYMENT MILESTONES ─── */}
+        <Section id="payments" title="Payment Milestones Engine">
+          <P>
+            Scrunity includes a dedicated **Payment Milestones & Financial Tracking Engine** designed for agency revenue protection:
+          </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><strong className="text-foreground font-medium">Server-side:</strong> <Code>auth.api.getSession({'{ headers }'})</Code> — used in every server component/action</li>
-            <li><strong className="text-foreground font-medium">Client-side:</strong> <Code>authClient</Code> from <Code>better-auth/react</Code> — for <Code>signOut()</Code>, <Code>useSession()</Code></li>
-            <li><strong className="text-foreground font-medium">Provider:</strong> Google OAuth only (no email/password)</li>
-            <li><strong className="text-foreground font-medium">Route guard:</strong> Layout at <Code>projects/[projectId]/layout.tsx</Code> checks membership</li>
+            <li><strong className="text-foreground font-medium">Trigger Types:</strong> Upfront (100% or deposit), On Deliverable Approval, Specific Due Date, or Manual Request.</li>
+            <li><strong className="text-foreground font-medium">Automated Release Gate:</strong> When a client approves a deliverable via <Code>PATCH /api/deliverables</Code>, any linked milestone automatically flips from <Code>upcoming</Code> to <Code>due</Code>.</li>
+            <li><strong className="text-foreground font-medium">Direct Payment Verification:</strong> Agencies verify payments with method selection (UPI/GPay, Bank Transfer, Card, Cash) and enter optional transaction UTR numbers.</li>
           </ul>
-          <Callout>
-            There is no middleware.ts. Auth checks are done in individual layouts and server actions.
-          </Callout>
         </Section>
 
-        {/* ─── SERVER ACTIONS ─── */}
-        <Section id="actions" title="Server Actions">
-          <P>Most mutations have been migrated to API Routes. Only a few legacy actions might remain, but the standard is now REST-like endpoints using Axios.</P>
+        {/* ─── CONTRACT VAULT ─── */}
+        <Section id="contracts" title="Contract & E-Signature Vault">
+          <P>
+            The Contract Vault provides Apple-inspired inline document management with bi-directional upload rights:
+          </P>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
+            <li><strong className="text-foreground font-medium">Bi-Directional Uploads:</strong> Agency uploads SOW/MSA $\rightarrow$ Client signs; Client uploads NDA/NOC $\rightarrow$ Agency signs.</li>
+            <li><strong className="text-foreground font-medium">Cryptographic Audit Trail:</strong> Computes SHA-256 document hashes, logs IP address, user-agent, and timestamp for legal enforcement.</li>
+            <li><strong className="text-foreground font-medium">Morphing Tab Bar:</strong> Framer Motion tab sliding indicator for filtering document categories.</li>
+          </ul>
         </Section>
 
         {/* ─── API ─── */}
         <Section id="api" title="API Routes">
-          <P>All data mutations now go through API route handlers in <Code>src/app/api/</Code>. They follow REST patterns and return JSON.</P>
           <Table
             headers={['Route', 'Method', 'Purpose']}
             rows={[
-              ['/api/auth/[...all]', 'ALL', 'Better Auth catch-all (OAuth, session, org management)'],
-              ['/api/notifications', 'GET', 'Fetch unread notifications for current user'],
-              ['/api/notifications/read', 'POST', 'Mark one or all notifications as read'],
-              ['/api/projects', 'POST/PATCH/DELETE', 'Create, update (name/status), delete projects'],
-              ['/api/organizations', 'POST/PATCH', 'Create orgs, update branding & plans'],
-              ['/api/organizations/invites', 'POST/DELETE', 'Send org invites, revoke invites'],
-              ['/api/organizations/members', 'DELETE', 'Remove members from org'],
-              ['/api/comments', 'POST/DELETE', 'Add or remove comments'],
-              ['/api/deliverables', 'POST/PATCH', 'Create deliverable, update status'],
-              ['/api/deliverables/bulk', 'PATCH', 'Bulk update deliverables (drag-and-drop)'],
-              ['/api/proposals', 'POST/PATCH', 'Generate and update proposals'],
-              ['/api/contracts', 'POST/PATCH/DELETE', 'Upload, sign, request signatures, delete'],
-              ['/api/files', 'POST', 'Upload files'],
-              ['/api/projects/invites', 'POST/DELETE', 'Create or revoke project invites'],
-              ['/api/projects/invites/accept', 'POST', 'Accept project invite'],
-              ['/api/projects/invites/resend', 'POST', 'Resend project invite'],
-              ['/api/projects/members', 'DELETE', 'Remove project members'],
+              ['/api/milestones', 'GET/POST/PATCH/DELETE', 'Fetch, create, update, or delete payment milestones'],
+              ['/api/milestones/mark-paid', 'POST', 'Record manual payment verification & UTR reference note'],
+              ['/api/contracts', 'GET/POST/PATCH/DELETE', 'Upload agreements, fetch contracts, update status'],
+              ['/api/deliverables', 'POST/PATCH', 'Create deliverable, update status & trigger linked milestones'],
+              ['/api/proposals', 'POST/PATCH', 'Create proposal and convert line items to deliverables/milestones'],
+              ['/api/notifications', 'GET/POST', 'Fetch unread notifications & mark read'],
+              ['/api/projects', 'POST/PATCH/DELETE', 'Create, update, delete projects'],
             ]}
           />
-        </Section>
-
-        {/* ─── COMPONENTS ─── */}
-        <Section id="components" title="Component Architecture">
-          <P>Components are organized by feature domain, not by type.</P>
-          <H3>Deliverables (3 view modes)</H3>
-          <Table
-            headers={['Component', 'Description']}
-            rows={[
-              ['DeliverablesContainer', 'Client component — view toggle (List/Board/Timeline), persists to localStorage'],
-              ['DeliverableList', 'Card-based list with accordion comments'],
-              ['KanbanBoard', 'dnd-kit drag-and-drop board with granular KanbanColumn and KanbanCard'],
-              ['TimelineView', 'HTML/CSS Gantt chart with clickable TimelineBar + detail dialog'],
-              ['DeliverableActions', 'Status transition buttons (respects role permissions)'],
-              ['CreateDeliverableDialog', 'Form dialog for new deliverables'],
-            ]}
-          />
-
-          <H3>Proposals & Contracts</H3>
-          <Table
-            headers={['Component', 'Description']}
-            rows={[
-              ['ProposalBuilder', 'Agency view to assemble and price project proposals before signature'],
-              ['ProposalClientView', 'Client-facing proposal acceptance UI'],
-              ['ContractViewer', 'Displays the PDF document with embedded signatures'],
-            ]}
-          />
-
-          <H3>Navigation</H3>
-          <Table
-            headers={['Component', 'Description']}
-            rows={[
-              ['ProjectSidebar', 'Collapsible project navigation, state persisted to localStorage, uses Tooltips for collapsed state'],
-              ['MobileHeader', 'Sheet-based mobile navigation header'],
-            ]}
-          />
-
-          <H3>Key Patterns</H3>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><strong className="text-foreground font-medium">Server Components by default</strong> — pages fetch data directly from the DB</li>
-            <li><strong className="text-foreground font-medium">&quot;use client&quot; only when needed</strong> — interactivity, SWR, useState, event handlers</li>
-            <li><strong className="text-foreground font-medium">Optimistic updates</strong> — Kanban board updates locally then confirms with server</li>
-            <li><strong className="text-foreground font-medium">Role-based UI</strong> — actions show/hide based on <Code>memberRole</Code> prop</li>
-          </ul>
-        </Section>
-
-        {/* ─── NOTIFICATIONS ─── */}
-        <Section id="notifications" title="Notification System">
-          <P>Notifications are created alongside every <Code>logActivity()</Code> call. They are stored per-user and scoped to projects.</P>
-          <CodeBlock>{`// In any server action:
-await logActivity(projectId, userId, "deliverable_approved", { title });
-await createNotification(
-  recipientUserId,
-  projectId,
-  "deliverable_approved",
-  \`Your deliverable "\${title}" was approved\`
-);`}</CodeBlock>
-          <P>The sidebar polls <Code>/api/notifications</Code> every 30 seconds via SWR, and on window focus. Badge counts are computed client-side by filtering notification types per tab.</P>
         </Section>
 
         {/* ─── ENV ─── */}
@@ -357,13 +256,12 @@ await createNotification(
           <Table
             headers={['Variable', 'Required', 'Description']}
             rows={[
-              ['DATABASE_URL', 'Yes', 'Neon Postgres connection string'],
+              ['DATABASE_URL', 'Yes', 'Neon Serverless Postgres connection string'],
               ['GOOGLE_CLIENT_ID', 'Yes', 'Google OAuth client ID'],
               ['GOOGLE_CLIENT_SECRET', 'Yes', 'Google OAuth client secret'],
               ['BETTER_AUTH_SECRET', 'Yes', 'Session encryption secret'],
-              ['BETTER_AUTH_URL', 'No', 'Override base URL (auto-detected on Vercel)'],
               ['BLOB_READ_WRITE_TOKEN', 'Yes', 'Vercel Blob storage token'],
-              ['RESEND_API_KEY', 'Yes', 'Resend email API key'],
+              ['RESEND_API_KEY', 'Yes', 'Resend transactional email API key'],
             ]}
           />
         </Section>
@@ -377,56 +275,7 @@ await createNotification(
               ['npm run build', 'Production build'],
               ['npm run typecheck', 'tsc --noEmit (no output, just type checking)'],
               ['npm run lint', 'ESLint'],
-              ['npm run format', 'Prettier format all .ts/.tsx'],
-              ['npm run db:push', 'Push schema changes to Neon (no migration files)'],
-              ['npm run db:generate', 'Generate migration SQL (if needed)'],
-              ['npm run db:studio', 'Open Drizzle Studio (visual DB browser)'],
-            ]}
-          />
-        </Section>
-
-        {/* ─── CONVENTIONS ─── */}
-        <Section id="conventions" title="Conventions & Patterns">
-          <H3>File Naming</H3>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li>Components: <Code>kebab-case.tsx</Code> (e.g. <Code>kanban-board.tsx</Code>)</li>
-            <li>Server actions: <Code>kebab-case.ts</Code> in <Code>src/app/actions/</Code></li>
-            <li>Pages: <Code>page.tsx</Code> in the route segment directory</li>
-            <li>Layouts: <Code>layout.tsx</Code> — wrap child routes with shared UI</li>
-          </ul>
-
-          <H3>Styling Rules</H3>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><strong className="text-foreground font-medium">Shadows over borders</strong> — use layered <Code>box-shadow</Code> instead of <Code>border</Code></li>
-            <li><strong className="text-foreground font-medium">Concentric border radius</strong> — inner = outer − padding</li>
-            <li><strong className="text-foreground font-medium">Tabular numbers</strong> — <Code>tabular-nums</Code> on all dynamic counts</li>
-            <li><strong className="text-foreground font-medium">Scale on press</strong> — <Code>active:scale-[0.96]</Code> on clickable elements</li>
-            <li><strong className="text-foreground font-medium">Never transition: all</strong> — specify exact properties</li>
-            <li><strong className="text-foreground font-medium">Text wrapping</strong> — <Code>text-wrap: balance</Code> on headings, <Code>pretty</Code> on body</li>
-            <li><strong className="text-foreground font-medium">Expansive layouts</strong> — use <Code>max-w-7xl mx-auto</Code> for main content to gracefully fill horizontal space</li>
-            <li><strong className="text-foreground font-medium">13px body text</strong> — the app uses <Code>text-[13px]</Code> as the standard body size</li>
-          </ul>
-
-          <H3>Data Flow</H3>
-          <CodeBlock>{`Page (RSC)              → fetches data from DB via Drizzle
-  └── Client Component  → receives data as props
-        └── Server Action → mutates DB, logs activity, creates notification
-              └── revalidatePath() → refreshes the page`}</CodeBlock>
-
-          <H3>Role Permissions Matrix</H3>
-          <Table
-            headers={['Action', 'Owner', 'Client', 'Agency']}
-            rows={[
-              ['Create deliverables', '✓', '—', '—'],
-              ['Submit for review', '—', '✓', '—'],
-              ['Approve deliverables', '✓', '—', '—'],
-              ['Request revision', '✓', '—', '—'],
-              ['Upload contract', '✓', '—', '—'],
-              ['Sign contract', '✓', '✓', '—'],
-              ['Upload files', '✓', '✓', '—'],
-              ['Add comments', '✓', '✓', '—'],
-              ['Mark project complete', '✓', '—', '—'],
-              ['Manage settings', '✓', '—', '—'],
+              ['npm run db:push', 'Sync schema changes directly to Neon Postgres'],
             ]}
           />
         </Section>

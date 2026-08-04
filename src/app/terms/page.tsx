@@ -31,7 +31,7 @@ export default function TermsPage() {
             <section className="space-y-3">
               <h2 className="text-xl font-semibold text-foreground tracking-tight">1. Acceptance & Description of Service</h2>
               <p className="text-stone-400">
-                Scrunity ("the Service", hosted at <strong className="text-stone-200">beta.scrunity.com</strong>) is a client collaboration and revenue management platform for agencies, freelancers, and clients. By creating an account, accessing, or using the Service, you agree to be bound by these Terms of Service. If you do not agree, please do not access or use the Service.
+                Scrunity ("the Service", hosted at <strong className="text-stone-200">beta.scrunity.com</strong>) is a client collaboration, e-signature, and revenue protection platform for agencies, freelancers, and clients. By creating an account, accessing, or using the Service, you agree to be bound by these Terms of Service. If you do not agree, please do not access or use the Service.
               </p>
             </section>
 
@@ -39,10 +39,10 @@ export default function TermsPage() {
             <section className="space-y-3">
               <h2 className="text-xl font-semibold text-foreground tracking-tight">2. Merchant of Record & Billing Terms</h2>
               <p>
-                All online SaaS subscription billing (Free, Freelancer, Agency tiers) and milestone payment checkouts on Scrunity are powered, billed, and fulfilled by our Merchant of Record partner, <strong className="text-stone-100">Dodo Payments</strong>.
+                All online SaaS subscription plan billing (Free, Freelancer, Agency tiers) for Scrunity are powered, billed, and fulfilled by our Merchant of Record partner, <strong className="text-stone-100">Dodo Payments</strong>.
               </p>
               <ul className="list-disc pl-6 space-y-1.5 text-stone-400">
-                <li>Dodo Payments handles payment authorization, invoice generation, global sales tax/GST compliance, and currency settlement.</li>
+                <li>Dodo Payments handles payment authorization, invoice generation, global sales tax/GST compliance, and currency settlement for Scrunity SaaS subscriptions.</li>
                 <li>Subscriptions automatically renew monthly unless cancelled prior to the renewal date via Organization Settings.</li>
                 <li>Prices are displayed in USD or INR as specified during checkout.</li>
               </ul>
@@ -57,7 +57,7 @@ export default function TermsPage() {
               <ul className="list-disc pl-6 space-y-1.5 text-stone-400">
                 <li><strong className="text-stone-200">14-Day Money-Back Guarantee:</strong> If you are unsatisfied with a paid subscription plan within 14 days of your initial upgrade, contact <a href="mailto:support@scrunity.com" className="text-stone-200 underline underline-offset-4">support@scrunity.com</a> for a full refund.</li>
                 <li><strong className="text-stone-200">Subscription Cancellation:</strong> You can cancel your subscription at any time. Your access will remain active through the end of your current paid billing period.</li>
-                <li><strong className="text-stone-200">Milestone Payments:</strong> Client-to-agency milestone payments are governed by the specific project contract and deliverable acceptance terms agreed upon between the Agency and Client.</li>
+                <li><strong className="text-stone-200">Project Milestone Payments:</strong> Client-to-agency project milestone tracking is governed by the specific project contract and deliverable acceptance terms agreed upon directly between the Agency and Client.</li>
               </ul>
             </section>
 
@@ -65,7 +65,7 @@ export default function TermsPage() {
             <section className="space-y-3">
               <h2 className="text-xl font-semibold text-foreground tracking-tight">4. Electronic Signatures & Contracts</h2>
               <p className="text-stone-400">
-                Scrunity facilitates electronic signature execution for Statements of Work, NDAs, and project agreements. By executing a signature on Scrunity, you affirm that your electronic signature is <strong className="text-stone-200">intended to be legally binding and enforceable to the extent permitted by applicable law</strong>. You are solely responsible for ensuring that electronic execution satisfies statutory legal requirements in your jurisdiction.
+                Scrunity facilitates electronic signature execution for Statements of Work (SOW), NDAs, MSAs, NOCs, and project addendums uploaded by agencies or clients. By executing a signature on Scrunity, you affirm that your electronic signature is <strong className="text-stone-200">intended to be legally binding and enforceable to the extent permitted by applicable law</strong>. You are solely responsible for ensuring that electronic execution satisfies statutory legal requirements in your jurisdiction.
               </p>
             </section>
 
