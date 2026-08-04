@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
-export function ProposalClientView({ proposal, role }: { proposal: any, role: string }) {
+export function ProposalClientView({ proposal, role, onAccepted }: { proposal: any, role: string, onAccepted?: () => void }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; action: "accept" | "decline" | null }>({ isOpen: false, action: null });
@@ -24,6 +24,7 @@ export function ProposalClientView({ proposal, role }: { proposal: any, role: st
       await axios.patch('/api/proposals', { proposalId: proposal.id, action: confirmDialog.action });
       toast.success(`Proposal ${confirmDialog.action}ed successfully`);
       router.refresh();
+      if (onAccepted) onAccepted();
     } catch (err: any) {
       toast.error(err.response?.data?.error || `Failed to ${confirmDialog.action} proposal`);
     } finally {
