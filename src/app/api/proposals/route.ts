@@ -166,23 +166,47 @@ export async function PATCH(req: NextRequest) {
 
       await db.update(proposal).set({ status: "accepted", acceptedAt: new Date() }).where(eq(proposal.id, proposalId));
       
-      // Auto-create deliverables from line items
-      const { deliverable } = await import("@/db/schema");
+      // Auto-create deliverables AND payment milestones from line items
+      const { deliverable, paymentMilestone } = await import("@/db/schema");
       const lineItems = await db.query.proposalLineItems.findMany({
         where: eq(proposalLineItems.proposalId, proposalId)
       });
       
       if (lineItems.length > 0) {
-        const deliverablesData = lineItems.map(item => ({
-          id: crypto.randomUUID(),
-          projectId: existing.projectId,
-          title: item.description,
-          description: `Auto-generated from proposal "${existing.title}"`,
-          status: "pending" as any,
-          createdBy: session.user.id,
-          dueDate: null, // User will set this in the timeline
-        }));
-        await db.insert(deliverable).values(deliverablesData);
+        const deliverablesData = lineItems.map(item => {
+          const delivId = crypto.randomUUID();
+          const milestoneId = crypto.randomUUID();
+          return {
+            deliv: {
+              id: delivId,
+              projectId: existing.projectId,
+              title: item.description,
+              description: `Auto-generated from proposal "${existing.title}"`,
+              status: "pending" as const,
+              createdBy: session.user.id,
+              dueDate: null,
+            },
+            milestone: {
+              id: milestoneId,
+              projectId: existing.projectId,
+              proposalId: existing.id,
+              deliverableId: delivId,
+              title: `${item.description} Payment`,
+              description: `Payment released upon approval of "${item.description}"`,
+              amount: item.total,
+              currency: existing.currency || "INR",
+              triggerType: "on_approval" as const,
+              status: "upcoming" as const,
+              sortOrder: item.sortOrder,
+              createdBy: session.user.id,
+            }
+          };
+        });
+
+        await db.batch([
+          db.insert(deliverable).values(deliverablesData.map(d => d.deliv)),
+          db.insert(paymentMilestone).values(deliverablesData.map(d => d.milestone))
+        ]);
       }
       
       await logActivity({
@@ -191,7 +215,6 @@ export async function PATCH(req: NextRequest) {
         type: "proposal_accepted" as any,
         metadata: { proposalId: existing.id, title: existing.title }
       });
-
 
       return NextResponse.json({ success: true });
     }

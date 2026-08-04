@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
-export function ProposalBuilder({ projectId, initialData }: { projectId: string, initialData?: any }) {
+export function ProposalBuilder({ projectId, initialData, onComplete }: { projectId: string, initialData?: any, onComplete?: () => void }) {
   const router = useRouter();
   const [title, setTitle] = useState(initialData?.title || "Project Proposal");
   const [scopeSummary, setScopeSummary] = useState(initialData?.scopeSummary || "");
@@ -63,11 +63,12 @@ export function ProposalBuilder({ projectId, initialData }: { projectId: string,
         toast.success("Draft updated");
       } else {
         await axios.post('/api/proposals', payload);
-        toast.success("Draft created");
+        toast.success("Draft proposal created");
       }
       router.refresh();
+      if (onComplete) onComplete();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to save draft");
+      toast.error(err.response?.data?.error || "Failed to save proposal");
     } finally {
       setIsSubmitting(false);
     }

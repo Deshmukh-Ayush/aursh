@@ -3,6 +3,7 @@ import { db } from "@/utils/db";
 import { project, activityLog, user as userTable, proposal } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { ContractBanner } from "@/components/projects/contract-banner";
+import { ProjectOnboardingStepper } from "@/components/projects/overview/project-onboarding-stepper";
 import { ProjectOverviewHero } from "@/components/projects/overview/project-overview-hero";
 import { ProjectOverviewAttention } from "@/components/projects/overview/project-overview-attention";
 import { ProjectOverviewMomentumChart } from "@/components/projects/overview/project-overview-momentum-chart";
@@ -171,6 +172,14 @@ export default async function ProjectOverviewPage({
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
+      <ProjectOnboardingStepper
+        projectId={projectId}
+        hasProposal={!!latestProposal}
+        hasContract={!!activeContract}
+        hasDeliverables={totalCount > 0}
+        userRole={userRole}
+      />
+
       <ContractBanner
         projectId={projectId}
         status={contractStatus}
