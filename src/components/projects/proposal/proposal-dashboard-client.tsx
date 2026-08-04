@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Plus, FileText, Send, CheckCircle2, XCircle, Clock, Eye, Trash2 } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "vaul";
+import { ProposalTabFilter } from "./proposal-tab-filter";
+import { ProposalCard } from "./proposal-card";
 import { ProposalBuilder } from "./proposal-builder";
 import { ProposalClientView } from "./proposal-client-view";
 import axios from "axios";
@@ -57,45 +58,6 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "draft":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Clock className="w-3.5 h-3.5" /> Draft
-          </span>
-        );
-      case "sent":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            <Send className="w-3.5 h-3.5" /> Sent to Client
-          </span>
-        );
-      case "accepted":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Accepted
-          </span>
-        );
-      case "declined":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
-            <XCircle className="w-3.5 h-3.5" /> Declined
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const formatCurrency = (amount: number, currency: string = "INR") => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: currency || "INR",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const tabs = [
     { id: "all", label: "All Proposals", count: proposals.length },
     { id: "draft", label: "Drafts", count: proposals.filter((p) => p.status === "draft").length },
@@ -124,39 +86,8 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
         )}
       </div>
 
-      {/* Morphing Nav Filter Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-xl border border-border/40 w-fit max-w-full overflow-x-auto">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`relative px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="proposal-tab-pill"
-                  className="absolute inset-0 bg-background rounded-lg shadow-xs border border-border/60"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-2">
-                {tab.label}
-                <span
-                  className={`px-1.5 py-0.5 rounded-md text-[10px] tabular-nums ${
-                    isActive ? "bg-primary/15 text-primary font-bold" : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Composed Filter Tabs */}
+      <ProposalTabFilter activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />
 
       {/* Proposals List or Empty State */}
       {filteredProposals.length === 0 ? (
@@ -181,107 +112,21 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredProposals.map((prop) => {
-            const lineItemsCount = prop.lineItems?.length || 0;
-            return (
-              <div
-                key={prop.id}
-                className="group relative bg-card border border-border/50 rounded-xl p-5 hover:border-border transition-all hover:shadow-md space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {prop.title}
-                      </h3>
-                      {getStatusBadge(prop.status)}
-                    </div>
-                    {prop.scopeSummary && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 max-w-xl">{prop.scopeSummary}</p>
-                    )}
-                  </div>
-
-                  <div className="text-left sm:text-right shrink-0">
-                    <div className="text-lg font-bold text-foreground tabular-nums">
-                      {formatCurrency(prop.price, prop.currency)}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground font-medium">
-                      {lineItemsCount} line item{lineItemsCount !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Line Items Summary */}
-                {prop.lineItems && prop.lineItems.length > 0 && (
-                  <div className="bg-muted/40 rounded-lg p-3 border border-border/30 space-y-2">
-                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Included Scope & Deliverables
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-foreground">
-                      {prop.lineItems.slice(0, 4).map((item: any) => (
-                        <div key={item.id} className="flex items-center justify-between gap-2 bg-background/60 p-2 rounded-md border border-border/20">
-                          <span className="truncate text-muted-foreground font-medium">{item.description}</span>
-                          <span className="font-semibold tabular-nums shrink-0">
-                            {formatCurrency(item.total, prop.currency)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {prop.lineItems.length > 4 && (
-                      <p className="text-[11px] text-muted-foreground text-center pt-1 font-medium">
-                        +{prop.lineItems.length - 4} more item{prop.lineItems.length - 4 !== 1 ? "s" : ""}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Card Footer Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/30 text-xs">
-                  <span className="text-[11px] text-muted-foreground">
-                    Created {new Date(prop.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedProposal(prop);
-                        setIsPreviewOpen(true);
-                      }}
-                      className="h-8 text-xs px-3 active:scale-[0.96] transition-transform"
-                    >
-                      <Eye className="w-3.5 h-3.5 mr-1.5" /> View Proposal
-                    </Button>
-
-                    {prop.status === "draft" && (role === "owner" || role === "agency") && (
-                      <>
-                        <Button
-                          size="sm"
-                          disabled={isSending === prop.id}
-                          onClick={() => handleSendProposal(prop.id)}
-                          className="h-8 text-xs px-3 bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.96] transition-transform"
-                        >
-                          <Send className="w-3.5 h-3.5 mr-1.5" />
-                          {isSending === prop.id ? "Sending..." : "Send to Client"}
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={isDeleting === prop.id}
-                          onClick={() => handleDeleteProposal(prop.id)}
-                          className="h-8 text-xs px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 active:scale-[0.96] transition-transform"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filteredProposals.map((prop) => (
+            <ProposalCard
+              key={prop.id}
+              proposal={prop}
+              role={role}
+              isSending={isSending === prop.id}
+              isDeleting={isDeleting === prop.id}
+              onView={(p) => {
+                setSelectedProposal(p);
+                setIsPreviewOpen(true);
+              }}
+              onSend={handleSendProposal}
+              onDelete={handleDeleteProposal}
+            />
+          ))}
         </div>
       )}
 

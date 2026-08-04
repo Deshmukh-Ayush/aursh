@@ -163,7 +163,7 @@ export default async function DocsPage() {
 │   ├── projects/
 │   │   ├── payments/           # PaymentsViewClient, KPI bar, verification modal
 │   │   ├── contracts/          # ContractVaultClient, signature modal, upload dialog
-│   │   ├── deliverables/       # DeliverableList, KanbanBoard, TimelineView
+│   │   ├── deliverables/       # DeliverableList, KanbanBoard views
 │   │   ├── discussions/        # CommentThread, CommentForm
 │   │   └── proposal/           # ProposalBuilder, ProposalClientView
 │

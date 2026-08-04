@@ -77,7 +77,7 @@ export function ProposalBuilder({
 
     setIsSubmitting(true);
     const validUntil = new Date();
-    validUntil.setDate(validUntil.setDate() + parseInt(validityDays));
+    validUntil.setDate(validUntil.getDate() + parseInt(validityDays));
 
     const payload = {
       projectId,
