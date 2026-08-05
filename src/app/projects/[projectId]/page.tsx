@@ -65,7 +65,7 @@ export default async function ProjectOverviewPage({
 
   // `js-combine-iterations`: single pass for all deliverable metrics
   let approvedCount = 0;
-  let totalCount = proj.deliverables.length;
+  const totalCount = proj.deliverables.length;
   const attentionItems: typeof proj.deliverables = [];
   let nextDeadline: { title: string; date: string } | null = null;
   const now = Date.now();

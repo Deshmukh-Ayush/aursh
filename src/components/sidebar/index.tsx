@@ -1,18 +1,21 @@
-// @ts-nocheck
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-import { motion, useReducedMotion } from "motion/react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { ProfileMenu } from "./profile-menu";
 import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { useProjectUnreadCounts } from "@/hooks/use-project-unreadcounts";
 import { mainNavItems, secondaryNavItems } from "@/config/project-sidebar-config";
-import { SidebarNavItem } from "./nav-items";
 import { SidebarBrand } from "./brand";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, LogOut } from "lucide-react";
-import Image from "next/image";
-import React from "react";
+import {
+  SidebarContext,
+  NavItem,
+  NavItemLabel,
+  NavItemBadge,
+} from "./nav-items";
+import { CaretUpDownIcon } from "@phosphor-icons/react";
 
 type OrgLike = {
   plan?: string | null;
@@ -23,33 +26,25 @@ type OrgLike = {
 type ProjectSidebarProps = {
   projectId: string;
   projectName: string;
-  role: string;
   isMobile?: boolean;
   org?: OrgLike;
 };
 
 const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 
-function CollapsibleLabel({
+function SectionHeader({
   isCollapsed,
-  className,
   children,
 }: {
   isCollapsed: boolean;
-  className?: string;
   children: React.ReactNode;
 }) {
+  if (isCollapsed) return null; 
+
   return (
-    <span
-      className={cn(
-        "overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-200",
-        isCollapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-40",
-        className,
-      )}
-      style={{ transitionTimingFunction: EASE_OUT }}
-    >
+    <h3 className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-tight text-foreground/60 select-none">
       {children}
-    </span>
+    </h3>
   );
 }
 
@@ -60,153 +55,133 @@ export function ProjectSidebar({
   org,
 }: ProjectSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const basePath = `/projects/${projectId}`;
-  const { isCollapsed, isMounted, toggle } = useSidebarCollapse(false);
+  const { isCollapsed } = useSidebarCollapse(false);
   const { getUnreadCount } = useProjectUnreadCounts(projectId);
   const canWhitelabel = org?.plan === "agency";
-  const shouldReduceMotion = useReducedMotion();
 
-  const handleLogout = async () => {
-    await authClient.signOut();
-    router.push("/sign-in");
-  };
 
-  const renderNavItem = (item: (typeof mainNavItems)[number]) => {
-    const fullHref = `${basePath}${item.href}`;
-    const isActive =
-      item.href === "" ? pathname === fullHref : pathname.startsWith(fullHref);
-
-    const updateCount = getUnreadCount(item.href);
-
-    return (
-      <SidebarNavItem
-        key={item.name}
-        item={item}
-        fullHref={fullHref}
-        isActive={isActive}
-        isCollapsed={isCollapsed}
-        showTooltip={isCollapsed && isMounted}
-        updateCount={updateCount}
-      />
-    );
-  };
 
   return (
-    <div
-      className={cn(
-        "shrink-0 z-10 bg-background",
-        isMobile
-          ? "w-full block min-h-svh"
-          : cn(
-              "hidden md:flex sticky top-0 h-svh border-r border-border/40 overflow-hidden",
-              "transition-[width] duration-200",
-              isCollapsed ? "w-18" : "w-60",
-            ),
-      )}
-      style={!isMobile ? { transitionTimingFunction: EASE_OUT } : undefined}
-    >
-      <div className="flex h-full w-full flex-col overflow-hidden">
-        {/* Top header: brand + fixed toggle button */}
-        <div className="flex items-center justify-between gap-7 px-4 h-14 shrink-0 border-b border-transparent">
-          <SidebarBrand
-            projectName={projectName}
-            org={org}
-            canWhitelabel={canWhitelabel}
-            isCollapsed={isCollapsed}
-          />
+    <SidebarContext.Provider value={{ isCollapsed }}>
+      <aside
+        aria-label="Project Sidebar"
+        className={cn(
+          "z-10 shrink-0 bg-background",
+          isMobile
+            ? "block min-h-svh w-full"
+            : cn(
+                "sticky top-0 hidden h-svh overflow-hidden border-r border-border/40 md:flex",
+                "transition-[width] duration-200 py-2",
+                isCollapsed ? "w-18" : "w-63"
+              )
+        )}
+        style={!isMobile ? { transitionTimingFunction: EASE_OUT } : undefined}
+      >
+        <div className="flex h-full w-full flex-col overflow-hidden">
 
-          {!isMobile && (
-            <button
-              onClick={toggle}
+
+
+          {/* Header */}
+          <div className="flex h-14 shrink-0 items-center justify-between gap-4 px-4 cursor-pointer">
+            <SidebarBrand
+              projectName={projectName}
+              org={org}
+              canWhitelabel={canWhitelabel}
+            />
+            <CaretUpDownIcon size={18} />
+          </div>
+
+
+
+
+
+          {/* Navigation Sections */}
+          <nav
+            aria-label="Main Navigation"
+            className="custom-scrollbar flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-3 py-6"
+          >
+            {/* Workspace Group */}
+            <div>
+              <SectionHeader isCollapsed={isCollapsed}>Workspace</SectionHeader>
+              <ul role="list" className="space-y-0.5">
+                {mainNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const fullHref = `${basePath}${item.href}`;
+                  const isActive =
+                    item.href === "" ? pathname === fullHref : pathname.startsWith(fullHref);
+                  const unreadCount = getUnreadCount(item.href);
+
+                  return (
+                    <li key={item.name}>
+                      <NavItem asChild isActive={isActive} title={item.name}>
+                        <Link href={fullHref}>
+                          <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+                          <NavItemLabel>{item.name}</NavItemLabel>
+                          <NavItemBadge count={unreadCount} />
+                        </Link>
+                      </NavItem>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* Secondary Group */}
+            <div className="mt-6">
+              <SectionHeader isCollapsed={isCollapsed}>More</SectionHeader>
+              <ul role="list" className="space-y-0.5">
+                {secondaryNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const fullHref = `${basePath}${item.href}`;
+                  const isActive = pathname.startsWith(fullHref);
+                  const unreadCount = getUnreadCount(item.href);
+
+                  return (
+                    <li key={item.name}>
+                      <NavItem asChild isActive={isActive} title={item.name}>
+                        <Link href={fullHref}>
+                          <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+                          <NavItemLabel>{item.name}</NavItemLabel>
+                          <NavItemBadge count={unreadCount} />
+                        </Link>
+                      </NavItem>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* Logout Action */}
+            <div className="mt-auto pt-4">
+              <ProfileMenu />
+            </div>
+          </nav>
+
+          {/* Footer Branding */}
+          {!canWhitelabel && (
+            <div
               className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                "hover:bg-muted text-muted-foreground hover:text-foreground",
-                "transition-[background-color,color,transform] duration-150 active:scale-[0.97]",
+                "shrink-0 border-t border-border/40 transition-[padding] duration-200",
+                isCollapsed ? "p-2" : "px-4 py-3"
               )}
-              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <motion.span
-                animate={{ rotate: shouldReduceMotion ? 0 : isCollapsed ? 180 : 0 }}
-                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </motion.span>
-            </button>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 flex flex-col custom-scrollbar">
-          <div className="space-y-0.5">
-            <CollapsibleLabel
-              isCollapsed={isCollapsed}
-              className="block px-2.5 text-[10px] font-semibold text-foreground/80 uppercase tracking-[0.08em] mb-1.5 select-none"
-            >
-              Workspace
-            </CollapsibleLabel>
-            {mainNavItems.map(renderNavItem)}
-          </div>
-
-          <div className="space-y-0.5 mt-6">
-            <CollapsibleLabel
-              isCollapsed={isCollapsed}
-              className="block px-2.5 text-[10px] font-semibold text-foreground/80 uppercase tracking-[0.08em] mb-1.5 select-none"
-            >
-              More
-            </CollapsibleLabel>
-            {secondaryNavItems.map(renderNavItem)}
-          </div>
-
-          <div className="mt-auto pt-4 space-y-1">
-            <button
-              className={cn(
-                "flex h-8 items-center gap-2.5 rounded-md text-[13px] text-muted-foreground/70",
-                "hover:text-red-500 hover:bg-red-500/6 transition-colors active:scale-[0.97]",
-                isCollapsed
-                  ? "justify-center w-8 px-0 mx-auto"
-                  : "w-full px-2.5",
-              )}
-              onClick={handleLogout}
-              title={isCollapsed ? "Log out" : undefined}
-              aria-label="Log out"
-            >
-              <LogOut className="h-3.75 w-3.75 shrink-0" />
-              <CollapsibleLabel isCollapsed={isCollapsed} className="truncate">
-                Log out
-              </CollapsibleLabel>
-            </button>
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            "shrink-0 border-t border-border/40 transition-[padding] duration-200",
-            isCollapsed ? "p-2" : "px-4 py-3",
-          )}
-          style={{ transitionTimingFunction: EASE_OUT }}
-        >
-          <div className="flex items-center justify-between">
-            {!canWhitelabel && (
-              <CollapsibleLabel
-                isCollapsed={isCollapsed}
-                className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40 select-none mx-auto"
-              >
-                <span className="flex items-center gap-1.5 whitespace-nowrap">
+              {!isCollapsed && (
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40 select-none">
                   <span>Powered by</span>
                   <Image
-                    width={100}
-                    height={100}
+                    width={80}
+                    height={20}
                     src="/logo/scrunity_logo_svg.svg"
                     alt="Scrunity"
                     className="h-3 w-auto object-contain dark:invert opacity-60"
                   />
-                </span>
-              </CollapsibleLabel>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </aside>
+    </SidebarContext.Provider>
   );
 }
