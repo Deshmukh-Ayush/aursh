@@ -66,7 +66,6 @@ export default async function ProjectLayout({
       <ProjectSidebar 
         projectId={projectId} 
         projectName={proj.name} 
-        role={role} 
         org={orgSafe}
       />
       <main className="flex-1 flex flex-col min-w-0">
