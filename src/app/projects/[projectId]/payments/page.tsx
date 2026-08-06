@@ -11,7 +11,7 @@ import { eq, and, asc, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { PaymentsViewClient, MilestoneWithDetails } from "@/components/projects/payments/payments-view-client";
+import { PaymentsViewClient, MilestoneWithDetails } from "@/components/projects/payments";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
