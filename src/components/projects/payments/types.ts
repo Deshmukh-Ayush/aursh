@@ -1,29 +1,6 @@
-export type MilestoneWithDetails = {
-  id: string;
-  projectId: string;
-  proposalId: string | null;
-  deliverableId: string | null;
-  deliverableTitle?: string | null;
-  title: string;
-  description: string | null;
-  amount: number;
-  currency: string;
-  triggerType: "upfront" | "on_approval" | "on_date" | "manual";
-  dueDate: Date | null;
-  status: "upcoming" | "due" | "overdue" | "paid" | "waived";
-  createdAt: Date;
-};
+import type { MilestoneWithDetails, PaymentRecord } from "@/store/types";
 
-export type PaymentRecord = {
-  id: string;
-  milestoneId: string;
-  amount: number;
-  currency: string;
-  paymentMethod: string | null;
-  referenceNote?: string | null;
-  status: string;
-  paidAt: Date | null;
-};
+export type { MilestoneWithDetails, PaymentRecord } from "@/store/types";
 
 export type PaymentsViewClientProps = {
   projectId: string;

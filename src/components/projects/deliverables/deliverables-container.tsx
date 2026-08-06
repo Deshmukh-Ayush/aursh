@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { LayoutList, LayoutGrid } from "lucide-react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { DeliverableList } from "./deliverable-list";
 import { DeliverableItem } from "./types";
+import { useUIStore, DeliverableViewMode } from "@/store/ui-store";
 
 const KanbanBoard = dynamic(() => import("./kanban-board").then((mod) => mod.KanbanBoard), { ssr: false });
 
@@ -27,23 +27,8 @@ export function DeliverablesContainer({
   projectId: string;
   userId: string;
 }) {
-  const [viewMode, setViewMode] = useState<"list" | "board">("list");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("scrunity_deliverables_view");
-    if (saved === "board" || saved === "list") {
-      setViewMode(saved);
-    }
-  }, []);
-
-  const toggleView = (mode: "list" | "board") => {
-    setViewMode(mode);
-    localStorage.setItem("scrunity_deliverables_view", mode);
-  };
-
-  if (!mounted) return null;
+  const viewMode = useUIStore((state) => state.deliverableViewMode);
+  const setDeliverableViewMode = useUIStore((state) => state.setDeliverableViewMode);
 
   return (
     <div className="space-y-6">
@@ -55,7 +40,7 @@ export function DeliverablesContainer({
             return (
               <button
                 key={mode.id}
-                onClick={() => toggleView(mode.id)}
+                onClick={() => setDeliverableViewMode(mode.id as DeliverableViewMode)}
                 className={`relative px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
                   isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}

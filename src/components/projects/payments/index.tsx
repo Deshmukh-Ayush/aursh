@@ -1,6 +1,5 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -11,10 +10,11 @@ import { MilestonesEmptyState } from "./milestones-empty-state";
 import { MilestoneItem } from "./milestone-item";
 import { PaymentConfirmModal } from "./payment-confirm-modal";
 import { CreateMilestoneModal } from "./create-milestone-modal";
+import { useUIStore, PaymentsTabKey } from "@/store/ui-store";
+import { usePaymentStore } from "@/store/payment-store";
 import type {
   MilestoneWithDetails,
   PaymentsTab,
-  PaymentsTabKey,
   PaymentsViewClientProps,
 } from "./types";
 
@@ -34,26 +34,17 @@ export function PaymentsViewClient({
   userRole,
   deliverablesList,
 }: PaymentsViewClientProps) {
-  const [activeTab, setActiveTab] = useState<PaymentsTabKey>("all");
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [payModalMilestone, setPayModalMilestone] = useState<MilestoneWithDetails | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<string>("upi");
-  const [referenceNote, setReferenceNote] = useState<string>("");
-
-  // Form states
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("INR");
-  const [triggerType, setTriggerType] = useState<string>("manual");
-  const [selectedDeliverableId, setSelectedDeliverableId] = useState<string>("");
-  const [dueDate, setDueDate] = useState("");
-
   const router = useRouter();
 
-  const isAgency = userRole === "owner" || userRole === "agency";
+  const activeTab = useUIStore((state) => state.activePaymentTab);
+  const setActiveTab = useUIStore((state) => state.setActivePaymentTab);
+  const setCreateMilestoneOpen = useUIStore((state) => state.setCreateMilestoneOpen);
 
+  const setPayModalMilestone = usePaymentStore((state) => state.setPayModalMilestone);
+  const setSelectedMethod = usePaymentStore((state) => state.setSelectedMethod);
+  const setReferenceNote = usePaymentStore((state) => state.setReferenceNote);
+
+  const isAgency = userRole === "owner" || userRole === "agency";
   const paymentRecordMap = new Map(payments.map((p) => [p.milestoneId, p]));
 
   const totalProjectValue = milestones.reduce((sum, m) => sum + m.amount, 0);
@@ -61,7 +52,9 @@ export function PaymentsViewClient({
     .filter((m) => m.status === "paid")
     .reduce((sum, m) => sum + m.amount, 0);
   const totalOutstanding = totalProjectValue - totalPaid;
-  const overdueCount = milestones.filter((m) => m.status === "overdue" || (m.status === "due" && m.dueDate && new Date(m.dueDate) < new Date())).length;
+  const overdueCount = milestones.filter(
+    (m) => m.status === "overdue" || (m.status === "due" && m.dueDate && new Date(m.dueDate) < new Date())
+  ).length;
 
   const paidPercentage = totalProjectValue > 0 ? Math.round((totalPaid / totalProjectValue) * 100) : 0;
 
@@ -81,80 +74,10 @@ export function PaymentsViewClient({
     return true;
   });
 
-  const resetCreateForm = () => {
-    setTitle("");
-    setDescription("");
-    setAmount("");
-    setCurrency("INR");
-    setTriggerType("manual");
-    setSelectedDeliverableId("");
-    setDueDate("");
-  };
-
-  const handleCreateMilestone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const parsedAmount = Math.round(parseFloat(amount) * 100);
-      const res = await axios.post("/api/milestones", {
-        projectId,
-        title,
-        description,
-        amount: parsedAmount,
-        currency,
-        triggerType,
-        deliverableId: selectedDeliverableId || null,
-        dueDate: dueDate || null,
-      });
-
-      if (res.data.success) {
-        toast.success("Milestone created");
-        setIsAddOpen(false);
-        resetCreateForm();
-        router.refresh();
-      }
-    } catch (err: unknown) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || "Failed to create milestone"
-        : "Failed to create milestone";
-      toast.error(message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleOpenPaymentModal = (milestone: MilestoneWithDetails) => {
     setPayModalMilestone(milestone);
     setSelectedMethod("upi");
     setReferenceNote("");
-  };
-
-  const handleConfirmPayment = async () => {
-    if (!payModalMilestone) return;
-    setIsSubmitting(true);
-
-    try {
-      const res = await axios.post("/api/milestones/mark-paid", {
-        milestoneId: payModalMilestone.id,
-        paymentMethod: selectedMethod,
-        referenceNote,
-      });
-
-      if (res.data.success) {
-        toast.success("Payment marked as received");
-        setPayModalMilestone(null);
-        setReferenceNote("");
-        router.refresh();
-      }
-    } catch (err: unknown) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || "Failed to confirm payment"
-        : "Failed to confirm payment";
-      toast.error(message);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleDeleteMilestone = async (milestoneId: string) => {
@@ -175,26 +98,29 @@ export function PaymentsViewClient({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
-
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/40">
         <div>
-          <h1 className="text-[20px] font-semibold tracking-tight text-foreground text-balance">
-            Payments
+          <h1 className="text-xl font-bold tracking-tight text-foreground text-balance">
+            Payments & Milestones
           </h1>
-          
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Track project financial health, release milestone payments, and record transaction receipts.
+          </p>
         </div>
 
         {isAgency && (
           <button
-            onClick={() => setIsAddOpen(true)}
-            className="active:scale-[0.96] transition-transform duration-150 h-9 px-4 rounded-full bg-foreground text-background font-medium text-[13px] shadow-xs hover:opacity-90 flex items-center gap-2 self-start sm:self-auto"
+            onClick={() => setCreateMilestoneOpen(true)}
+            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-xl bg-primary text-primary-foreground font-medium text-xs shadow-md hover:bg-primary/90 flex items-center gap-1.5 self-start sm:self-auto"
           >
             <Plus className="w-4 h-4 stroke-2" />
-            New Milestone
+            <span>New Milestone</span>
           </button>
         )}
       </div>
 
+      {/* Unified Metric Hero Bar */}
       <PaymentsSummaryCards
         projectValue={totalProjectValue}
         collected={totalPaid}
@@ -205,20 +131,22 @@ export function PaymentsViewClient({
         formatMoney={formatMoney}
       />
 
+      {/* Tab Filter */}
       <PaymentsTabs
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
+        onTabChange={(tab: PaymentsTabKey) => setActiveTab(tab)}
         milestones={milestones}
         tabs={TABS}
       />
 
+      {/* Milestones List or Empty State */}
       {filteredMilestones.length === 0 ? (
         <MilestonesEmptyState
           isAgency={isAgency}
-          onCreateMilestone={() => setIsAddOpen(true)}
+          onCreateMilestone={() => setCreateMilestoneOpen(true)}
         />
       ) : (
-        <div className="rounded-[20px] border border-border/40 bg-card overflow-hidden divide-y divide-border/30 shadow-xs">
+        <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 shadow-xs">
           {filteredMilestones.map((milestone, index) => (
             <MilestoneItem
               key={milestone.id}
@@ -234,39 +162,11 @@ export function PaymentsViewClient({
         </div>
       )}
 
-      <PaymentConfirmModal
-        milestone={payModalMilestone}
-        selectedMethod={selectedMethod}
-        referenceNote={referenceNote}
-        isSubmitting={isSubmitting}
-        onClose={() => setPayModalMilestone(null)}
-        onMethodChange={setSelectedMethod}
-        onReferenceChange={setReferenceNote}
-        onConfirm={handleConfirmPayment}
-        formatMoney={formatMoney}
-      />
+      {/* Confirm Payment Drawer */}
+      <PaymentConfirmModal formatMoney={formatMoney} />
 
-      <CreateMilestoneModal
-        isOpen={isAddOpen}
-        isSubmitting={isSubmitting}
-        title={title}
-        description={description}
-        amount={amount}
-        currency={currency}
-        triggerType={triggerType}
-        selectedDeliverableId={selectedDeliverableId}
-        dueDate={dueDate}
-        deliverablesList={deliverablesList}
-        onClose={() => setIsAddOpen(false)}
-        onTitleChange={setTitle}
-        onDescriptionChange={setDescription}
-        onAmountChange={setAmount}
-        onCurrencyChange={setCurrency}
-        onTriggerTypeChange={setTriggerType}
-        onDeliverableChange={setSelectedDeliverableId}
-        onDueDateChange={setDueDate}
-        onSubmit={handleCreateMilestone}
-      />
+      {/* Create Milestone Drawer */}
+      <CreateMilestoneModal projectId={projectId} deliverablesList={deliverablesList} />
     </div>
   );
 }

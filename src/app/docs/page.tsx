@@ -114,6 +114,7 @@ export default async function DocsPage() {
               ['ORM', 'Drizzle ORM', 'Schema in src/db/schema.ts, drizzle-kit push'],
               ['Auth', 'Better Auth', 'Google OAuth + organization plugin'],
               ['SaaS Merchant of Record', 'Dodo Payments', 'MoR for Scrunity SaaS subscriptions'],
+              ['State Management', 'Zustand', 'Store architecture in src/store/ with persist middleware'],
               ['Animations', 'Framer Motion', 'Apple/Emil spring animations & morphing tabs'],
               ['Storage', 'Vercel Blob', 'For PDF contracts and project file uploads'],
               ['Email', 'Resend', 'Transactional emails for invites and activity notifications'],
@@ -142,7 +143,7 @@ export default async function DocsPage() {
 │   │   ├── page.tsx            # Overview (Financials card, activity feed)
 │   │   ├── payments/           # Financial KPI cards, milestone tracking & verification
 │   │   ├── contract/           # Dual Contract Vault, e-signatures, preview
-│   │   ├── deliverables/       # List, Kanban, and Timeline Gantt views
+│   │   ├── deliverables/       # List & Kanban views
 │   │   ├── files/              # File uploads & storage
 │   │   ├── discussions/        # Threaded comments
 │   │   ├── activity/           # Full activity log
@@ -157,6 +158,13 @@ export default async function DocsPage() {
 │   │   ├── notifications/      # GET unread, POST mark-read
 │   │   ├── projects/           # Projects API CRUD & Members/Invites
 │   │   └── organizations/      # Orgs API CRUD & Members/Invites
+│
+├── store/                      # Zustand State Management Architecture
+│   ├── types.ts                # Strict domain interfaces (zero any)
+│   ├── ui-store.ts             # Drawers, modals & tab filters state
+│   ├── proposal-store.ts       # Proposal draft & line items state
+│   ├── payment-store.ts        # Payment milestones & UTR reference state
+│   └── deliverable-store.ts    # Deliverables & board drag-and-drop state
 │
 ├── components/
 │   ├── project-sidebar.tsx     # Project sidebar nav with Payments link

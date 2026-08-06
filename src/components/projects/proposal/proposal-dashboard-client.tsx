@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Drawer } from "vaul";
 import { ProposalTabFilter } from "./proposal-tab-filter";
 import { ProposalCard } from "./proposal-card";
-import { ProposalBuilder } from "./proposal-builder";
-import { ProposalClientView } from "./proposal-client-view";
+import { ProposalBuilderDrawer } from "./proposal-builder-drawer";
+import { ProposalPreviewDrawer } from "./proposal-preview-drawer";
+import { useUIStore, ProposalTabKey } from "@/store/ui-store";
+import { useProposalStore } from "@/store/proposal-store";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -20,10 +21,12 @@ interface ProposalDashboardClientProps {
 
 export function ProposalDashboardClient({ projectId, proposals, role }: ProposalDashboardClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"all" | "draft" | "sent" | "accepted" | "declined">("all");
-  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState<any | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const activeTab = useUIStore((state) => state.activeProposalTab);
+  const setActiveTab = useUIStore((state) => state.setActiveProposalTab);
+  const setProposalBuilderOpen = useUIStore((state) => state.setProposalBuilderOpen);
+  const setProposalPreviewOpen = useUIStore((state) => state.setProposalPreviewOpen);
+  const setSelectedProposal = useProposalStore((state) => state.setSelectedProposal);
+
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isSending, setIsSending] = useState<string | null>(null);
 
@@ -78,7 +81,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
         </div>
         {(role === "owner" || role === "agency") && (
           <Button
-            onClick={() => setIsBuilderOpen(true)}
+            onClick={() => setProposalBuilderOpen(true)}
             className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md font-medium text-xs h-9 px-4 active:scale-[0.96] transition-transform flex items-center gap-2 shrink-0"
           >
             <Plus className="w-4 h-4" /> Build New Proposal
@@ -87,7 +90,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
       </div>
 
       {/* Composed Filter Tabs */}
-      <ProposalTabFilter activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />
+      <ProposalTabFilter activeTab={activeTab} onTabChange={(tab: ProposalTabKey) => setActiveTab(tab)} tabs={tabs} />
 
       {/* Proposals List or Empty State */}
       {filteredProposals.length === 0 ? (
@@ -103,7 +106,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
           </p>
           {(role === "owner" || role === "agency") && (
             <Button
-              onClick={() => setIsBuilderOpen(true)}
+              onClick={() => setProposalBuilderOpen(true)}
               className="mt-5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-9 px-4 font-medium active:scale-[0.96] transition-transform"
             >
               <Plus className="w-3.5 h-3.5 mr-1.5" /> Build First Proposal
@@ -121,7 +124,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
               isDeleting={isDeleting === prop.id}
               onView={(p) => {
                 setSelectedProposal(p);
-                setIsPreviewOpen(true);
+                setProposalPreviewOpen(true);
               }}
               onSend={handleSendProposal}
               onDelete={handleDeleteProposal}
@@ -130,46 +133,9 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
         </div>
       )}
 
-      {/* Build Proposal Drawer (Vaul Bottom-to-Top) */}
-      <Drawer.Root open={isBuilderOpen} onOpenChange={setIsBuilderOpen}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 transition-opacity" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 max-h-[92vh] z-50 flex flex-col rounded-t-[24px] bg-background border-t border-border/40 shadow-2xl overflow-hidden focus:outline-hidden">
-            <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted-foreground/30 my-3" />
-            <div className="overflow-y-auto px-4 sm:px-8 pb-10 pt-2 max-w-4xl mx-auto w-full flex-1">
-              <Drawer.Title className="text-xl font-bold text-foreground">Build Project Proposal</Drawer.Title>
-              <Drawer.Description className="text-xs text-muted-foreground mb-6">
-                Define line items & scope for this project. Line items will automatically become deliverables & payment milestones upon client acceptance.
-              </Drawer.Description>
-              <ProposalBuilder projectId={projectId} onComplete={() => setIsBuilderOpen(false)} />
-            </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
-
-      {/* Preview Proposal Drawer (Vaul Bottom-to-Top) */}
-      <Drawer.Root open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 transition-opacity" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 max-h-[92vh] z-50 flex flex-col rounded-t-[24px] bg-background border-t border-border/40 shadow-2xl overflow-hidden focus:outline-hidden">
-            <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-muted-foreground/30 my-3" />
-            <div className="overflow-y-auto px-4 sm:px-8 pb-10 pt-2 max-w-4xl mx-auto w-full flex-1">
-              <Drawer.Title className="sr-only">Proposal Details</Drawer.Title>
-              <Drawer.Description className="sr-only">View project proposal details and line items</Drawer.Description>
-              {selectedProposal && (
-                <ProposalClientView
-                  proposal={selectedProposal}
-                  role={role}
-                  onAccepted={() => {
-                    setIsPreviewOpen(false);
-                    router.refresh();
-                  }}
-                />
-              )}
-            </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+      {/* Modularized Builder & Preview Drawers */}
+      <ProposalBuilderDrawer projectId={projectId} />
+      <ProposalPreviewDrawer role={role} />
     </div>
   );
 }
