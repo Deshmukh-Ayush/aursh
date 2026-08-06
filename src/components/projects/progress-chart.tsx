@@ -33,7 +33,7 @@ export function ProgressChart({ approved, total }: { approved: number, total: nu
             color: "hsl(var(--muted))",
           },
         }}
-        className="h-full w-full max-w-[160px]"
+        className="h-full w-full max-w-40"
       >
         <PieChart>
           <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />

@@ -34,7 +34,6 @@ export function ProjectOverviewHero({
   nextDeadline,
   proposal,
   contract,
-  userRole,
 }: ProjectOverviewHeroProps) {
   // Value KPI logic
   let valueLabel = "Project Value";

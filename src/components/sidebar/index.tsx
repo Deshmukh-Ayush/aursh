@@ -1,51 +1,54 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { ProfileMenu } from "./profile-menu";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { useProjectUnreadCounts } from "@/hooks/use-project-unreadcounts";
-import { mainNavItems, secondaryNavItems } from "@/config/project-sidebar-config";
-import { SidebarBrand } from "./brand";
-import { cn } from "@/lib/utils";
+import Link from "next/link"
+import Image from "next/image"
+import { usePathname } from "next/navigation"
+import { ProfileMenu } from "./profile-menu"
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse"
+import { useProjectUnreadCounts } from "@/hooks/use-project-unreadcounts"
+import {
+  mainNavItems,
+  secondaryNavItems,
+} from "@/config/project-sidebar-config"
+import { SidebarBrand } from "./brand"
+import { cn } from "@/lib/utils"
 import {
   SidebarContext,
   NavItem,
   NavItemLabel,
   NavItemBadge,
-} from "./nav-items";
-import { CaretUpDownIcon } from "@phosphor-icons/react";
+} from "./nav-items"
+import { CaretUpDownIcon } from "@phosphor-icons/react"
 
 type OrgLike = {
-  plan?: string | null;
-  name?: string | null;
-  logoUrl?: string | null;
-};
+  plan?: string | null
+  name?: string | null
+  logoUrl?: string | null
+}
 
 type ProjectSidebarProps = {
-  projectId: string;
-  projectName: string;
-  isMobile?: boolean;
-  org?: OrgLike;
-};
+  projectId: string
+  projectName: string
+  isMobile?: boolean
+  org?: OrgLike
+}
 
-const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)"
 
 function SectionHeader({
   isCollapsed,
   children,
 }: {
-  isCollapsed: boolean;
-  children: React.ReactNode;
+  isCollapsed: boolean
+  children: React.ReactNode
 }) {
-  if (isCollapsed) return null; 
+  if (isCollapsed) return null
 
   return (
-    <h3 className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-tight text-foreground/60 select-none">
+    <h3 className="mb-1.5 px-2.5 text-[10px] font-semibold tracking-tight text-foreground/60 uppercase select-none">
       {children}
     </h3>
-  );
+  )
 }
 
 export function ProjectSidebar({
@@ -54,13 +57,11 @@ export function ProjectSidebar({
   isMobile = false,
   org,
 }: ProjectSidebarProps) {
-  const pathname = usePathname();
-  const basePath = `/projects/${projectId}`;
-  const { isCollapsed } = useSidebarCollapse(false);
-  const { getUnreadCount } = useProjectUnreadCounts(projectId);
-  const canWhitelabel = org?.plan === "agency";
-
-
+  const pathname = usePathname()
+  const basePath = `/projects/${projectId}`
+  const { isCollapsed } = useSidebarCollapse(false)
+  const { getUnreadCount } = useProjectUnreadCounts(projectId)
+  const canWhitelabel = org?.plan === "agency"
 
   return (
     <SidebarContext.Provider value={{ isCollapsed }}>
@@ -72,18 +73,15 @@ export function ProjectSidebar({
             ? "block min-h-svh w-full"
             : cn(
                 "sticky top-0 hidden h-svh overflow-hidden border-r border-border/40 md:flex",
-                "transition-[width] duration-200 py-2",
+                "py-2 transition-[width] duration-200",
                 isCollapsed ? "w-18" : "w-63"
               )
         )}
         style={!isMobile ? { transitionTimingFunction: EASE_OUT } : undefined}
       >
         <div className="flex h-full w-full flex-col overflow-hidden">
-
-
-
           {/* Header */}
-          <div className="flex h-14 shrink-0 items-center justify-between gap-4 px-4 cursor-pointer">
+          <div className="flex h-14 shrink-0 cursor-pointer items-center justify-between gap-4 px-4">
             <SidebarBrand
               projectName={projectName}
               org={org}
@@ -92,37 +90,38 @@ export function ProjectSidebar({
             <CaretUpDownIcon size={18} />
           </div>
 
-
-
-
-
           {/* Navigation Sections */}
           <nav
             aria-label="Main Navigation"
-            className="custom-scrollbar flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-3 py-6"
+            className="custom-scrollbar flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-3 py-6"
           >
             {/* Workspace Group */}
             <div>
               <SectionHeader isCollapsed={isCollapsed}>Workspace</SectionHeader>
               <ul role="list" className="space-y-0.5">
                 {mainNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const fullHref = `${basePath}${item.href}`;
+                  const Icon = item.icon
+                  const fullHref = `${basePath}${item.href}`
                   const isActive =
-                    item.href === "" ? pathname === fullHref : pathname.startsWith(fullHref);
-                  const unreadCount = getUnreadCount(item.href);
+                    item.href === ""
+                      ? pathname === fullHref
+                      : pathname.startsWith(fullHref)
+                  const unreadCount = getUnreadCount(item.href)
 
                   return (
                     <li key={item.name}>
                       <NavItem asChild isActive={isActive} title={item.name}>
                         <Link href={fullHref}>
-                          <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+                          <Icon
+                            aria-hidden="true"
+                            className="h-5 w-5 shrink-0"
+                          />
                           <NavItemLabel>{item.name}</NavItemLabel>
                           <NavItemBadge count={unreadCount} />
                         </Link>
                       </NavItem>
                     </li>
-                  );
+                  )
                 })}
               </ul>
             </div>
@@ -132,22 +131,25 @@ export function ProjectSidebar({
               <SectionHeader isCollapsed={isCollapsed}>More</SectionHeader>
               <ul role="list" className="space-y-0.5">
                 {secondaryNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const fullHref = `${basePath}${item.href}`;
-                  const isActive = pathname.startsWith(fullHref);
-                  const unreadCount = getUnreadCount(item.href);
+                  const Icon = item.icon
+                  const fullHref = `${basePath}${item.href}`
+                  const isActive = pathname.startsWith(fullHref)
+                  const unreadCount = getUnreadCount(item.href)
 
                   return (
                     <li key={item.name}>
                       <NavItem asChild isActive={isActive} title={item.name}>
                         <Link href={fullHref}>
-                          <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+                          <Icon
+                            aria-hidden="true"
+                            className="h-5 w-5 shrink-0"
+                          />
                           <NavItemLabel>{item.name}</NavItemLabel>
                           <NavItemBadge count={unreadCount} />
                         </Link>
                       </NavItem>
                     </li>
-                  );
+                  )
                 })}
               </ul>
             </div>
@@ -174,7 +176,7 @@ export function ProjectSidebar({
                     height={20}
                     src="/logo/scrunity_logo_svg.svg"
                     alt="Scrunity"
-                    className="h-3 w-auto object-contain dark:invert opacity-60"
+                    className="h-3 w-auto object-contain opacity-60 dark:invert"
                   />
                 </div>
               )}
@@ -183,5 +185,5 @@ export function ProjectSidebar({
         </div>
       </aside>
     </SidebarContext.Provider>
-  );
+  )
 }

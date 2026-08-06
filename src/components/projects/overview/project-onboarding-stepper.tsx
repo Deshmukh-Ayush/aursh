@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, FileText, FileSignature, CheckCircle2, ArrowRight, Layers, CreditCard } from "lucide-react";
+import { Sparkles, FileText, FileSignature, CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ProjectOnboardingStepperProps {
