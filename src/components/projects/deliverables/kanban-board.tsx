@@ -301,7 +301,7 @@ export function KanbanBoard({
                 </div>
                 <div className="grid gap-2">
                    <Label htmlFor="dueDate">Due Date</Label>
-                   <Input id="dueDate" type="date" value={editingItem.dueDate} onChange={e => setEditingItem({...editingItem, dueDate: e.target.value})} />
+                   <Input id="dueDate" type="date" value={editingItem.dueDate} onClick={(e) => e.currentTarget.showPicker?.()} onChange={e => setEditingItem({...editingItem, dueDate: e.target.value})} className="cursor-pointer" />
                 </div>
              </div>
           )}

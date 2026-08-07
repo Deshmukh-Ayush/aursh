@@ -1,12 +1,13 @@
 "use client";
 
 import { Drawer } from "vaul";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Calendar } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
 import { usePaymentStore } from "@/store/payment-store";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useRef } from "react";
 
 type CreateMilestoneModalProps = {
   projectId: string;
@@ -15,6 +16,7 @@ type CreateMilestoneModalProps = {
 
 export function CreateMilestoneModal({ projectId, deliverablesList }: CreateMilestoneModalProps) {
   const router = useRouter();
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const isOpen = useUIStore((state) => state.isCreateMilestoneOpen);
   const setCreateMilestoneOpen = useUIStore((state) => state.setCreateMilestoneOpen);
@@ -185,12 +187,20 @@ export function CreateMilestoneModal({ projectId, deliverablesList }: CreateMile
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">Due Date (Optional)</label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full h-10 px-3 text-xs rounded-xl border border-border/60 bg-background text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/20 font-medium"
-                />
+                <div 
+                  className="relative flex items-center cursor-pointer"
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                >
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={dueDate}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full h-10 pl-3 pr-10 text-xs rounded-xl border border-border/60 bg-background text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/20 font-medium cursor-pointer"
+                  />
+                  <Calendar className="w-4 h-4 text-muted-foreground absolute right-3 pointer-events-none" />
+                </div>
               </div>
 
               <div className="pt-4 flex justify-end gap-2 border-t border-border/40">

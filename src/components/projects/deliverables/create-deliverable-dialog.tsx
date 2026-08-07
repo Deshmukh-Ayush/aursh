@@ -103,7 +103,9 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
                 id="dueDate"
                 type="date"
                 value={dueDate}
+                onClick={(e) => e.currentTarget.showPicker?.()}
                 onChange={(e) => setDueDate(e.target.value)}
+                className="cursor-pointer"
               />
             </div>
           </div>

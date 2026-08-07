@@ -37,10 +37,10 @@ export function PaymentsViewClient({
 
   const formatMoney = (amountInUnits: number, curr: string = "INR") => {
     const mainUnits = amountInUnits / 100;
-    if (curr === "INR") {
-      return `₹${mainUnits.toLocaleString("en-IN")}`;
+    if (curr === "USD") {
+      return `$${mainUnits.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
     }
-    return `$${mainUnits.toLocaleString("en-US")}`;
+    return `₹${mainUnits.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
   };
 
   const handleOpenPaymentModal = (milestone: MilestoneWithDetails) => {
@@ -93,7 +93,7 @@ export function PaymentsViewClient({
       {/* Milestones List Section */}
       <section aria-label="Project Milestones List" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+          <h2 className="text-[16px] font-semibold tracking-tight text-foreground">
             All Scheduled Milestones ({milestones.length})
           </h2>
         </div>
@@ -104,8 +104,8 @@ export function PaymentsViewClient({
             onCreateMilestone={() => setCreateMilestoneOpen(true)}
           />
         ) : (
-          <ul className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30 shadow-xs">
-            {milestones.map((milestone, index) => (
+            <div>
+              {milestones.map((milestone, index) => (
               <MilestoneItem
                 key={milestone.id}
                 milestone={milestone}
@@ -117,7 +117,7 @@ export function PaymentsViewClient({
                 index={index}
               />
             ))}
-          </ul>
+            </div>
         )}
       </section>
 
