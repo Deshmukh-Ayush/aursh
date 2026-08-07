@@ -69,23 +69,21 @@ export async function POST(req: NextRequest) {
       userId: m.userId,
     }));
 
-    await db.transaction(async (tx) => {
-      await tx.insert(contract).values({
-        id: newContractId,
-        projectId,
-        fileUrl: blob.url,
-        fileName: file.name,
-        documentType: safeDocType,
-        uploadedByRole,
-        documentHash: docHash,
-        status: "draft",
-        uploadedBy: userId,
-      });
-
-      if (signatureInserts.length > 0) {
-        await tx.insert(signature).values(signatureInserts);
-      }
+    await db.insert(contract).values({
+      id: newContractId,
+      projectId,
+      fileUrl: blob.url,
+      fileName: file.name,
+      documentType: safeDocType,
+      uploadedByRole,
+      documentHash: docHash,
+      status: "draft",
+      uploadedBy: userId,
     });
+
+    if (signatureInserts.length > 0) {
+      await db.insert(signature).values(signatureInserts);
+    }
 
     await logActivity({
       projectId,

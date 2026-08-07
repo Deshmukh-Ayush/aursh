@@ -225,9 +225,11 @@ export default async function DocsPage() {
             Scrunity includes a dedicated **Payment Milestones & Financial Tracking Engine** designed for agency revenue protection:
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
+            <li><strong className="text-foreground font-medium">EvilCharts Radial Breakdown:</strong> Visualizes portfolio revenue distribution across 4 radial gauge charts (<Code>Collected</Code>, <Code>Payment Due</Code>, <Code>Overdue</Code>, <Code>Upcoming</Code>).</li>
             <li><strong className="text-foreground font-medium">Trigger Types:</strong> Upfront (100% or deposit), On Deliverable Approval, Specific Due Date, or Manual Request.</li>
             <li><strong className="text-foreground font-medium">Automated Release Gate:</strong> When a client approves a deliverable via <Code>PATCH /api/deliverables</Code>, any linked milestone automatically flips from <Code>upcoming</Code> to <Code>due</Code>.</li>
             <li><strong className="text-foreground font-medium">Direct Payment Verification:</strong> Agencies verify payments with method selection (UPI/GPay, Bank Transfer, Card, Cash) and enter optional transaction UTR numbers.</li>
+            <li><strong className="text-foreground font-medium">Neon HTTP Driver Convention:</strong> Database operations use sequential async calls (<Code>await db.insert</Code>, <Code>await db.update</Code>) compatible with Neon HTTP serverless driver (avoiding unsupported <Code>db.transaction</Code> calls over HTTP).</li>
           </ul>
         </Section>
 

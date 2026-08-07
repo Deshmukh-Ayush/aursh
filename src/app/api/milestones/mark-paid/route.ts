@@ -46,25 +46,24 @@ export async function POST(req: NextRequest) {
     const newPaymentId = crypto.randomUUID();
     const now = new Date();
 
-    await db.transaction(async (tx) => {
-      // 1. Insert payment verification record
-      await tx.insert(payment).values({
-        id: newPaymentId,
-        milestoneId,
-        projectId: milestone.projectId,
-        amount: milestone.amount,
-        currency: milestone.currency,
-        paymentMethod,
-        referenceNote: referenceNote || null,
-        status: "succeeded",
-        paidAt: now,
-      });
-
-      // 2. Update milestone status to paid
-      await tx.update(paymentMilestone)
-        .set({ status: "paid", updatedAt: now })
-        .where(eq(paymentMilestone.id, milestoneId));
+    // 1. Insert payment verification record (neon-http driver executes sequentially)
+    await db.insert(payment).values({
+      id: newPaymentId,
+      milestoneId,
+      projectId: milestone.projectId,
+      amount: milestone.amount,
+      currency: milestone.currency,
+      paymentMethod,
+      referenceNote: referenceNote || null,
+      status: "succeeded",
+      paidAt: now,
     });
+
+    // 2. Update milestone status to paid
+    await db
+      .update(paymentMilestone)
+      .set({ status: "paid", updatedAt: now })
+      .where(eq(paymentMilestone.id, milestoneId));
 
     // 3. Log activity
     await logActivity({

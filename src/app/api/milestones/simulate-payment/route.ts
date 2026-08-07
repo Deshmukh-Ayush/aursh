@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { milestoneId, paymentMethod = "test_mode" } = await req.json();
+    const { milestoneId, paymentMethod = "dodo_test" } = await req.json();
 
     if (!milestoneId) {
       return NextResponse.json({ error: "Milestone ID required" }, { status: 400 });
@@ -46,26 +46,25 @@ export async function POST(req: NextRequest) {
     const newPaymentId = crypto.randomUUID();
     const now = new Date();
 
-    await db.transaction(async (tx) => {
-      // 1. Insert payment record
-      await tx.insert(payment).values({
-        id: newPaymentId,
-        milestoneId,
-        projectId: milestone.projectId,
-        amount: milestone.amount,
-        currency: milestone.currency,
-        dodoPaymentId: `test_pay_${Date.now()}`,
-        dodoCheckoutId: `test_chk_${Date.now()}`,
-        paymentMethod,
-        status: "succeeded",
-        paidAt: now,
-      });
-
-      // 2. Update milestone status to paid
-      await tx.update(paymentMilestone)
-        .set({ status: "paid", updatedAt: now })
-        .where(eq(paymentMilestone.id, milestoneId));
+    // 1. Insert payment record (neon-http driver executes sequentially)
+    await db.insert(payment).values({
+      id: newPaymentId,
+      milestoneId,
+      projectId: milestone.projectId,
+      amount: milestone.amount,
+      currency: milestone.currency,
+      dodoPaymentId: `test_pay_${Date.now()}`,
+      dodoCheckoutId: `test_chk_${Date.now()}`,
+      paymentMethod,
+      status: "succeeded",
+      paidAt: now,
     });
+
+    // 2. Update milestone status to paid
+    await db
+      .update(paymentMilestone)
+      .set({ status: "paid", updatedAt: now })
+      .where(eq(paymentMilestone.id, milestoneId));
 
     // 3. Log activity
     await logActivity({
@@ -76,8 +75,7 @@ export async function POST(req: NextRequest) {
         milestoneTitle: milestone.title,
         amount: milestone.amount,
         currency: milestone.currency,
-        paymentMethod,
-        isTestMode: true,
+        simulated: true,
       },
     });
 
@@ -87,6 +85,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, paymentId: newPaymentId });
   } catch (error) {
     console.error("Simulate payment error:", error);
-    return NextResponse.json({ error: "Failed to process test payment" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to simulate payment" }, { status: 500 });
   }
 }
