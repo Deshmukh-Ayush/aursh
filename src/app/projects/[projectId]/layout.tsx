@@ -60,7 +60,7 @@ export default async function ProjectLayout({
 
   return (
     <div 
-      className="flex min-h-svh w-full flex-col md:flex-row"
+      className="flex min-h-svh w-full flex-col md:flex-row dark:bg-neutral-950 bg-gray-50"
     >
       {/* Custom Sidebar Navigation */}
       <ProjectSidebar 

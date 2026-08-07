@@ -64,7 +64,7 @@ export function ProjectSidebar({
   const canWhitelabel = org?.plan === "agency"
 
   return (
-    <SidebarContext.Provider value={{ isCollapsed }}>
+      <SidebarContext.Provider value={{ isCollapsed }}>
       <aside
         aria-label="Project Sidebar"
         className={cn(

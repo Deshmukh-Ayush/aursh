@@ -80,7 +80,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ proje
   }));
 
   return (
-    <PaymentsViewClient
+     <PaymentsViewClient
       projectId={projectId}
       milestones={serializedMilestones}
       payments={serializedPayments}
