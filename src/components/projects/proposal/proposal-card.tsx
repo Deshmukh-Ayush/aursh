@@ -81,7 +81,7 @@ export function ProposalCard({
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <StatusIcon className={`w-4 h-4 shrink-0 ${status.color}`} />
 
-        <span className="text-sm font-medium text-foreground truncate max-w-50 sm:max-w-xs">
+        <span className="text-sm font-medium tracking-tight text-foreground truncate max-w-50 sm:max-w-xs text-balance">
           {proposal.title}
         </span>
 
@@ -93,8 +93,8 @@ export function ProposalCard({
       {/* Right: Line Items Count, Amount & Actions */}
       <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end mt-2 sm:mt-0 ml-7 sm:ml-0">
         {/* Line items count */}
-        <div className="text-xs text-muted-foreground whitespace-nowrap">
-          {lineItemsCount} line item{lineItemsCount !== 1 ? "s" : ""}
+        <div className="text-xs text-muted-foreground whitespace-nowrap leading-tight">
+          <span className="tabular-nums font-semibold">{lineItemsCount}</span> line item{lineItemsCount !== 1 ? "s" : ""}
         </div>
 
         {/* Amount */}
@@ -106,6 +106,7 @@ export function ProposalCard({
         <div className="flex items-center gap-1.5 shrink-0 min-w-22.5 justify-end">
           <button
             onClick={() => onView(proposal)}
+            aria-label={`View details for proposal ${proposal.title}`}
             className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full border border-border/60 bg-background text-foreground hover:bg-muted/60 transition-colors active:scale-[0.96]"
           >
             <Eye className="w-3.5 h-3.5" /> View
@@ -116,6 +117,7 @@ export function ProposalCard({
               <button
                 disabled={isSending}
                 onClick={() => onSend(proposal.id)}
+                aria-label={`Send proposal ${proposal.title}`}
                 className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full bg-[#00AAF7] text-white hover:bg-[#0088c4] transition-colors active:scale-[0.96]"
               >
                 Send <ArrowRight className="w-3.5 h-3.5" />
@@ -125,7 +127,7 @@ export function ProposalCard({
                 disabled={isDeleting}
                 onClick={() => onDelete(proposal.id)}
                 className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors active:scale-[0.96]"
-                aria-label="Delete proposal"
+                aria-label={`Delete proposal ${proposal.title}`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

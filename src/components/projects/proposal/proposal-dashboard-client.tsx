@@ -67,7 +67,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
         <div>
-          <h1 className="text-[36px] font-semibold tracking-tight text-foreground text-balance">
+          <h1 className="text-[36px] font-semibold tracking-tight text-foreground text-balance leading-tight">
             Proposals
           </h1>
         </div>
@@ -75,6 +75,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
         {isAgency && (
           <button
             onClick={() => setProposalBuilderOpen(true)}
+            aria-label="Build new proposal"
             className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5 self-start sm:self-auto"
           >
             <Plus className="w-5 h-5 stroke-3" />
@@ -89,8 +90,8 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
       {/* Proposals List Section */}
       <section aria-label="Project Proposals List" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold tracking-tight text-foreground">
-            All Scheduled Proposals ({proposals.length})
+          <h2 className="text-[16px] font-semibold tracking-tight text-foreground text-balance">
+            All Scheduled Proposals (<span className="tabular-nums">{proposals.length}</span>)
           </h2>
         </div>
 
@@ -99,8 +100,8 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
             <div className="rounded-full bg-primary/10 p-4 mb-4 text-primary">
               <FileText className="w-8 h-8" />
             </div>
-            <h3 className="text-base font-semibold text-foreground">No Proposals Found</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md">
+            <h3 className="text-base font-semibold text-foreground tracking-tight text-balance">No Proposals Found</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md leading-relaxed text-pretty">
               Build a structured proposal with line items to automatically map project deliverables & payment milestones upon acceptance.
             </p>
             {isAgency && (

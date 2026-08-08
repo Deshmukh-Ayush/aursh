@@ -79,7 +79,7 @@ export function DeliverableList({
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <StatusIcon className={`w-4 h-4 shrink-0 ${statusConfig.color}`} />
 
-                  <span className="text-sm font-medium text-foreground truncate max-w-50 sm:max-w-xs">
+                  <span className="text-sm font-medium tracking-tight text-foreground truncate max-w-50 sm:max-w-xs text-balance">
                     {deliv.title}
                   </span>
 
@@ -91,7 +91,7 @@ export function DeliverableList({
                 {/* Right: Due Date & Actions */}
                 <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end mt-2 sm:mt-0 ml-7 sm:ml-0">
                   {/* Due Date */}
-                  <div className={`text-xs whitespace-nowrap ${isOverdue ? "text-rose-500 font-semibold" : "text-muted-foreground"}`}>
+                  <div className={`text-xs tabular-nums whitespace-nowrap ${isOverdue ? "text-rose-500 font-semibold" : "text-muted-foreground"}`}>
                     {deliv.dueDate
                       ? format(new Date(deliv.dueDate), "dd MMM")
                       : "-"}
@@ -120,7 +120,7 @@ export function DeliverableList({
                     <Paperclip className="w-3.5 h-3.5 text-primary" /> Submitted Work: {deliv.submissionTitle}
                   </div>
                   {deliv.submissionNote && (
-                    <p className="text-foreground/90 leading-relaxed text-xs">{deliv.submissionNote}</p>
+                    <p className="text-foreground/90 leading-relaxed text-xs text-pretty">{deliv.submissionNote}</p>
                   )}
                   {deliv.submissionUrl && (
                     <a

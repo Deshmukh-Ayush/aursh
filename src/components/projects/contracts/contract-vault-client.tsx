@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, 
   UploadCloud, 
-  CheckCircle2, 
   Clock, 
   FileSignature, 
   Download, 
@@ -14,19 +13,16 @@ import {
   Trash2, 
   Plus, 
   X,
-  FileCheck,
   Shield,
-  FileCode,
-  FileSpreadsheet,
-  ArrowUpRight
+  ArrowRight
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { SealCheckIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { SignatureModal } from "./signature-modal";
+import { ContractStatusChart } from "./contract-status-chart";
 
 export type ContractWithSignatures = {
   contract: {
@@ -69,21 +65,12 @@ const DOC_TYPE_MAP: Record<string, { label: string; tag: string }> = {
   other: { label: "General Agreement", tag: "DOC" },
 };
 
-const TABS = [
-  { id: "all", label: "All Agreements" },
-  { id: "sow", label: "SOW & MSA" },
-  { id: "nda", label: "NDAs & Compliance" },
-  { id: "addendum", label: "Addendums" },
-];
-
 export function ContractVaultClient({
   projectId,
   contracts,
   currentUserId,
   userRole,
-  orgPlan,
 }: ContractVaultClientProps) {
-  const [activeTab, setActiveTab] = useState<string>("all");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<string>("sow");
   const [isUploading, setIsUploading] = useState(false);
@@ -94,14 +81,6 @@ export function ContractVaultClient({
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
 
   const router = useRouter();
-
-  const filteredContracts = contracts.filter((c) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "sow") return c.contract.documentType === "sow" || c.contract.documentType === "msa";
-    if (activeTab === "nda") return c.contract.documentType === "nda" || c.contract.documentType === "noc";
-    if (activeTab === "addendum") return c.contract.documentType === "addendum" || c.contract.documentType === "other";
-    return true;
-  });
 
   const handleUploadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -115,7 +94,7 @@ export function ContractVaultClient({
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (res.data.success) {
-        toast.success("Document uploaded");
+        toast.success("Document uploaded to vault");
         setIsUploadOpen(false);
         router.refresh();
       }
@@ -126,53 +105,12 @@ export function ContractVaultClient({
     }
   };
 
-  const handleRequestSignatures = async (contractId: string) => {
-    try {
-      const res = await axios.patch("/api/contracts", {
-        contractId,
-        action: "request_signatures",
-      });
-      if (res.data.success) {
-        toast.success("Signatures requested");
-        router.refresh();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to request signatures");
-    }
-  };
-
-  const handleSignConfirm = async (signatureData?: string, signatureMethod?: string) => {
-    if (!signingContractId) return;
-    setIsSignatureModalOpen(false);
-
-    try {
-      const res = await axios.patch("/api/contracts", {
-        contractId: signingContractId,
-        action: "sign",
-        signatureData,
-        signatureMethod,
-        orgPlan,
-      });
-      if (res.data.success) {
-        toast.success("Document signed");
-        router.refresh();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to sign document");
-    } finally {
-      setSigningContractId(null);
-    }
-  };
-
   const handleDeleteContract = async (contractId: string) => {
-    if (!confirm("Delete this agreement?")) return;
+    if (!confirm("Are you sure you want to delete this agreement?")) return;
     try {
       const res = await axios.delete(`/api/contracts?contractId=${contractId}`);
       if (res.data.success) {
         toast.success("Agreement deleted");
-        if (activePreviewContract?.contract.id === contractId) {
-          setActivePreviewContract(null);
-        }
         router.refresh();
       }
     } catch (err: any) {
@@ -180,254 +118,237 @@ export function ContractVaultClient({
     }
   };
 
+  const handleOpenSignatureModal = (contractId: string) => {
+    setSigningContractId(contractId);
+    setIsSignatureModalOpen(true);
+  };
+
+  const handleConfirmSignature = async (signatureData: string, method: string) => {
+    if (!signingContractId) return;
+    try {
+      const res = await axios.post("/api/contracts/sign", {
+        contractId: signingContractId,
+        signatureData,
+        signatureMethod: method,
+      });
+      if (res.data.success) {
+        toast.success("Document signed & cryptographic seal generated!");
+        setIsSignatureModalOpen(false);
+        setSigningContractId(null);
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to sign document");
+    }
+  };
+
+  const isAgency = userRole === "owner" || userRole === "agency";
+
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case "signed":
+        return {
+          label: "Signed",
+          Icon: SealCheckIcon,
+          color: "text-emerald-500",
+          bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        };
+      case "pending_signature":
+        return {
+          label: "Pending Signature",
+          Icon: PaperPlaneTiltIcon,
+          color: "text-sky-500",
+          bg: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+        };
+      default:
+        return {
+          label: "Draft",
+          Icon: Clock,
+          color: "text-purple-500",
+          bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+        };
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/40">
+    <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
         <div>
-          <h1 className="text-[20px] font-semibold tracking-tight text-foreground text-balance">
+          <h1 className="text-[36px] font-semibold tracking-tight text-foreground text-balance leading-tight">
             Contracts & Agreements
           </h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">
-            Review, sign, and manage legal agreements from Agency & Client.
-          </p>
         </div>
 
-        <Button
-          onClick={() => setIsUploadOpen(true)}
-          className="active:scale-[0.96] transition-transform duration-150 h-9 px-4 rounded-full bg-foreground text-background font-medium text-[13px] shadow-sm hover:opacity-90 flex items-center gap-2 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 stroke-[2]" />
-          Upload Agreement
-        </Button>
-      </div>
-
-      {/* Morphing Mini Navbar (Segmented Filter Bar) */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <nav className="relative p-1 rounded-full bg-muted/60 dark:bg-neutral-900/80 border border-border/40 inline-flex gap-1 shadow-xs">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const count = contracts.filter((c) => {
-              if (tab.id === "all") return true;
-              if (tab.id === "sow") return c.contract.documentType === "sow" || c.contract.documentType === "msa";
-              if (tab.id === "nda") return c.contract.documentType === "nda" || c.contract.documentType === "noc";
-              if (tab.id === "addendum") return c.contract.documentType === "addendum" || c.contract.documentType === "other";
-              return true;
-            }).length;
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-colors duration-150 flex items-center gap-2 z-10 select-none ${
-                  isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="active-tab-pill"
-                    className="absolute inset-0 rounded-full bg-background shadow-xs ring-1 ring-black/5 dark:ring-white/10 z-[-1]"
-                    transition={{ type: "spring", duration: 0.25, bounce: 0 }}
-                  />
-                )}
-                <span>{tab.label}</span>
-                <span className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${isActive ? "bg-muted text-foreground" : "text-muted-foreground/60"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Inline Document List */}
-      {filteredContracts.length === 0 ? (
-        <div className="rounded-[20px] border border-dashed border-border/60 p-16 flex flex-col items-center justify-center text-center bg-muted/20">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3 text-muted-foreground">
-            <FileText className="w-6 h-6 stroke-[1.5]" />
-          </div>
-          <h3 className="text-[15px] font-semibold text-foreground">No documents in this view</h3>
-          <p className="text-[13px] text-muted-foreground mt-1 max-w-sm">
-            Upload Statements of Work, NDAs, or NOCs to begin collecting signatures.
-          </p>
-          <Button
+        {isAgency && (
+          <button
             onClick={() => setIsUploadOpen(true)}
-            variant="outline"
-            className="active:scale-[0.96] transition-transform duration-150 mt-5 rounded-full text-[13px] font-medium"
+            aria-label="Upload legal agreement"
+            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5 self-start sm:self-auto"
           >
-            <UploadCloud className="w-4 h-4 mr-2" />
-            Upload Document
-          </Button>
+            <Plus className="w-5 h-5 stroke-3" />
+            <span>Upload Agreement</span>
+          </button>
+        )}
+      </div>
+
+      {/* EvilCharts Contract Legal Vault Radial Chart */}
+      <ContractStatusChart contracts={contracts} />
+
+      {/* Contract Agreements List Section */}
+      <section aria-label="Project Agreements Vault" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[16px] font-semibold tracking-tight text-foreground text-balance">
+            All Vaulted Agreements (<span className="tabular-nums">{contracts.length}</span>)
+          </h2>
         </div>
-      ) : (
-        <div className="rounded-[20px] border border-border/40 bg-card overflow-hidden divide-y divide-border/30 shadow-xs">
-          {filteredContracts.map(({ contract: doc, uploaderName, signatures }, i) => {
-            const docInfo = DOC_TYPE_MAP[doc.documentType] || DOC_TYPE_MAP.other;
-            const mySignature = signatures.find((s) => s.userId === currentUserId);
-            const hasSigned = !!mySignature?.signedAt;
-            const signedCount = signatures.filter((s) => s.signedAt).length;
 
-            return (
-              <motion.div
-                key={doc.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: i * 0.04 }}
-                className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-colors duration-150 group"
+        {contracts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
+            <div className="rounded-full bg-primary/10 p-4 mb-4 text-primary">
+              <FileText className="w-8 h-8" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground tracking-tight text-balance">No Agreements Vaulted</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md leading-relaxed text-pretty">
+              Upload SOWs, NDAs, or Master Services Agreements to collect verified cryptographic e-signatures.
+            </p>
+            {isAgency && (
+              <button
+                onClick={() => setIsUploadOpen(true)}
+                className="mt-5 active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-xs flex items-center gap-1.5"
               >
-                {/* Left: Document Info */}
-                <div className="flex items-start gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-muted/70 dark:bg-neutral-800 border border-border/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-5 h-5 text-foreground/80 stroke-[1.5]" />
-                  </div>
+                <Plus className="w-4 h-4" /> Upload First Agreement
+              </button>
+            )}
+          </div>
+        ) : (
+          <div>
+            {contracts.map((item, index) => {
+              const statusConfig = getStatusConfig(item.contract.status);
+              const StatusIcon = statusConfig.Icon;
+              const docType = DOC_TYPE_MAP[item.contract.documentType] || DOC_TYPE_MAP.other;
+              const isSigned = item.contract.status === "signed";
+              
+              const userSig = item.signatures.find((s) => s.userId === currentUserId);
+              const hasCurrentUserSigned = !!userSig?.signedAt;
+              const signedCount = item.signatures.filter((s) => s.signedAt).length;
 
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[14px] font-semibold tracking-tight text-foreground truncate max-w-[280px] sm:max-w-md">
-                        {doc.fileName}
-                      </span>
-                      <Badge variant="outline" className="text-[10px] font-mono tracking-wider bg-muted/50 border-border/60 text-foreground/80 rounded-md px-1.5 py-0">
-                        {docInfo.tag}
-                      </Badge>
-                    </div>
+              return (
+                <motion.div
+                  key={item.contract.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15, delay: index * 0.02 }}
+                  className="group flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 py-2.5 px-3 hover:bg-muted/40 border-b border-border/40 last:border-0 transition-colors rounded-md"
+                >
+                  {/* Left: Icon, Title & Badge */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <StatusIcon className={`w-4 h-4 shrink-0 ${statusConfig.color}`} />
 
-                    <div className="flex items-center gap-2 text-[12px] text-muted-foreground flex-wrap">
-                      <span>Uploaded by {doc.uploadedByRole === "agency" ? "Agency" : "Client"} ({uploaderName})</span>
-                      <span>·</span>
-                      <span className="tabular-nums">
-                        {formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                    <span className="text-sm font-medium tracking-tight text-foreground truncate max-w-50 sm:max-w-xs text-balance">
+                      {item.contract.fileName}
+                    </span>
 
-                {/* Right: Signatures, Status & Actions */}
-                <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-border/20">
-                  {/* Signers Avatar Stack */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2 overflow-hidden">
-                      {signatures.map((sig) => (
-                        <Avatar key={sig.sigId} className="inline-block w-6 h-6 ring-2 ring-background">
-                          <AvatarImage src={sig.userImage || ""} />
-                          <AvatarFallback className="text-[9px] font-semibold bg-muted text-foreground">
-                            {sig.userName?.charAt(0) || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                    </div>
-                    <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-                      {signedCount}/{signatures.length}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase bg-muted/60 text-muted-foreground border border-border/30 shrink-0">
+                      {docType.tag}
+                    </span>
+
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${statusConfig.bg} shrink-0`}>
+                      {statusConfig.label}
                     </span>
                   </div>
 
-                  {/* Minimal Status Badge */}
-                  <div>
-                    {doc.status === "signed" ? (
-                      <Badge className="bg-foreground text-background font-semibold text-[11px] rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-xs">
-                        <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />
-                        Signed
-                      </Badge>
-                    ) : doc.status === "pending_signature" ? (
-                      <Badge variant="secondary" className="bg-muted text-foreground border border-border/60 font-medium text-[11px] rounded-full px-2.5 py-0.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-muted-foreground" />
-                        Pending
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[11px] font-medium text-muted-foreground rounded-full px-2.5 py-0.5 border-dashed">
-                        Draft
-                      </Badge>
-                    )}
+                  {/* Right: Signers, Date & Actions */}
+                  <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end mt-2 sm:mt-0 ml-7 sm:ml-0">
+                    {/* Signatures Status */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap">
+                      <div className="flex -space-x-1.5">
+                        {item.signatures.map((sig) => (
+                          <Avatar key={sig.sigId} className="w-5 h-5 border border-background">
+                            <AvatarImage src={sig.userImage || undefined} />
+                            <AvatarFallback className="text-[9px] bg-muted">{sig.userName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        ))}
+                      </div>
+                      <span className="tabular-nums font-medium">
+                        {signedCount}/{item.signatures.length || 1} Signed
+                      </span>
+                    </div>
+
+                    {/* Date */}
+                    <div className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                      {format(new Date(item.contract.createdAt), "dd MMM")}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0 min-w-22.5 justify-end">
+                      {!hasCurrentUserSigned && !isSigned && (
+                        <button
+                          onClick={() => handleOpenSignatureModal(item.contract.id)}
+                          aria-label={`Sign agreement ${item.contract.fileName}`}
+                          className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full bg-[#00AAF7] text-white hover:bg-[#0088c4] transition-colors active:scale-[0.96]"
+                        >
+                          Sign <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setActivePreviewContract(item)}
+                        aria-label={`Preview agreement ${item.contract.fileName}`}
+                        className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full border border-border/60 bg-background text-foreground hover:bg-muted/60 transition-colors active:scale-[0.96]"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Preview
+                      </button>
+
+                      <a
+                        href={item.contract.signedDocumentUrl || item.contract.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors"
+                        title="Download Document"
+                        aria-label={`Download agreement ${item.contract.fileName}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
+
+                      {isAgency && !isSigned && (
+                        <button
+                          onClick={() => handleDeleteContract(item.contract.id)}
+                          className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors active:scale-[0.96]"
+                          aria-label={`Delete agreement ${item.contract.fileName}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      onClick={() => setActivePreviewContract({ contract: doc, uploaderName, signatures })}
-                      variant="ghost"
-                      size="sm"
-                      className="active:scale-[0.96] transition-transform duration-150 h-8 px-2.5 text-[12px] font-medium text-muted-foreground hover:text-foreground rounded-lg"
-                    >
-                      <Eye className="w-3.5 h-3.5 mr-1" />
-                      Preview
-                    </Button>
-
-                    <a
-                      href={doc.signedDocumentUrl || doc.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="active:scale-[0.96] transition-transform duration-150 inline-flex items-center justify-center h-8 px-2.5 text-[12px] font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </a>
-
-                    {doc.status === "draft" && (userRole === "owner" || userRole === "agency") && (
-                      <Button
-                        onClick={() => handleRequestSignatures(doc.id)}
-                        size="sm"
-                        className="active:scale-[0.96] transition-transform duration-150 h-8 text-[12px] rounded-lg bg-foreground text-background font-medium px-3"
-                      >
-                        Request
-                      </Button>
-                    )}
-
-                    {doc.status === "pending_signature" && !hasSigned && (
-                      <Button
-                        onClick={() => {
-                          setSigningContractId(doc.id);
-                          if (orgPlan === "free") {
-                            handleSignConfirm();
-                          } else {
-                            setIsSignatureModalOpen(true);
-                          }
-                        }}
-                        size="sm"
-                        className="active:scale-[0.96] transition-transform duration-150 h-8 text-[12px] rounded-lg bg-foreground text-background font-medium px-3 shadow-xs"
-                      >
-                        <FileSignature className="w-3.5 h-3.5 mr-1" />
-                        Sign
-                      </Button>
-                    )}
-
-                    {(userRole === "owner" || userRole === "agency") && (
-                      <Button
-                        onClick={() => handleDeleteContract(doc.id)}
-                        variant="ghost"
-                        size="sm"
-                        className="active:scale-[0.96] transition-transform duration-150 h-8 w-8 p-0 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10"
-                        title="Delete Agreement"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Upload Contract Modal */}
+      {/* Modal: Upload Agreement Form */}
       <AnimatePresence>
         {isUploadOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ type: "spring", duration: 0.25, bounce: 0 }}
-              className="bg-card rounded-[20px] max-w-md w-full p-6 shadow-xl border border-border/50 space-y-5"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card border border-border/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-border/40">
-                <div>
-                  <h2 className="text-[17px] font-semibold text-foreground tracking-tight">Upload Agreement</h2>
-                  <p className="text-[12px] text-muted-foreground mt-0.5">
-                    Upload an SOW, NDA, or NOC for signatures.
-                  </p>
+              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <UploadCloud className="w-5 h-5 text-primary" />
+                  <h3 className="text-base font-bold tracking-tight text-foreground text-balance">Upload Agreement</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsUploadOpen(false)}
-                  className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -435,61 +356,47 @@ export function ContractVaultClient({
 
               <form onSubmit={handleUploadSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[12px] font-semibold text-foreground">Agreement Type</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "sow", label: "Statement of Work (SOW)" },
-                      { id: "nda", label: "Non-Disclosure (NDA)" },
-                      { id: "noc", label: "NOC / IP Transfer" },
-                      { id: "msa", label: "Master Services (MSA)" },
-                      { id: "addendum", label: "Addendum / Change" },
-                      { id: "other", label: "General Agreement" },
-                    ].map((type) => (
-                      <button
-                        type="button"
-                        key={type.id}
-                        onClick={() => setSelectedDocType(type.id)}
-                        className={`p-2.5 rounded-xl border text-left text-[12px] font-medium transition-all ${
-                          selectedDocType === type.id
-                            ? "border-foreground bg-muted font-semibold text-foreground"
-                            : "border-border/50 bg-background hover:bg-muted/50 text-muted-foreground"
-                        }`}
-                      >
-                        {type.label}
-                      </button>
-                    ))}
-                  </div>
+                  <label className="text-xs font-semibold text-foreground">Document Type</label>
+                  <select
+                    value={selectedDocType}
+                    onChange={(e) => setSelectedDocType(e.target.value)}
+                    className="w-full h-10 px-3 text-xs rounded-xl border border-border/60 bg-background text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/20 font-medium"
+                  >
+                    <option value="sow">Statement of Work (SOW)</option>
+                    <option value="nda">Non-Disclosure Agreement (NDA)</option>
+                    <option value="noc">NOC / IP Transfer</option>
+                    <option value="msa">Master Services Agreement (MSA)</option>
+                    <option value="addendum">Addendum / Change Order</option>
+                    <option value="other">General Agreement</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[12px] font-semibold text-foreground">PDF File</label>
+                  <label className="text-xs font-semibold text-foreground">PDF Document File</label>
                   <input
-                    name="file"
                     type="file"
+                    name="file"
                     accept="application/pdf"
                     required
-                    disabled={isUploading}
-                    className="w-full px-3 py-2 text-[13px] rounded-xl border border-border/60 bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                    className="w-full text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
                   />
-                  <p className="text-[11px] text-muted-foreground">PDF format only (Max 10MB)</p>
                 </div>
 
-                <div className="pt-2 flex justify-end gap-2">
-                  <Button
+                <div className="pt-3 flex justify-end gap-2 border-t border-border/40">
+                  <button
                     type="button"
                     onClick={() => setIsUploadOpen(false)}
-                    variant="outline"
-                    className="active:scale-[0.96] transition-transform duration-150 rounded-full text-[13px]"
+                    className="h-9 px-4 rounded-xl border border-border/60 text-xs font-medium hover:bg-muted active:scale-[0.96]"
                   >
                     Cancel
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="submit"
                     disabled={isUploading}
-                    className="active:scale-[0.96] transition-transform duration-150 rounded-full bg-foreground text-background text-[13px] font-medium px-5"
+                    className="active:scale-[0.96] transition-transform h-9 px-5 rounded-full bg-[#00AAF7] text-white font-semibold text-xs shadow-md hover:bg-[#0088c4] flex items-center gap-1.5"
                   >
                     {isUploading ? "Uploading..." : "Upload Agreement"}
-                  </Button>
+                  </button>
                 </div>
               </form>
             </motion.div>
@@ -497,68 +404,71 @@ export function ContractVaultClient({
         )}
       </AnimatePresence>
 
-      {/* PDF Preview Modal */}
+      {/* Modal: Document PDF Preview */}
       <AnimatePresence>
         {activePreviewContract && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 sm:p-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ type: "spring", duration: 0.25, bounce: 0 }}
-              className="bg-card rounded-[20px] max-w-5xl w-full h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-border/50"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card border border-border/60 rounded-2xl max-w-5xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden"
             >
-              <div className="px-5 py-3.5 border-b border-border/40 flex items-center justify-between bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-4 h-4 text-foreground/80" />
+              <div className="flex items-center justify-between p-4 border-b border-border/40 bg-muted/20">
+                <div className="flex items-center gap-2.5">
+                  <Shield className="w-5 h-5 text-primary" />
                   <div>
-                    <h3 className="text-[15px] font-semibold text-foreground line-clamp-1">
+                    <h3 className="text-sm font-bold tracking-tight text-foreground text-balance">
                       {activePreviewContract.contract.fileName}
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Uploaded by {activePreviewContract.uploaderName} · Status: {activePreviewContract.contract.status}
+                      Uploaded by {activePreviewContract.uploaderName}
                     </p>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <a
                     href={activePreviewContract.contract.signedDocumentUrl || activePreviewContract.contract.fileUrl}
                     target="_blank"
-                    rel="noreferrer"
-                    className="active:scale-[0.96] transition-transform duration-150 inline-flex items-center px-3 py-1.5 rounded-full text-[12px] font-medium bg-background border border-border/60 hover:bg-muted text-foreground"
+                    rel="noopener noreferrer"
+                    download
+                    className="h-8 px-3 text-xs rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium flex items-center gap-1.5"
                   >
-                    <Download className="w-3.5 h-3.5 mr-1.5" />
-                    Download
+                    <Download className="w-3.5 h-3.5" /> Download PDF
                   </a>
                   <button
+                    type="button"
                     onClick={() => setActivePreviewContract(null)}
-                    className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              <iframe
-                src={activePreviewContract.contract.signedDocumentUrl || activePreviewContract.contract.fileUrl}
-                className="w-full flex-1 border-0 bg-background"
-                title="Contract Preview"
-              />
+              <div className="flex-1 bg-neutral-900 overflow-hidden">
+                <iframe
+                  src={activePreviewContract.contract.signedDocumentUrl || activePreviewContract.contract.fileUrl}
+                  className="w-full h-full border-none"
+                  title="PDF Document Preview"
+                />
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Signature Canvas Modal */}
-      <SignatureModal
-        isOpen={isSignatureModalOpen}
-        onClose={() => {
-          setIsSignatureModalOpen(false);
-          setSigningContractId(null);
-        }}
-        onConfirm={(data, method) => handleSignConfirm(data, method)}
-      />
+      {/* Signature Modal Component */}
+      {signingContractId && (
+        <SignatureModal
+          isOpen={isSignatureModalOpen}
+          onClose={() => {
+            setIsSignatureModalOpen(false);
+            setSigningContractId(null);
+          }}
+          onConfirm={handleConfirmSignature}
+        />
+      )}
     </div>
   );
 }
