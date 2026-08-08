@@ -111,12 +111,12 @@ export function DeliverablesVelocityChart({ deliverables }: DeliverablesVelocity
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           {/* EvilCharts Static EChartsAreaChart */}
-          <div className="md:col-span-6 flex flex-col items-center justify-center relative py-1">
-            <div className="h-45 w-full">
+          <div className="md:col-span-6 flex flex-col items-center justify-center relative py-1 min-w-0 min-h-[180px]">
+            <div className="h-[180px] w-full min-w-0 min-h-[180px]">
               <EChartsAreaChart
                 data={chartData}
                 config={chartConfig}
-                className="h-full w-full"
+                className="h-full w-full min-w-0 min-h-[180px]"
               >
                 <EChartsAreaChart.Area dataKey="approved" />
                 <EChartsAreaChart.XAxis dataKey="day" />

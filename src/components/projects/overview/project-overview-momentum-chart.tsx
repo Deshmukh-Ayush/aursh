@@ -90,11 +90,11 @@ export function ProjectOverviewMomentumChart({
         </div>
 
         {/* EvilCharts Area Chart */}
-        <div className="h-50 w-full min-h-0">
+        <div className="h-[200px] w-full min-h-[200px] min-w-0">
           <EChartsAreaChart
             data={chartData}
             config={chartConfig}
-            className="h-full w-full"
+            className="h-full w-full min-h-[200px] min-w-0"
           >
             <EChartsAreaChart.Area dataKey="activity" />
             <EChartsAreaChart.XAxis dataKey="day" />

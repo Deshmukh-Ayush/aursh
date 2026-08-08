@@ -78,12 +78,12 @@ export function ActivityBarChart({ logs }: ActivityBarChartProps) {
         <hr className="border-t border-dashed border-border/40" />
 
         {/* EChartsBarChart Canvas Container */}
-        <div className="h-[180px] w-full min-h-0">
+        <div className="h-[180px] w-full min-h-[180px] min-w-0">
           <EChartsBarChart
             data={chartData}
             config={chartConfig}
             xDataKey="day"
-            className="h-full w-full"
+            className="h-full w-full min-h-[180px] min-w-0"
           >
             <EChartsBarChart.XAxis
               dataKey="day"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, FileText } from "lucide-react";
 import { ProposalDonutChart } from "./proposal-donut-chart";
 import { ProposalCard } from "./proposal-card";
+import { ProposalHeader } from "./proposal-header";
 import { ProposalBuilderDrawer } from "./proposal-builder-drawer";
 import { ProposalPreviewDrawer } from "./proposal-preview-drawer";
 import { useUIStore } from "@/store/ui-store";
@@ -65,24 +66,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
   return (
     <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
-        <div>
-          <h1 className="text-[36px] font-semibold tracking-tight text-foreground text-balance leading-tight">
-            Proposals
-          </h1>
-        </div>
-
-        {isAgency && (
-          <button
-            onClick={() => setProposalBuilderOpen(true)}
-            aria-label="Build new proposal"
-            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5 self-start sm:self-auto"
-          >
-            <Plus className="w-5 h-5 stroke-3" />
-            <span>New Proposal</span>
-          </button>
-        )}
-      </div>
+      <ProposalHeader isAgency={isAgency} onOpenBuilder={() => setProposalBuilderOpen(true)} />
 
       {/* Donut Sales Pipeline Distribution Chart */}
       <ProposalDonutChart proposals={proposals} formatMoney={formatMoney} />

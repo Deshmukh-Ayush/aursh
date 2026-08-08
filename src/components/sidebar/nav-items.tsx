@@ -4,6 +4,7 @@ import React, { forwardRef } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 // Sidebar Context so children automatically know collapse state
 export const SidebarContext = React.createContext<{ isCollapsed: boolean }>({
@@ -21,24 +22,60 @@ type NavItemProps = React.ComponentPropsWithoutRef<"div"> & {
 export const NavItem = forwardRef<HTMLDivElement, NavItemProps>(
   ({ asChild, isActive, title, className, children, ...props }, ref) => {
     const { isCollapsed } = useSidebarContext();
-    const Comp = asChild ? Slot : "div";
-
-    const content = (
-      <Comp
+    const content = asChild && React.isValidElement(children) ? (
+      <Slot
         ref={ref}
         aria-current={isActive ? "page" : undefined}
         className={cn(
           "group relative flex h-10 items-center gap-2.5 rounded-md text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none",
           isCollapsed ? "mx-auto w-8 justify-center px-0" : "w-full px-2.5",
           isActive
-            ? "bg-foreground/6 text-foreground"
+            ? "text-foreground font-semibold"
             : "text-neutral-700 dark:text-neutral-100 hover:bg-foreground/4 hover:text-foreground",
           className
         )}
         {...props}
       >
-        {children}
-      </Comp>
+        {React.cloneElement(children as React.ReactElement<any>, {
+          children: (
+            <>
+              {isActive && (
+                <motion.div
+                  layoutId="activeSidebarItem"
+                  className="absolute inset-0 rounded-md bg-foreground/6 border border-border/40 pointer-events-none"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2.5 w-full">
+                {(children.props as any).children}
+              </span>
+            </>
+          ),
+        })}
+      </Slot>
+    ) : (
+      <div
+        ref={ref}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "group relative flex h-10 items-center gap-2.5 rounded-md text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none",
+          isCollapsed ? "mx-auto w-8 justify-center px-0" : "w-full px-2.5",
+          isActive
+            ? "text-foreground font-semibold"
+            : "text-neutral-700 dark:text-neutral-100 hover:bg-foreground/4 hover:text-foreground",
+          className
+        )}
+        {...props}
+      >
+        {isActive && (
+          <motion.div
+            layoutId="activeSidebarItem"
+            className="absolute inset-0 rounded-md bg-foreground/6 border border-border/40 pointer-events-none"
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+        <span className="relative z-10 flex items-center gap-2.5 w-full">{children}</span>
+      </div>
     );
 
     // Show tooltip automatically when collapsed
@@ -75,7 +112,6 @@ export function NavItemLabel({ className, children }: { className?: string; chil
   );
 }
 
-
 export function NavItemBadge({ count }: { count: number }) {
   const { isCollapsed } = useSidebarContext();
   
@@ -94,11 +130,6 @@ export function NavItemBadge({ count }: { count: number }) {
       ) : (
         <span
           aria-hidden="true"
-          // Changes: 
-          // 1. Softened background (bg-muted or bg-secondary)
-          // 2. Legible font (font-medium, text-[10px])
-          // 3. Removed harsh shadow
-          // 4. Added a subtle entry animation
           className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1.5 text-[10px] font-medium text-secondary-foreground tabular-nums animate-in fade-in zoom-in duration-300"
         >
           {displayCount}
