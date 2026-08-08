@@ -43,7 +43,7 @@ export function ProjectOverviewStatusChart({
   return (
     <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
       <span className="flex items-center gap-1.5 text-[12px] font-medium dark:text-neutral-400 py-0.5 px-1">
-        <ChartPieSliceIcon className="h-4 w-4 text-[#00AAF7]" /> Deliverable Status Distribution
+        <ChartPieSliceIcon className="h-4 w-4 text-brand" /> Deliverable Status Distribution
       </span>
       <div className="rounded-md bg-white p-5 dark:bg-neutral-950 flex flex-col h-full justify-between gap-5">
         {/* Header */}

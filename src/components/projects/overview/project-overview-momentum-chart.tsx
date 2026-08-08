@@ -54,7 +54,7 @@ export function ProjectOverviewMomentumChart({
   return (
     <div className="flex w-full flex-col gap-2 rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
       <span className="flex items-center gap-1.5 text-[12px] font-medium dark:text-neutral-400 py-0.5 px-1">
-        <LightningIcon className="h-4 w-4 text-[#00AAF7]" /> Project Momentum & Execution Velocity
+        <LightningIcon className="h-4 w-4 text-brand" /> Project Momentum & Execution Velocity
       </span>
       <div className="rounded-md bg-white p-5 dark:bg-neutral-950 flex flex-col gap-4">
         {/* Monospace Metric Stats Header */}
@@ -90,7 +90,7 @@ export function ProjectOverviewMomentumChart({
         </div>
 
         {/* EvilCharts Area Chart */}
-        <div className="h-[200px] w-full min-h-0">
+        <div className="h-50 w-full min-h-0">
           <EChartsAreaChart
             data={chartData}
             config={chartConfig}

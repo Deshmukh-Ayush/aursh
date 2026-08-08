@@ -112,7 +112,7 @@ export function DeliverablesVelocityChart({ deliverables }: DeliverablesVelocity
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           {/* EvilCharts Static EChartsAreaChart */}
           <div className="md:col-span-6 flex flex-col items-center justify-center relative py-1">
-            <div className="h-[180px] w-full">
+            <div className="h-45 w-full">
               <EChartsAreaChart
                 data={chartData}
                 config={chartConfig}

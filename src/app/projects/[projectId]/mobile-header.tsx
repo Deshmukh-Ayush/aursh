@@ -51,7 +51,7 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
       {/* 2. Native sliding drawer (replaces SheetContent) */}
       <div 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-background shadow-2xl transition-transform duration-300 ease-out md:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-65 flex-col bg-background shadow-2xl transition-transform duration-300 ease-out md:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
         role="dialog"
@@ -70,7 +70,7 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
       </div>
 
       {/* 3. Refined Header with glassmorphism */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border/40 bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-4">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border/40 bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/60 md:px-4">
         
         {/* Left Side: Navigation Triggers */}
         <div className="flex items-center">
@@ -98,7 +98,7 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
               width={100} 
               src={org.logoUrl} 
               alt={org.name || projectName} 
-              className="h-5 w-auto max-w-[120px] rounded-sm object-contain ring-1 ring-black/5 dark:ring-white/10" 
+              className="h-5 w-auto max-w-30 rounded-sm object-contain ring-1 ring-black/5 dark:ring-white/10" 
             />
           ) : (
             <div className="flex items-center gap-2">

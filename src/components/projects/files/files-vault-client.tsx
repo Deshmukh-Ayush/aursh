@@ -10,7 +10,6 @@ import {
   FileCodeIcon,
   FileIcon,
   DownloadSimpleIcon,
-  TrashIcon,
   UploadSimpleIcon,
   FolderSimpleIcon
 } from "@phosphor-icons/react";
@@ -67,8 +66,14 @@ export function FilesVaultClient({ projectId, files }: FilesVaultClientProps) {
         toast.success("File uploaded to vault");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to upload file");
+    } catch (err: unknown) {
+      // Narrow error type safely
+      const message = axios.isAxiosError(err)
+        ? err.response?.data?.error ?? err.message
+        : err instanceof Error
+        ? err.message
+        : "Failed to upload file";
+      toast.error(message);
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -111,7 +116,7 @@ export function FilesVaultClient({ projectId, files }: FilesVaultClientProps) {
           />
           <button
             disabled={isUploading}
-            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5"
+            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-brand text-white font-semibold text-sm flex items-center gap-1.5"
           >
             <UploadSimpleIcon className="w-5 h-5 stroke-3" />
             <span>{isUploading ? "Uploading..." : "Upload File"}</span>
@@ -189,7 +194,7 @@ export function FilesVaultClient({ projectId, files }: FilesVaultClientProps) {
                         download
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1 h-7 px-3 text-[12px] font-medium rounded-full bg-[#00AAF7] text-white hover:bg-[#0088c4] transition-colors active:scale-[0.96]"
+                        className="flex items-center gap-1 h-7 px-3 text-[12px] font-medium rounded-full bg-brand text-white hover:bg-brand-hover transition-colors active:scale-[0.96]"
                         aria-label={`Download file ${file.name}`}
                       >
                         <DownloadSimpleIcon className="w-3.5 h-3.5" />
