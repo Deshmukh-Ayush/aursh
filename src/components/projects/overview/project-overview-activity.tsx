@@ -1,7 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Activity } from "lucide-react";
 import type { OverviewActivity } from "./project-overview-types";
-import { ProjectOverviewCard } from "./project-overview-card";
 
 type ProjectOverviewActivityProps = {
   projectId: string;
@@ -63,55 +62,59 @@ function getMetadataDetail(type: string, metadata: Record<string, any> | null): 
 
 export function ProjectOverviewActivity({ projectId, recentActivity }: ProjectOverviewActivityProps) {
   return (
-    <ProjectOverviewCard className="lg:col-span-3" padding="md">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-[13px] font-semibold text-foreground">Recent Activity</h2>
-        <a
-          href={`/projects/${projectId}/activity`}
-          className="group flex items-center gap-1 text-[12px] font-medium text-muted-foreground transition-all hover:text-foreground active:scale-[0.96]"
-        >
-          View all <span className="transition-transform group-hover:translate-x-0.5">→</span>
-        </a>
-      </div>
+    <div className="lg:col-span-3 flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
+      <div className="rounded-md bg-white p-4 dark:bg-neutral-950 flex flex-col h-full justify-between gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[14px] font-semibold tracking-tight text-foreground">
+            Recent Activity Trail
+          </h2>
+          <a
+            href={`/projects/${projectId}/activity`}
+            className="group flex items-center gap-1 text-xs font-semibold text-[#00AAF7] hover:underline"
+          >
+            View all <span>→</span>
+          </a>
+        </div>
 
-      {recentActivity.length === 0 ? (
-        <div className="flex items-center justify-center py-8 text-center">
-          <div>
-            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50">
-              <Activity className="h-5 w-5 text-muted-foreground/40" />
-            </div>
-            <p className="text-[13px] text-muted-foreground">No activity yet</p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-0">
-          {recentActivity.map(({ log, actor }) => {
-            const detail = getMetadataDetail(log.type, log.metadata);
-            return (
-              <div key={log.id} className="flex items-start gap-3 border-b border-border/10 py-2.5 last:border-0 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg">
-                <Avatar className="mt-0.5 h-6 w-6 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/10 dark:ring-white/10">
-                  <AvatarImage src={actor?.image || ""} className="rounded-full" />
-                  <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-semibold">
-                    {actor?.name?.charAt(0).toUpperCase() || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] leading-snug">
-                    <span className="font-medium">{actor?.name || "Someone"}</span>{" "}
-                    <span className="text-muted-foreground">{ACTIVITY_LABELS[log.type] || log.type}</span>
-                    {detail ? (
-                      <span className="text-muted-foreground/80"> {detail}</span>
-                    ) : null}
-                  </p>
-                </div>
-                <span className="mt-0.5 shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                  {relativeTime(new Date(log.createdAt))}
-                </span>
+        {recentActivity.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-center">
+            <div>
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50">
+                <Activity className="h-5 w-5 text-muted-foreground/40" />
               </div>
-            );
-          })}
-        </div>
-      )}
-    </ProjectOverviewCard>
+              <p className="text-[13px] text-muted-foreground">No activity recorded yet</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {recentActivity.slice(0, 5).map(({ log, actor }) => {
+              const detail = getMetadataDetail(log.type, log.metadata);
+              return (
+                <div key={log.id} className="group flex items-center justify-between gap-3 py-2 px-2.5 hover:bg-muted/40 border-b border-border/30 last:border-0 transition-colors rounded-md">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <Avatar className="h-5.5 w-5.5 shrink-0 border border-background">
+                      <AvatarImage src={actor?.image || ""} className="rounded-full" />
+                      <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-semibold">
+                        {actor?.name?.charAt(0).toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1 truncate text-xs">
+                      <span className="font-semibold text-foreground">{actor?.name || "Someone"}</span>{" "}
+                      <span className="text-muted-foreground">{ACTIVITY_LABELS[log.type] || log.type}</span>
+                      {detail ? (
+                        <span className="text-muted-foreground/80 font-medium truncate"> {detail}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                    {relativeTime(new Date(log.createdAt))}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
