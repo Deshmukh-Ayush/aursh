@@ -12,6 +12,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { FilesVaultClient } from "@/components/projects/files/files-vault-client";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export default async function FilesPage({
   params,
@@ -20,9 +21,12 @@ export default async function FilesPage({
 }) {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return redirect("/sign-in");
+  if (!session || !session.user) return redirect("/sign-in");
 
   const { projectId } = await params;
+
+  const { proj, isAuthorized } = await getProjectAccess(projectId, session.user.id);
+  if (!isAuthorized || !proj) return redirect("/dashboard");
 
   const projectFiles = await db
     .select({

@@ -9,6 +9,7 @@ import { GeneralSettings } from "@/components/projects/settings/general-settings
 import { MembersManager } from "@/components/projects/settings/members-manager";
 import { SettingsTabs } from "@/components/projects/settings/settings-tabs";
 import { redirect } from "next/navigation";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export default async function SettingsPage({
   params,
@@ -20,22 +21,8 @@ export default async function SettingsPage({
   const session = await auth.api.getSession({ headers: reqHeaders });
   if (!session) return redirect("/sign-in");
 
-  const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-  if (!proj) return redirect("/dashboard");
-
-  let role: "agency" | "client" | "owner" | null = null;
-  const [member] = await db
-    .select()
-    .from(projectMember)
-    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-
-  if (member) {
-    role = member.role as "agency" | "client" | "owner";
-  } else if (session.session?.activeOrganizationId === proj.organizationId) {
-    role = "agency";
-  }
-
-  if (!role) return redirect("/dashboard");
+  const { proj, role, isAuthorized } = await getProjectAccess(projectId, session.user.id);
+  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
 
   // Fetch all members for this project
   const membersData = await db

@@ -12,6 +12,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { PaymentsViewClient, MilestoneWithDetails } from "@/components/projects/payments";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -22,28 +23,15 @@ export default async function PaymentsPage({ params }: { params: Promise<{ proje
   const projectId = resolvedParams.projectId;
   const userId = session.user.id;
 
-  // `async-parallel`: fetch member, project, milestones, payments, and deliverables concurrently
-  const [memberRows, projRows, milestonesData, paymentsData, deliverablesData] = await Promise.all([
-    db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId))),
-    db.select().from(project).where(eq(project.id, projectId)),
+  const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
+  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
+
+  // `async-parallel`: fetch milestones, payments, and deliverables concurrently
+  const [milestonesData, paymentsData, deliverablesData] = await Promise.all([
     db.select().from(paymentMilestone).where(eq(paymentMilestone.projectId, projectId)).orderBy(asc(paymentMilestone.sortOrder), asc(paymentMilestone.createdAt)),
     db.select().from(payment).where(eq(payment.projectId, projectId)).orderBy(desc(payment.createdAt)),
     db.select().from(deliverable).where(eq(deliverable.projectId, projectId)).orderBy(asc(deliverable.createdAt)),
   ]);
-
-  const member = memberRows[0];
-  const proj = projRows[0];
-
-  if (!proj) return redirect("/dashboard");
-
-  let role: "owner" | "agency" | "client" = "agency";
-  if (member) {
-    role = member.role as "owner" | "agency" | "client";
-  } else if (session.session?.activeOrganizationId === proj.organizationId) {
-    role = "agency";
-  } else {
-    return redirect("/dashboard");
-  }
 
   // Join deliverable titles to milestones
   const deliverablesMap = new Map(deliverablesData.map((d) => [d.id, d.title]));

@@ -12,6 +12,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -22,25 +23,8 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
   const projectId = resolvedParams.projectId;
   const userId = session.user.id;
 
-  // `async-parallel`: fetch member and project details concurrently
-  const [memberRows, projRows] = await Promise.all([
-    db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId))),
-    db.select().from(project).where(eq(project.id, projectId)),
-  ]);
-
-  const member = memberRows[0];
-  const proj = projRows[0];
-
-  if (!proj) return redirect("/dashboard");
-
-  let role: "owner" | "agency" | "client" = "agency";
-  if (member) {
-    role = member.role as "owner" | "agency" | "client";
-  } else if (session.session?.activeOrganizationId === proj.organizationId) {
-    role = "agency";
-  } else {
-    return redirect("/dashboard");
-  }
+  const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
+  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
 
   // Fetch org plan
   const [org] = await db.select().from(organization).where(eq(organization.id, proj.organizationId));

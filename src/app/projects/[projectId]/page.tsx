@@ -14,6 +14,8 @@ import { ProjectOverviewActivity } from "@/components/projects/overview/project-
 import { ProjectOverviewStagger } from "@/components/projects/overview/project-overview-stagger";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export const metadata: Metadata = {
   title: "Overview",
@@ -27,9 +29,12 @@ export default async function ProjectOverviewPage({
 }) {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return null;
+  if (!session || !session.user) return redirect("/sign-in");
 
   const { projectId } = await params;
+
+  const { proj: accessProj, role: accessRole, isAuthorized } = await getProjectAccess(projectId, session.user.id);
+  if (!isAuthorized || !accessProj || !accessRole) return redirect("/dashboard");
 
   // `async-parallel`: start independent queries concurrently
   const [proj, recentActivity] = await Promise.all([
@@ -51,7 +56,7 @@ export default async function ProjectOverviewPage({
       .limit(8),
   ]);
 
-  if (!proj) return <div>Project not found</div>;
+  if (!proj) return redirect("/dashboard");
 
   // Fetch latest accepted proposal (separate query to avoid over-fetching)
   const latestProposal = await db.query.proposal.findFirst({
@@ -60,7 +65,7 @@ export default async function ProjectOverviewPage({
   });
 
   const currentUserMember = proj.members.find((m) => m.user.id === session.user.id);
-  const userRole = currentUserMember?.role ?? "agency";
+  const userRole = currentUserMember?.role ?? accessRole;
   const isOwner = userRole === "owner";
 
   // `js-combine-iterations`: single pass for all deliverable metrics

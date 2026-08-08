@@ -10,10 +10,12 @@ import { deliverable, projectMember, comment, user } from "@/db/schema";
 import { eq, and, desc, isNotNull, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateDeliverableDialog } from "../../../../components/projects/deliverables/create-deliverable-dialog";
 import { DeliverablesContainer } from "@/components/projects/deliverables/deliverables-container";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export default async function DeliverablesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -23,12 +25,8 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
   const { projectId } = await params;
   const userId = session.user.id;
 
-  const [member] = await db
-    .select()
-    .from(projectMember)
-    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-
-  if (!member) return null;
+  const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
+  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
 
   const deliverablesList = await db
     .select()
@@ -58,7 +56,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
           </h1>
         </div>
 
-        {member.role === "owner" && (
+        {(role === "owner" || role === "agency") && (
           <CreateDeliverableDialog projectId={projectId} />
         )}
       </div>
@@ -72,7 +70,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
           </div>
           <h3 className="text-base font-semibold tracking-tight" style={{ textWrap: 'balance' }}>No Deliverables Yet</h3>
           <p className="text-muted-foreground mt-1.5 max-w-sm text-[13px] leading-relaxed" style={{ textWrap: 'pretty' }}>
-            {member.role === 'owner' 
+            {role === 'owner' || role === 'agency'
               ? "Create your first deliverable to start tracking progress with your client." 
               : "The project owner hasn't added any deliverables yet."}
           </p>
@@ -81,7 +79,7 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
         <DeliverablesContainer 
           deliverables={deliverablesList}
           allComments={allComments}
-          memberRole={member.role}
+          memberRole={role}
           projectId={projectId}
           userId={userId}
         />

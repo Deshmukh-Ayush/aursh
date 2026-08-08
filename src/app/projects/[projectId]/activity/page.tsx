@@ -10,20 +10,25 @@ import { activityLog, user } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { ActivityBarChart } from "@/components/projects/activity/activity-bar-chart";
 import { ActivityLogClient } from "@/components/projects/activity/activity-log-client";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export default async function ActivityPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return null;
+  if (!session || !session.user) return redirect("/sign-in");
 
   const { projectId } = await params;
+
+  const { proj, isAuthorized } = await getProjectAccess(projectId, session.user.id);
+  if (!isAuthorized || !proj) return redirect("/dashboard");
 
   const logs = await db
     .select({
       log: activityLog,
-      actor: user
+      actor: user,
     })
     .from(activityLog)
     .leftJoin(user, eq(activityLog.userId, user.id))

@@ -5,7 +5,6 @@ import { formatDistanceToNow, format } from "date-fns";
 import { 
   FileText, 
   Upload, 
-  CheckCircle, 
   CheckCircle2,
   AlertCircle, 
   Flag,
@@ -13,7 +12,6 @@ import {
   Play,
   Receipt,
   Activity,
-  Send,
   Search,
   Filter
 } from "lucide-react";

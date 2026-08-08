@@ -4,7 +4,9 @@ import { proposal, projectMember } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { ProposalDashboardClient } from "@/components/projects/proposal/proposal-dashboard-client";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export const metadata: Metadata = {
   title: "Proposals & Scope Estimates",
@@ -20,9 +22,8 @@ export default async function ProposalPage({ params }: { params: Promise<{ proje
   const projectId = resolvedParams.projectId;
   const userId = session.user.id;
 
-  // Check role
-  const member = await db.select().from(projectMember).where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-  const role = member[0]?.role || "agency";
+  const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
+  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
 
   // Fetch all proposals for this project with line items
   const existingProposals = await db.query.proposal.findMany({
