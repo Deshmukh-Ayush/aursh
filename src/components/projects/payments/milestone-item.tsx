@@ -110,7 +110,7 @@ export function MilestoneItem({
           ) : (
             <button
               onClick={() => onMarkPaid(milestone)}
-              className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full bg-[#00AAF7] text-white hover:bg-[#0088c4] hover:text-white transition-colors"
+              className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full bg-brand text-white hover:bg-brand-hover hover:text-white transition-colors"
             >
               Pay <ArrowRight className="w-4 h-4" />
             </button>

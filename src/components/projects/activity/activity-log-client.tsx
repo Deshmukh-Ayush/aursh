@@ -2,20 +2,7 @@
 
 import { useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { 
-  FileText, 
-  Upload, 
-  CheckCircle2,
-  AlertCircle, 
-  Flag,
-  UserPlus,
-  Play,
-  Receipt,
-  Activity,
-  Search,
-  Filter
-} from "lucide-react";
-import { SealCheckIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
+import { SealCheckIcon, PaperPlaneTiltIcon, FunnelIcon, FilesIcon, ReceiptIcon, FileArrowUpIcon, PlayCircleIcon, CheckCircleIcon, WarningIcon, FlagIcon, UserPlusIcon, PulseIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 
 type LogItem = {
   log: {
@@ -52,7 +39,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
     switch (type) {
       case "contract_uploaded":
         return { 
-          Icon: FileText, 
+          Icon: FilesIcon, 
           color: "text-sky-500", 
           text: `Uploaded contract (${metadata?.fileName || "Document"})`,
           category: "Contract",
@@ -68,7 +55,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "payment_completed":
         return {
-          Icon: Receipt,
+          Icon: ReceiptIcon,
           color: "text-emerald-500",
           text: `Verified payment receipt for ${metadata?.milestoneTitle || "Milestone"}`,
           category: "Payment",
@@ -76,7 +63,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "file_uploaded":
         return { 
-          Icon: Upload, 
+          Icon: FileArrowUpIcon, 
           color: "text-purple-500", 
           text: `Uploaded file (${metadata?.fileName || "Attachment"})`,
           category: "File",
@@ -84,7 +71,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "deliverable_created":
         return { 
-          Icon: Play, 
+          Icon: PlayCircleIcon, 
           color: "text-sky-500", 
           text: `Created deliverable: ${metadata?.title || "Task"}`,
           category: "Scope",
@@ -100,7 +87,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "deliverable_approved":
         return { 
-          Icon: CheckCircle2, 
+          Icon: CheckCircleIcon, 
           color: "text-emerald-500", 
           text: `Approved deliverable: ${metadata?.title || "Task"}`,
           category: "Approval",
@@ -108,7 +95,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "revision_requested":
         return { 
-          Icon: AlertCircle, 
+          Icon: WarningIcon, 
           color: "text-rose-500 animate-pulse", 
           text: `Requested revision on: ${metadata?.title || "Task"}${metadata?.comment ? `. Reason: ${metadata?.comment}` : ""}`,
           category: "Revision",
@@ -116,7 +103,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "project_completed":
         return { 
-          Icon: Flag, 
+          Icon: FlagIcon, 
           color: "text-emerald-500", 
           text: "Marked project as completed!",
           category: "Milestone",
@@ -124,7 +111,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       case "member_joined":
         return { 
-          Icon: UserPlus, 
+          Icon: UserPlusIcon, 
           color: "text-purple-500", 
           text: "Joined the project team",
           category: "Member",
@@ -132,7 +119,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         };
       default:
         return { 
-          Icon: Activity, 
+          Icon: PulseIcon, 
           color: "text-muted-foreground", 
           text: "Performed an action",
           category: "Audit",
@@ -176,7 +163,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* Search Box */}
           <div className="relative flex items-center min-w-40 sm:min-w-48">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 pointer-events-none" />
+            <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 pointer-events-none" />
             <input
               type="text"
               placeholder="Search audit trail..."
@@ -188,7 +175,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
 
           {/* Category Select Dropdown */}
           <div className="relative flex items-center shrink-0">
-            <Filter className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 pointer-events-none" />
+            <FunnelIcon className="w-4 h-4 text-muted-foreground absolute left-2.5 pointer-events-none" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
@@ -208,7 +195,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
       {filteredLogs.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
           <div className="rounded-full bg-primary/10 p-4 mb-4 text-primary">
-            <Activity className="w-8 h-8" />
+            <PulseIcon className="w-8 h-8" />
           </div>
           <h3 className="text-base font-semibold text-foreground tracking-tight text-balance">No Matching Audit Events</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-md leading-relaxed text-pretty">
