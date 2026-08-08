@@ -9,12 +9,11 @@ import {
   Code,
   CodeBlock,
   Table,
-  Callout,
 } from "./doc-components";
 
 export const metadata: Metadata = {
   title: "Developer Docs",
-  description: "Internal developer documentation for Scrunity — architecture, schema, API routes, payment milestones, and conventions.",
+  description: "Internal developer documentation for Scrunity — architecture, EvilCharts visual analytics, DB schema, API routes, multi-currency engine, and design system conventions.",
 };
 
 // Gate: only allow specific developer emails
@@ -32,7 +31,7 @@ export default async function DocsPage() {
   }
 
   return (
-    <div className="min-h-svh bg-background text-foreground antialiased font-sans selection:bg-primary/20">
+    <div className="min-h-svh bg-background text-foreground antialiased font-sans selection:bg-brand/20">
       <style dangerouslySetInnerHTML={{__html: `
         html {
           scroll-behavior: smooth;
@@ -43,41 +42,40 @@ export default async function DocsPage() {
       <nav className="sticky top-0 z-50 h-13 px-6 border-b border-border/40 bg-background/80 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="text-[14px] font-bold tracking-tight text-foreground">Scrunity</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-purple-500/15 text-cyan-600 dark:text-cyan-400 tracking-wider uppercase">
-            Internal Docs
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#00AAF7]/10 text-[#00AAF7] dark:text-[#00AAF7] tracking-wider uppercase">
+            Internal Developer Docs
           </span>
         </div>
-        <span className="text-[11px] text-muted-foreground font-medium">v0.0.1</span>
+        <span className="text-[11px] text-muted-foreground font-mono font-medium">v0.0.1</span>
       </nav>
 
-      <div className="max-w-215 mx-auto px-6 pt-12 pb-32">
-        {/* Hero */}
-        <header className="mb-16">
-          <h1 className="text-[36px] font-extrabold tracking-tight leading-tight text-foreground mb-4 text-balance">
+      <div className="max-w-4xl mx-auto px-6 pt-12 pb-32 space-y-8">
+        {/* Hero Header */}
+        <header className="mb-12">
+          <h1 className="text-[36px] font-semibold tracking-tight leading-tight text-foreground mb-3 text-balance">
             Developer Documentation
           </h1>
-          <p className="text-base leading-relaxed text-muted-foreground max-w-160 text-pretty">
-            Technical architecture, DB schemas, API endpoints, payment milestones, e-signature engines, and code conventions for Scrunity.
+          <p className="text-base leading-relaxed text-muted-foreground max-w-2xl text-pretty">
+            Technical architecture, EvilCharts data visualization system, database schemas, API route specs, multi-currency handling, and pixel-identical design conventions for Scrunity.
           </p>
         </header>
 
-        {/* TOC */}
+        {/* Table of Contents */}
         <Section title="Contents">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {[
               ['What is Scrunity?', '#overview'],
-              ['Tech Stack', '#stack'],
+              ['Tech Stack & EvilCharts', '#stack'],
               ['Folder Structure', '#folders'],
+              ['Design System & Component Rules', '#design-system'],
+              ['EvilCharts Analytics Architecture', '#evilcharts'],
+              ['Multi-Currency Engine (INR / USD)', '#currency'],
               ['Database Schema', '#schema'],
               ['Payment Milestones Engine', '#payments'],
               ['Contract & E-Signature Vault', '#contracts'],
-              ['Authentication', '#auth'],
-              ['API Routes', '#api'],
-              ['Component Architecture', '#components'],
-              ['Notifications', '#notifications'],
+              ['API Routes Specification', '#api'],
               ['Environment Variables', '#env'],
-              ['Dev Commands', '#commands'],
-              ['Conventions & Design System', '#conventions'],
+              ['Dev & Verification Commands', '#commands'],
             ].map(([label, href]) => (
               <a
                 key={href}
@@ -93,34 +91,32 @@ export default async function DocsPage() {
         {/* ─── OVERVIEW ─── */}
         <Section id="overview" title="What is Scrunity?">
           <P>
-            Scrunity is an AI-powered client collaboration and revenue protection platform for agencies, freelancers, and clients. It replaces fragmented tools (DocuSign, Trello, WhatsApp, Excel invoices) with a unified source of truth.
+            Scrunity is an AI-powered agency revenue protection and client collaboration OS. It replaces fragmented tools (DocuSign, Trello, WhatsApp, Excel invoices) with a single source of truth for payment tracking, contract execution, deliverable reviews, and audit logs.
           </P>
-          <P>Key user roles:</P>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><Code>owner</Code> — Agency owner who created the project. Full administrative control over scope, contracts, and payment tracking.</li>
-            <li><Code>agency</Code> — Agency team member. Can create deliverables, send proposals, upload agreements, and record payment milestones.</li>
-            <li><Code>client</Code> — Invited client stakeholder. Can upload agreements (e.g. NDA, NOC), sign contracts, review deliverables, request revisions, and verify payments.</li>
+          <P>User roles and permissions:</P>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
+            <li><Code>owner</Code> — Agency owner. Full control over project creation, billing, contract vault, proposal generation, and team management.</li>
+            <li><Code>agency</Code> — Agency team member. Can create deliverables, upload agreements, send proposals, and verify payment milestones.</li>
+            <li><Code>client</Code> — Invited client stakeholder. Can upload agreements (NDA, NOC), e-sign contracts, review deliverables, request revisions, and view payment status.</li>
           </ul>
         </Section>
 
         {/* ─── TECH STACK ─── */}
-        <Section id="stack" title="Tech Stack">
+        <Section id="stack" title="Tech Stack & EvilCharts">
           <Table
             headers={['Layer', 'Technology', 'Notes']}
             rows={[
-              ['Framework', 'Next.js 16 (App Router)', 'RSC by default, async params, Turbopack'],
-              ['Language', 'TypeScript 5', 'Strict mode'],
-              ['Database', 'Neon (Serverless Postgres)', 'Serverless driver @neondatabase/serverless'],
-              ['ORM', 'Drizzle ORM', 'Schema in src/db/schema.ts, drizzle-kit push'],
+              ['Framework', 'Next.js 16 (App Router)', 'RSC by default, Turbopack, async params'],
+              ['Language', 'TypeScript 5', 'Strict type safety (tsc --noEmit)'],
+              ['Charts & Analytics', 'EvilCharts Component Suite', 'EChartsRadialChart, EChartsAreaChart, EChartsBarChart'],
+              ['Database', 'Neon (Serverless Postgres)', 'Stateless HTTP driver @neondatabase/serverless'],
+              ['ORM', 'Drizzle ORM', 'Schema defined in src/db/schema.ts'],
               ['Auth', 'Better Auth', 'Google OAuth + organization plugin'],
-              ['SaaS Merchant of Record', 'Dodo Payments', 'MoR for Scrunity SaaS subscriptions'],
-              ['State Management', 'Zustand', 'Store architecture in src/store/ with persist middleware'],
-              ['Animations', 'Framer Motion', 'Apple/Emil spring animations & morphing tabs'],
-              ['Storage', 'Vercel Blob', 'For PDF contracts and project file uploads'],
-              ['Email', 'Resend', 'Transactional emails for invites and activity notifications'],
-              ['Styling', 'Tailwind CSS 4', 'Neutral monochrome palette'],
-              ['Icons', 'Lucide React', ''],
-              ['Toasts', 'Sonner', ''],
+              ['State Management', 'Zustand', 'Modular stores in src/store/ with persist middleware'],
+              ['Icons', 'Phosphor Icons & Lucide', '@phosphor-icons/react in client components, Lucide in RSC'],
+              ['Styling', 'Tailwind CSS v4 & CSS Variables', 'Brand color #00AAF7, dark mode, custom neutral tokens'],
+              ['Storage', 'Vercel Blob', 'PDF contract uploads and attachment storage'],
+              ['Email', 'Resend', 'Transactional emails for invites and notifications'],
             ]}
           />
         </Section>
@@ -130,59 +126,84 @@ export default async function DocsPage() {
           <CodeBlock>{`src/
 ├── app/                        # Next.js App Router
 │   ├── layout.tsx              # Root layout (ThemeProvider, Sonner)
-│   ├── page.tsx                # Landing page
-│   ├── globals.css             # Base styles, typography, neutral tokens
-│   ├── terms/                  # Terms of Service page (MoR, refund policy, e-signatures)
-│   ├── privacy/                # Privacy Policy page (analytics, encryption, disclosures)
-│   │
-│   ├── onboarding/             # Organization setup flow
-│   ├── dashboard/              # Main dashboard (projects, financial KPIs, stats)
-│   │   └── settings/           # Org & billing settings
-│   ├── projects/[projectId]/   # ⬇ Project workspace
-│   │   ├── layout.tsx          # Auth guard, sidebar, role resolution
-│   │   ├── page.tsx            # Overview (Financials card, activity feed)
-│   │   ├── payments/           # Financial KPI cards, milestone tracking & verification
-│   │   ├── contract/           # Dual Contract Vault, e-signatures, preview
-│   │   ├── deliverables/       # List & Kanban views
-│   │   ├── files/              # File uploads & storage
-│   │   ├── discussions/        # Threaded comments
-│   │   ├── activity/           # Full activity log
-│   │   └── settings/           # Project settings, members, invites
-│   │
-│   ├── api/                    # Route Handlers
-│   │   ├── milestones/         # Milestone CRUD (/api/milestones)
-│   │   │   └── mark-paid/      # Manual Payment Verification (/api/milestones/mark-paid)
-│   │   ├── contracts/          # Contracts POST/PATCH/DELETE
-│   │   ├── deliverables/       # Deliverables POST/PATCH & milestone release trigger
-│   │   ├── proposals/          # Proposal generation & line items
-│   │   ├── notifications/      # GET unread, POST mark-read
-│   │   ├── projects/           # Projects API CRUD & Members/Invites
-│   │   └── organizations/      # Orgs API CRUD & Members/Invites
-│
-├── store/                      # Zustand State Management Architecture
-│   ├── types.ts                # Strict domain interfaces (zero any)
-│   ├── ui-store.ts             # Drawers, modals & tab filters state
-│   ├── proposal-store.ts       # Proposal draft & line items state
-│   ├── payment-store.ts        # Payment milestones & UTR reference state
-│   └── deliverable-store.ts    # Deliverables & board drag-and-drop state
+│   ├── globals.css             # Brand color #00AAF7, Tailwind v4 theme
+│   ├── docs/                   # Developer documentation route
+│   ├── dashboard/              # Main organization dashboard
+│   └── projects/[projectId]/   # Project workspace routes
+│       ├── page.tsx            # Overview dashboard (2 Hero KPI Cards, EvilCharts)
+│       ├── payments/           # PaymentsRadialChart, multi-currency, milestones
+│       ├── proposal/           # ProposalDonutChart, proposal builder drawer
+│       ├── deliverables/       # DeliverablesVelocityChart (EvilCharts Area), list view
+│       ├── contract/           # ContractStatusChart (Legal Vault Radial), e-signatures
+│       ├── activity/           # ActivityBarChart (Monospace Bar), category filters
+│       ├── files/              # FilesStorageChart (Storage Vault), file list
+│       └── settings/           # Project settings & member management
 │
 ├── components/
-│   ├── project-sidebar.tsx     # Project sidebar nav with Payments link
-│   ├── projects/
-│   │   ├── payments/           # PaymentsViewClient, KPI bar, verification modal
-│   │   ├── contracts/          # ContractVaultClient, signature modal, upload dialog
-│   │   ├── deliverables/       # DeliverableList, KanbanBoard views
-│   │   ├── discussions/        # CommentThread, CommentForm
-│   │   └── proposal/           # ProposalBuilder, ProposalClientView
+│   ├── evilcharts/             # EvilCharts Visualization Library
+│   │   ├── charts/             # echarts-radial-chart, echarts-area-chart, echarts-bar-chart
+│   │   └── ui/                 # echarts-dot, echarts-brush
+│   └── projects/               # Domain Component Modules
+│       ├── overview/           # ProjectOverviewHero, MomentumChart, StatusChart
+│       ├── payments/           # PaymentsRadialChart, MilestoneItem
+│       ├── proposal/           # ProposalDonutChart, ProposalCard
+│       ├── deliverables/       # DeliverablesVelocityChart, DeliverableList
+│       ├── contracts/          # ContractStatusChart, ContractVaultClient
+│       ├── activity/           # ActivityBarChart, ActivityLogClient
+│       └── files/              # FilesStorageChart, FilesVaultClient
 │
-├── db/
-│   └── schema.ts               # Drizzle table & relation definitions
-│
-└── lib/
-    ├── auth.ts                 # Better Auth server configuration
-    ├── activity.ts             # Non-blocking Activity Logger
-    ├── pdf-signing.ts          # PDF E-Signature stamper & hash generator
-    └── tenant-context.ts       # Unified Tenant Context Resolver`}</CodeBlock>
+├── store/                      # Zustand State Management Architecture
+├── db/                         # Drizzle schema definitions (schema.ts)
+└── lib/                        # Server actions, Better Auth, pdf signing, activity logger`}</CodeBlock>
+        </Section>
+
+        {/* ─── DESIGN SYSTEM ─── */}
+        <Section id="design-system" title="Design System & Component Rules">
+          <P>
+            Scrunity enforces strict design rules across every tab in the application to maintain 100% visual consistency:
+          </P>
+          <Table
+            headers={['Pattern', 'CSS & HTML Specification', 'Usage']}
+            rows={[
+              ['Brand Primary Button', 'active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5', 'Main page CTA buttons across all sections'],
+              ['Container Outer Frame', 'rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900', 'Outer container frame for all charts & hero cards'],
+              ['Container Inner Card', 'rounded-md bg-white p-4 dark:bg-neutral-950', 'Inner white/dark card wrapping chart content'],
+              ['Row Item List Standard', 'group flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 py-2.5 px-3 hover:bg-muted/40 border-b border-border/40 last:border-0 transition-colors rounded-md', '100% pixel-identical row list layout across all tabs'],
+              ['Page Title Header', 'text-[36px] font-semibold tracking-tight text-foreground text-balance leading-tight', 'Main section heading on every project tab'],
+              ['Section Title Header', 'text-[16px] font-semibold tracking-tight text-foreground text-balance', 'Sub-section header above list rows'],
+            ]}
+          />
+        </Section>
+
+        {/* ─── EVILCHARTS ANALYTICS ─── */}
+        <Section id="evilcharts" title="EvilCharts Analytics Architecture">
+          <P>
+            Scrunity integrates the **EvilCharts** visualization engine across all core project tabs:
+          </P>
+          <Table
+            headers={['Tab Module', 'Chart Component', 'Location', 'Visualization Metric']}
+            rows={[
+              ['Payments', 'EChartsRadialChart', 'src/components/projects/payments/payments-radial-chart.tsx', '4 Radial Gauges: Collected, Due, Overdue, Upcoming'],
+              ['Proposals', 'ProposalDonutChart', 'src/components/projects/proposal/proposal-donut-chart.tsx', 'Sales Pipeline Donut: Accepted, Sent, Draft, Declined'],
+              ['Deliverables', 'EChartsAreaChart', 'src/components/projects/deliverables/deliverables-velocity-chart.tsx', 'Static Area Velocity Trend: Approved vs Total Tasks'],
+              ['Contracts', 'ContractStatusChart', 'src/components/projects/contracts/contract-status-chart.tsx', '3 Radial Gauges: Fully Signed, Pending, Draft Agreements'],
+              ['Activity Log', 'EChartsBarChart', 'src/components/projects/activity/activity-bar-chart.tsx', 'Monospace 14-Day Audit Bar Chart with Peak Day indicator'],
+              ['Project Files', 'FilesStorageChart', 'src/components/projects/files/files-storage-chart.tsx', 'Storage Vault Breakdown: PDFs, Images, Code Archives'],
+              ['Project Overview', 'ProjectOverviewMomentumChart', 'src/components/projects/overview/project-overview-momentum-chart.tsx', '14-Day Activity Velocity Trend Area Chart'],
+            ]}
+          />
+        </Section>
+
+        {/* ─── MULTI-CURRENCY ENGINE ─── */}
+        <Section id="currency" title="Multi-Currency Engine (INR / USD)">
+          <P>
+            Scrunity supports dual currencies (<Code>INR ₹</Code> and <Code>USD $</Code>) seamlessly:
+          </P>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
+            <li><strong className="text-foreground font-medium">Single Currency Formatting:</strong> Formats INR as <Code>₹1,00,000</Code> and USD as <Code>$2,500</Code> using locale rules.</li>
+            <li><strong className="text-foreground font-medium">Mixed-Currency Portfolio Totals:</strong> When a project contains milestones or proposals in both INR and USD, totals are formatted as <Code>₹1,00,000 + $2,000</Code> rather than converting or collapsing currencies improperly.</li>
+            <li><strong className="text-foreground font-medium">Utility Function:</strong> Implemented via <Code>formatMultiCurrencyTotals(items)</Code> in payment components.</li>
+          </ul>
         </Section>
 
         {/* ─── DATABASE SCHEMA ─── */}
@@ -194,69 +215,37 @@ export default async function DocsPage() {
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
               ['payment_milestone', 'projectId, title, amount, currency, triggerType, status, deliverableId', 'Milestone statuses: upcoming | due | overdue | paid | waived'],
-              ['payment', 'milestoneId, projectId, amount, currency, paymentMethod, referenceNote, status, paidAt', 'Stores payment receipt verification & UTR reference notes'],
+              ['payment', 'milestoneId, projectId, amount, currency, paymentMethod, referenceNote, status, paidAt', 'Stores payment verification & UTR reference notes'],
             ]}
           />
 
-          <H3>Contract & E-Signature Tables</H3>
+          <H3>Contract, Proposal & Activity Tables</H3>
           <Table
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
               ['contract', 'projectId, fileUrl, fileName, documentType, uploadedByRole, status, signedDocumentUrl, documentHash', 'Supports sow | nda | noc | msa | addendum | other'],
-              ['signature', 'contractId, userId, signatureData, signatureMethod, ipAddress, userAgent, documentHash, auditTrail', 'Records bi-directional e-signature execution & cryptographic audit logs'],
-            ]}
-          />
-
-          <H3>Proposal & Project Tables</H3>
-          <Table
-            headers={['Table', 'Key Columns', 'Purpose']}
-            rows={[
+              ['signature', 'contractId, userId, signatureData, signatureMethod, ipAddress, userAgent, documentHash', 'Bi-directional e-signature execution & cryptographic audit logs'],
               ['proposal', 'projectId, title, price, currency, status', 'Status: draft | sent | accepted | declined'],
-              ['proposal_line_items', 'proposalId, description, quantity, unitPrice, total', 'Line items converted to deliverables and payment milestones'],
               ['deliverable', 'projectId, title, status, dueDate, submissionTitle, submissionUrl', 'Status: pending | in_review | approved | revision_requested'],
-              ['activity_log', 'projectId, userId, type, metadata', 'Includes payment_requested, payment_completed, milestone_created'],
+              ['activity_log', 'projectId, userId, type, metadata', 'Audit log for contract, payment, deliverable, and member actions'],
+              ['files', 'projectId, name, size, url, uploadedBy', 'Project attachments and document storage'],
             ]}
           />
-        </Section>
-
-        {/* ─── PAYMENT MILESTONES ─── */}
-        <Section id="payments" title="Payment Milestones Engine">
-          <P>
-            Scrunity includes a dedicated **Payment Milestones & Financial Tracking Engine** designed for agency revenue protection:
-          </P>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><strong className="text-foreground font-medium">EvilCharts Radial Breakdown:</strong> Visualizes portfolio revenue distribution across 4 radial gauge charts (<Code>Collected</Code>, <Code>Payment Due</Code>, <Code>Overdue</Code>, <Code>Upcoming</Code>).</li>
-            <li><strong className="text-foreground font-medium">Trigger Types:</strong> Upfront (100% or deposit), On Deliverable Approval, Specific Due Date, or Manual Request.</li>
-            <li><strong className="text-foreground font-medium">Automated Release Gate:</strong> When a client approves a deliverable via <Code>PATCH /api/deliverables</Code>, any linked milestone automatically flips from <Code>upcoming</Code> to <Code>due</Code>.</li>
-            <li><strong className="text-foreground font-medium">Direct Payment Verification:</strong> Agencies verify payments with method selection (UPI/GPay, Bank Transfer, Card, Cash) and enter optional transaction UTR numbers.</li>
-            <li><strong className="text-foreground font-medium">Neon HTTP Driver Convention:</strong> Database operations use sequential async calls (<Code>await db.insert</Code>, <Code>await db.update</Code>) compatible with Neon HTTP serverless driver (avoiding unsupported <Code>db.transaction</Code> calls over HTTP).</li>
-          </ul>
-        </Section>
-
-        {/* ─── CONTRACT VAULT ─── */}
-        <Section id="contracts" title="Contract & E-Signature Vault">
-          <P>
-            The Contract Vault provides Apple-inspired inline document management with bi-directional upload rights:
-          </P>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-loose list-disc">
-            <li><strong className="text-foreground font-medium">Bi-Directional Uploads:</strong> Agency uploads SOW/MSA $\rightarrow$ Client signs; Client uploads NDA/NOC $\rightarrow$ Agency signs.</li>
-            <li><strong className="text-foreground font-medium">Cryptographic Audit Trail:</strong> Computes SHA-256 document hashes, logs IP address, user-agent, and timestamp for legal enforcement.</li>
-            <li><strong className="text-foreground font-medium">Morphing Tab Bar:</strong> Framer Motion tab sliding indicator for filtering document categories.</li>
-          </ul>
         </Section>
 
         {/* ─── API ─── */}
-        <Section id="api" title="API Routes">
+        <Section id="api" title="API Routes Specification">
           <Table
             headers={['Route', 'Method', 'Purpose']}
             rows={[
               ['/api/milestones', 'GET/POST/PATCH/DELETE', 'Fetch, create, update, or delete payment milestones'],
               ['/api/milestones/mark-paid', 'POST', 'Record manual payment verification & UTR reference note'],
               ['/api/contracts', 'GET/POST/PATCH/DELETE', 'Upload agreements, fetch contracts, update status'],
+              ['/api/contracts/sign', 'POST', 'Execute e-signature and generate cryptographic SHA-256 seal'],
               ['/api/deliverables', 'POST/PATCH', 'Create deliverable, update status & trigger linked milestones'],
               ['/api/proposals', 'POST/PATCH', 'Create proposal and convert line items to deliverables/milestones'],
+              ['/api/files', 'POST/DELETE', 'Upload and manage project files'],
               ['/api/notifications', 'GET/POST', 'Fetch unread notifications & mark read'],
-              ['/api/projects', 'POST/PATCH/DELETE', 'Create, update, delete projects'],
             ]}
           />
         </Section>
@@ -277,23 +266,23 @@ export default async function DocsPage() {
         </Section>
 
         {/* ─── COMMANDS ─── */}
-        <Section id="commands" title="Dev Commands">
+        <Section id="commands" title="Dev & Verification Commands">
           <Table
             headers={['Command', 'Description']}
             rows={[
-              ['npm run dev', 'Start dev server (port 3000)'],
-              ['npm run build', 'Production build'],
-              ['npm run typecheck', 'tsc --noEmit (no output, just type checking)'],
-              ['npm run lint', 'ESLint'],
-              ['npm run db:push', 'Sync schema changes directly to Neon Postgres'],
+              ['npm run dev', 'Start local development server (port 3000)'],
+              ['npm run build', 'Build production bundle'],
+              ['npm run typecheck', 'Execute tsc --noEmit type verification (0 errors constraint)'],
+              ['npm run lint', 'Run ESLint linting check'],
+              ['npm run db:push', 'Push Drizzle schema changes directly to Neon Postgres'],
             ]}
           />
         </Section>
 
         {/* Footer */}
         <footer className="mt-20 pt-6 border-t border-border/40 flex justify-between items-center text-[11px] text-muted-foreground">
-          <span>Scrunity Internal Documentation</span>
-          <span>Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+          <span>Scrunity Internal Developer Documentation</span>
+          <span className="tabular-nums">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
         </footer>
       </div>
     </div>
