@@ -49,13 +49,16 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
 
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight" style={{ textWrap: 'balance' }}>Deliverables</h2>
-          <p className="text-muted-foreground mt-1 text-[14px]" style={{ textWrap: 'pretty' }}>Track project tasks, milestones, and approvals.</p>
+          <h1 className="text-[36px] font-semibold tracking-tight text-foreground text-balance">
+            Deliverables
+          </h1>
         </div>
-        {member.role === 'owner' && (
+
+        {member.role === "owner" && (
           <CreateDeliverableDialog projectId={projectId} />
         )}
       </div>

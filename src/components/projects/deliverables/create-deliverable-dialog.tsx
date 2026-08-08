@@ -64,10 +64,10 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 active:scale-[0.96] transition-transform">
-          <Plus className="h-4 w-4" />
-          Create Deliverable
-        </Button>
+        <button className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5 self-start sm:self-auto">
+          <Plus className="w-5 h-5 stroke-3" />
+          <span>New Deliverable</span>
+        </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>

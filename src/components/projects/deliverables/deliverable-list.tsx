@@ -1,11 +1,13 @@
 "use client";
 
 import { DeliverableActions } from "./deliverable-actions";
-import { Calendar, Clock, MessageSquare, ExternalLink, Paperclip } from "lucide-react";
+import { Clock, MessageSquare, ExternalLink, Paperclip, Zap } from "lucide-react";
 import { format, isPast } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CommentThread } from "@/components/projects/discussions/comment-thread";
 import { DeliverableItem } from "./types";
+import { motion } from "framer-motion";
+import { SealCheckIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
 
 interface DeliverableListProps {
   deliverables: DeliverableItem[];
@@ -22,67 +24,98 @@ export function DeliverableList({
   projectId,
   userId,
 }: DeliverableListProps) {
-  const getStatusBadge = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
       case "approved":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            Approved
-          </span>
-        );
+        return {
+          label: "Approved",
+          Icon: SealCheckIcon,
+          color: "text-emerald-500",
+          bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        };
       case "in_review":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            In Review
-          </span>
-        );
+        return {
+          label: "In Review",
+          Icon: PaperPlaneTiltIcon,
+          color: "text-sky-500",
+          bg: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+        };
       case "revision_requested":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-            Needs Revision
-          </span>
-        );
+        return {
+          label: "Needs Revision",
+          Icon: Zap,
+          color: "text-rose-500 animate-pulse",
+          bg: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+        };
       default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border/40">
-            Pending
-          </span>
-        );
+        return {
+          label: "Pending",
+          Icon: Clock,
+          color: "text-purple-500",
+          bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+        };
     }
   };
 
   return (
-    <div className="grid gap-3 w-full">
-      <Accordion type="multiple" className="w-full space-y-3">
+    <div className="w-full">
+      <Accordion type="multiple" className="w-full">
         {deliverables.map((deliv, index) => {
           const isOverdue = deliv.dueDate && isPast(new Date(deliv.dueDate)) && deliv.status !== "approved";
           const delivComments = allComments.filter((c) => c.comment.deliverableId === deliv.id);
+          const statusConfig = getStatusConfig(deliv.status);
+          const StatusIcon = statusConfig.Icon;
 
           return (
-            <div
+            <motion.div
               key={deliv.id}
-              className="bg-card border border-border/50 rounded-xl p-5 hover:border-border transition-all hover:shadow-md space-y-4"
-              style={{ animationDelay: `${index * 50}ms` }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, delay: index * 0.02 }}
+              className="border-b border-border/40 last:border-0 rounded-md"
             >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-base font-semibold tracking-tight text-foreground">{deliv.title}</h3>
-                    {getStatusBadge(deliv.status)}
-                  </div>
-                  {deliv.description && (
-                    <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">{deliv.description}</p>
-                  )}
+              <div className="group flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 py-2.5 px-3 hover:bg-muted/40 transition-colors rounded-md">
+                {/* Left: Status Icon, Title & Badge */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <StatusIcon className={`w-4 h-4 shrink-0 ${statusConfig.color}`} />
+
+                  <span className="text-sm font-medium text-foreground truncate max-w-50 sm:max-w-xs">
+                    {deliv.title}
+                  </span>
+
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${statusConfig.bg} shrink-0`}>
+                    {statusConfig.label}
+                  </span>
                 </div>
 
-                <div className="shrink-0">
-                  <DeliverableActions deliverableId={deliv.id} status={deliv.status} role={memberRole} />
+                {/* Right: Due Date & Actions */}
+                <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end mt-2 sm:mt-0 ml-7 sm:ml-0">
+                  {/* Due Date */}
+                  <div className={`text-xs whitespace-nowrap ${isOverdue ? "text-rose-500 font-semibold" : "text-muted-foreground"}`}>
+                    {deliv.dueDate
+                      ? format(new Date(deliv.dueDate), "dd MMM")
+                      : "-"}
+                  </div>
+
+                  {/* Actions & Comment Trigger */}
+                  <div className="flex items-center gap-2 shrink-0 justify-end">
+                    <DeliverableActions deliverableId={deliv.id} status={deliv.status} role={memberRole} />
+
+                    <AccordionItem value={deliv.id} className="border-none">
+                      <AccordionTrigger className="p-0 hover:no-underline active:scale-[0.96] transition-transform">
+                        <div className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full border border-border/60 bg-background text-foreground hover:bg-muted/60 transition-colors">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span className="tabular-nums font-semibold">{delivComments.length}</span>
+                        </div>
+                      </AccordionTrigger>
+                    </AccordionItem>
+                  </div>
                 </div>
               </div>
 
               {/* Submission Information Pill if submitted */}
               {deliv.submissionTitle && (
-                <div className="bg-muted/40 rounded-lg p-3 border border-border/30 space-y-1 text-xs">
+                <div className="mx-3 my-2 bg-muted/40 rounded-lg p-2.5 border border-border/30 space-y-1 text-xs">
                   <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <Paperclip className="w-3.5 h-3.5 text-primary" /> Submitted Work: {deliv.submissionTitle}
                   </div>
@@ -94,7 +127,7 @@ export function DeliverableList({
                       href={deliv.submissionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline pt-1"
+                      className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline pt-0.5"
                     >
                       View Attachment Link <ExternalLink className="w-3 h-3" />
                     </a>
@@ -102,53 +135,21 @@ export function DeliverableList({
                 </div>
               )}
 
-              {/* Metadata & Discussions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border/30 text-xs text-muted-foreground">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 shrink-0" />
-                    <span className="tabular-nums">
-                      Created {format(new Date(deliv.createdAt), "MMM d, yyyy")}
-                    </span>
+              {/* Accordion Content for Comment Thread */}
+              <AccordionItem value={deliv.id} className="border-none">
+                <AccordionContent className="px-3 pb-3 pt-1">
+                  <div className="h-[360px] flex flex-col bg-background/60 rounded-xl border border-border/30 p-3">
+                    <CommentThread
+                      projectId={projectId}
+                      deliverableId={deliv.id}
+                      comments={delivComments}
+                      currentUserId={userId}
+                      currentUserRole={memberRole}
+                    />
                   </div>
-                  {deliv.dueDate && (
-                    <div
-                      className={`flex items-center gap-1.5 ${
-                        isOverdue ? "text-rose-400 font-semibold" : ""
-                      }`}
-                    >
-                      <Calendar className="w-3.5 h-3.5 shrink-0" />
-                      <span className="tabular-nums">
-                        Due {format(new Date(deliv.dueDate), "MMM d, yyyy")}
-                        {isOverdue && " (Overdue)"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Accordion Comment Trigger */}
-                <AccordionItem value={deliv.id} className="border-none">
-                  <AccordionTrigger className="py-1 px-3 bg-muted/30 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:no-underline transition-colors active:scale-[0.96]">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span className="tabular-nums font-semibold">{delivComments.length}</span>
-                      <span>{delivComments.length === 1 ? "Comment" : "Comments"}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-3">
-                    <div className="h-[380px] flex flex-col bg-background/60 rounded-xl border border-border/30 p-3">
-                      <CommentThread
-                        projectId={projectId}
-                        deliverableId={deliv.id}
-                        comments={delivComments}
-                        currentUserId={userId}
-                        currentUserRole={memberRole}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </motion.div>
           );
         })}
       </Accordion>

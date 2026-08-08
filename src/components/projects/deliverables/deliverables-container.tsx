@@ -1,18 +1,8 @@
 "use client";
 
-import { LayoutList, LayoutGrid } from "lucide-react";
-import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
 import { DeliverableList } from "./deliverable-list";
+import { DeliverablesVelocityChart } from "./deliverables-velocity-chart";
 import { DeliverableItem } from "./types";
-import { useUIStore, DeliverableViewMode } from "@/store/ui-store";
-
-const KanbanBoard = dynamic(() => import("./kanban-board").then((mod) => mod.KanbanBoard), { ssr: false });
-
-const VIEW_MODES = [
-  { id: "list" as const, label: "List", icon: LayoutList },
-  { id: "board" as const, label: "Board", icon: LayoutGrid },
-];
 
 export function DeliverablesContainer({
   deliverables,
@@ -27,42 +17,19 @@ export function DeliverablesContainer({
   projectId: string;
   userId: string;
 }) {
-  const viewMode = useUIStore((state) => state.deliverableViewMode);
-  const setDeliverableViewMode = useUIStore((state) => state.setDeliverableViewMode);
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <div className="flex items-center bg-muted/40 p-1 rounded-xl border border-border/40 w-fit">
-          {VIEW_MODES.map((mode) => {
-            const Icon = mode.icon;
-            const isActive = viewMode === mode.id;
-            return (
-              <button
-                key={mode.id}
-                onClick={() => setDeliverableViewMode(mode.id as DeliverableViewMode)}
-                className={`relative px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                  isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="deliverable-view-pill"
-                    className="absolute inset-0 bg-background rounded-lg shadow-xs border border-border/60"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{mode.label}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
+      {/* Velocity Trend Chart */}
+      <DeliverablesVelocityChart deliverables={deliverables} />
 
-      {viewMode === "list" && (
+      {/* Deliverables List Section */}
+      <section aria-label="Project Deliverables List" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[16px] font-semibold tracking-tight text-foreground">
+            All Scheduled Deliverables ({deliverables.length})
+          </h2>
+        </div>
+
         <DeliverableList
           deliverables={deliverables}
           allComments={allComments}
@@ -70,15 +37,7 @@ export function DeliverablesContainer({
           projectId={projectId}
           userId={userId}
         />
-      )}
-      {viewMode === "board" && (
-        <KanbanBoard
-          deliverables={deliverables}
-          allComments={allComments}
-          memberRole={memberRole}
-          projectId={projectId}
-        />
-      )}
+      </section>
     </div>
   );
 }
