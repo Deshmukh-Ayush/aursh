@@ -96,7 +96,7 @@ export function ActivityLogClient({ logs }: ActivityLogClientProps) {
       case "revision_requested":
         return { 
           Icon: WarningIcon, 
-          color: "text-rose-500 animate-pulse", 
+          color: "text-rose-500", 
           text: `Requested revision on: ${metadata?.title || "Task"}${metadata?.comment ? `. Reason: ${metadata?.comment}` : ""}`,
           category: "Revision",
           catKey: "scope" 
