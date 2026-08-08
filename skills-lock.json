@@ -73,6 +73,12 @@
       "skillPath": "skills/.experimental/emilkowal-animations/SKILL.md",
       "computedHash": "f945576c4e815ae3a986f4314d27385f59804a4ff1e2de521d836ce282e8d639"
     },
+    "family-design-values": {
+      "source": "Deshmukh-Ayush/skills",
+      "sourceType": "github",
+      "skillPath": "skills/family-values/SKILL.md",
+      "computedHash": "2619b394d210dffeca26cef1f4705cc2a47e5c55d03456b402d790492da93ce8"
+    },
     "find-animation-opportunities": {
       "source": "emilkowalski/skill",
       "sourceType": "github",
