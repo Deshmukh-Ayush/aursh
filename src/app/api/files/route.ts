@@ -1,6 +1,5 @@
 import { db } from "@/utils/db";
-import { files, project, projectMember } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { files } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
@@ -10,22 +9,24 @@ import { logActivity } from "@/lib/activity";
 import { uploadRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
+import { getProjectAccess } from "@/lib/project-auth";
+
+const allowedMimeTypes = new Set([
+  "application/pdf", "application/zip", "application/x-zip-compressed",
+  "image/jpeg", "image/png", "image/webp", "text/plain",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
 
 export async function POST(req: NextRequest) {
   try {
     const reqHeaders = await headers();
     
-    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
-    const rateLimitResult = await checkRateLimit(uploadRateLimiter, `upload_${ip}`);
-    if (!rateLimitResult.success) {
-      return NextResponse.json({ error: "Too many uploads. Please try again later." }, { status: 429 });
-    }
-
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const projectId = formData.get("projectId") as string | null;
+    const file = formData.get("file");
+    const projectId = formData.get("projectId");
 
-    if (!file || !projectId) {
+    if (!(file instanceof File) || typeof projectId !== "string" || projectId.length === 0) {
       return NextResponse.json({ error: "File and Project ID are required." }, { status: 400 });
     }
 
@@ -40,11 +41,7 @@ export async function POST(req: NextRequest) {
     if (!validationResult.success) {
       return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
-
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (proj?.status === 'completed') {
-      return NextResponse.json({ error: "Cannot upload files to a completed project." }, { status: 400 });
-    }
+    if (!allowedMimeTypes.has(file.type)) return NextResponse.json({ error: "This file type is not allowed." }, { status: 400 });
 
     const session = await auth.api.getSession({ headers: reqHeaders });
 
@@ -53,18 +50,16 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
+    const access = await getProjectAccess(projectId, userId);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (access.proj.status === "completed") return NextResponse.json({ error: "Cannot upload files to a completed project." }, { status: 400 });
+    const rateLimitResult = await checkRateLimit(uploadRateLimiter, `upload_${userId}`);
+    if (!rateLimitResult.success) return NextResponse.json({ error: "Too many uploads. Please try again later." }, { status: 429 });
 
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-
-    if (!member) {
-      return NextResponse.json({ error: "Unauthorized. You are not a member of this project." }, { status: 403 });
-    }
-
-    const blob = await put(`files/${projectId}/${file.name}`, file, {
-      access: "public",
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_") || "upload";
+    const blob = await put(`files/${projectId}/${crypto.randomUUID()}/${safeFileName}`, file, {
+      access: "private",
     });
 
     await db.insert(files).values({
@@ -85,7 +80,7 @@ export async function POST(req: NextRequest) {
     });
 
     revalidatePath(`/projects/${projectId}/files`);
-    return NextResponse.json({ success: true, url: blob.url });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Upload file error:", error);
     return NextResponse.json({ error: "Failed to upload file." }, { status: 500 });

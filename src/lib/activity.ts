@@ -29,29 +29,34 @@ interface LogActivityParams {
   projectId: string;
   userId: string;
   type: ActivityType;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
-function getActivityMessage(type: ActivityType, metadata: any, actorName: string) {
+function getActivityMessage(type: ActivityType, metadata: Record<string, unknown>, actorName: string) {
+  const value = (key: string, fallback: string): string => {
+    const item = metadata[key];
+    return typeof item === "string" && item.length > 0 ? item : fallback;
+  };
+
   switch(type) {
-    case "contract_uploaded": return `${actorName} uploaded a new contract: ${metadata.fileName || 'Document'}`;
+    case "contract_uploaded": return `${actorName} uploaded a new contract: ${value("fileName", "Document")}`;
     case "contract_signed": return metadata.fullySigned ? `The contract has been fully signed!` : `${actorName} signed the contract.`;
-    case "file_uploaded": return `${actorName} uploaded a new file: ${metadata.fileName || 'File'}`;
-    case "deliverable_created": return `${actorName} created a new deliverable: ${metadata.title || 'Task'}`;
-    case "deliverable_in_review": return `${actorName} submitted a deliverable for review: ${metadata.title || 'Task'}`;
-    case "deliverable_approved": return `${actorName} approved the deliverable: ${metadata.title || 'Task'}`;
-    case "revision_requested": return `${actorName} requested a revision on: ${metadata.title || 'Task'}`;
-    case "deliverable_completed": return `${actorName} completed a deliverable: ${metadata.title || 'Task'}`;
+    case "file_uploaded": return `${actorName} uploaded a new file: ${value("fileName", "File")}`;
+    case "deliverable_created": return `${actorName} created a new deliverable: ${value("title", "Task")}`;
+    case "deliverable_in_review": return `${actorName} submitted a deliverable for review: ${value("title", "Task")}`;
+    case "deliverable_approved": return `${actorName} approved the deliverable: ${value("title", "Task")}`;
+    case "revision_requested": return `${actorName} requested a revision on: ${value("title", "Task")}`;
+    case "deliverable_completed": return `${actorName} completed a deliverable: ${value("title", "Task")}`;
     case "project_completed": return `${actorName} marked the project as complete!`;
     case "member_joined": return `${actorName} joined the project.`;
     case "comment_added": return `${actorName} added a new comment.`;
-    case "proposal_sent": return `${actorName} sent a proposal for review: ${metadata.title || 'Proposal'}`;
-    case "proposal_accepted": return `${actorName} accepted the proposal: ${metadata.title || 'Proposal'}`;
-    case "proposal_declined": return `${actorName} declined the proposal: ${metadata.title || 'Proposal'}`;
-    case "payment_requested": return `${actorName} requested a payment milestone: ${metadata.milestoneTitle || 'Milestone'}`;
-    case "payment_completed": return `${actorName} completed payment for: ${metadata.milestoneTitle || 'Milestone'}`;
-    case "payment_overdue": return `Payment milestone is overdue: ${metadata.milestoneTitle || 'Milestone'}`;
-    case "milestone_created": return `${actorName} created a new payment milestone: ${metadata.milestoneTitle || 'Milestone'}`;
+    case "proposal_sent": return `${actorName} sent a proposal for review: ${value("title", "Proposal")}`;
+    case "proposal_accepted": return `${actorName} accepted the proposal: ${value("title", "Proposal")}`;
+    case "proposal_declined": return `${actorName} declined the proposal: ${value("title", "Proposal")}`;
+    case "payment_requested": return `${actorName} requested a payment milestone: ${value("milestoneTitle", "Milestone")}`;
+    case "payment_completed": return `${actorName} completed payment for: ${value("milestoneTitle", "Milestone")}`;
+    case "payment_overdue": return `Payment milestone is overdue: ${value("milestoneTitle", "Milestone")}`;
+    case "milestone_created": return `${actorName} created a new payment milestone: ${value("milestoneTitle", "Milestone")}`;
     default: return `${actorName} updated the project.`;
   }
 }
@@ -96,7 +101,7 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
           await createNotification(
             member.userId,
             projectId,
-            type as any,
+            type,
             activityMessage
           );
 
@@ -106,7 +111,7 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
             proj.name,
             activityMessage,
             projectId,
-            org?.plan as any,
+            org?.plan as "free" | "freelancer" | "agency" | undefined,
             org?.logoUrl
           );
         } catch (err) {

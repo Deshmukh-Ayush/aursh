@@ -1,5 +1,5 @@
 import { db } from "@/utils/db";
-import { projectInvitation, projectMember, project } from "@/db/schema";
+import { projectInvitation } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -8,53 +8,44 @@ import { sendProjectInvitationEmail } from "@/lib/email";
 import { inviteRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
+import { z } from "zod";
+
+const inviteSchema = z.object({ projectId: z.string().min(1), email: z.string().trim().email().max(320) });
 
 export async function POST(req: NextRequest) {
   try {
-    const { projectId, email } = await req.json();
+    const input = inviteSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
+    const { projectId, email } = input.data;
     const reqHeaders = await headers();
     
-    // Rate limit check: 5 requests per 10 minutes per IP
-    const ip = reqHeaders.get("x-forwarded-for") || "unknown-ip";
-    const rateLimitResult = await checkRateLimit(inviteRateLimiter, `invite_${ip}`);
-    if (!rateLimitResult.success) {
-      return NextResponse.json({ error: "Too many invites sent. Please try again later." }, { status: 429 });
-    }
-
-    if (!email || !email.trim() || !email.includes('@')) {
-      return NextResponse.json({ error: "Valid email is required." }, { status: 400 });
-    }
-
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (!proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (session.session?.activeOrganizationId === proj.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'owner' && role !== 'agency')) {
+    const access = await getProjectAccess(projectId, session.user.id);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized || !canManageProject(access.role)) {
       return NextResponse.json({ error: "Only the project owner or agency can create invites." }, { status: 403 });
     }
+    const rateLimitResult = await checkRateLimit(inviteRateLimiter, `invite_${session.user.id}`);
+    if (!rateLimitResult.success) return NextResponse.json({ error: "Too many invites sent. Please try again later." }, { status: 429 });
 
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
+    const normalizedEmail = email.toLowerCase();
+    const [activeInvite] = await db.select({ id: projectInvitation.id }).from(projectInvitation).where(and(
+      eq(projectInvitation.projectId, projectId),
+      eq(projectInvitation.email, normalizedEmail),
+      eq(projectInvitation.status, "pending"),
+    ));
+    if (activeInvite) return NextResponse.json({ error: "An active invitation already exists for this email." }, { status: 409 });
+
     await db.insert(projectInvitation).values({
       id: crypto.randomUUID(),
       projectId,
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       token,
       invitedBy: session.user.id,
       expiresAt,
@@ -65,7 +56,7 @@ export async function POST(req: NextRequest) {
     const inviteLink = `${baseUrl}/invite/${token}`;
     
     // Fetch org details for branding if needed (optional, just passing nulls for now to ensure delivery)
-    await sendProjectInvitationEmail(email.trim().toLowerCase(), proj.name, inviteLink);
+    await sendProjectInvitationEmail(normalizedEmail, access.proj.name, inviteLink);
 
     revalidatePath(`/projects/${projectId}/settings`);
     
@@ -92,21 +83,8 @@ export async function DELETE(req: NextRequest) {
     const [invite] = await db.select().from(projectInvitation).where(eq(projectInvitation.id, inviteId));
     if (!invite) return NextResponse.json({ error: "Invite not found" }, { status: 404 });
 
-    const [proj] = await db.select().from(project).where(eq(project.id, invite.projectId));
-    
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, invite.projectId), eq(projectMember.userId, session.user.id)));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (session.session?.activeOrganizationId === proj?.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'owner' && role !== 'agency')) {
+    const access = await getProjectAccess(invite.projectId, session.user.id);
+    if (!access.isAuthorized || !canManageProject(access.role)) {
       return NextResponse.json({ error: "Only the project owner or agency can revoke invites." }, { status: 403 });
     }
 

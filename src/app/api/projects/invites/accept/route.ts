@@ -1,20 +1,25 @@
 import { db } from "@/utils/db";
 import { projectInvitation, projectMember, contract, signature } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
 import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const acceptInvitationSchema = z.object({
+  token: z.string().min(32, "A valid invitation token is required."),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { token } = await req.json();
-
-    if (!token) {
-      return NextResponse.json({ error: "Token is required." }, { status: 400 });
+    const parsed = acceptInvitationSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
+    const { token } = parsed.data;
 
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
@@ -34,11 +39,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid token." }, { status: 404 });
     }
 
-    if (invitation.status === "accepted") {
-      return NextResponse.json({ error: "Already accepted." }, { status: 400 });
+    if (invitation.status !== "pending") {
+      return NextResponse.json({ error: "This invitation is no longer active." }, { status: 400 });
     }
 
-    if (session.user.email !== invitation.email) {
+    if (session.user.email.toLowerCase() !== invitation.email.toLowerCase()) {
       return NextResponse.json({ error: "Email mismatch. This invitation was sent to a different email address." }, { status: 403 });
     }
 
@@ -46,44 +51,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invitation expired." }, { status: 400 });
     }
 
-    const [existingContract] = await db
+    const existingContracts = await db
       .select()
       .from(contract)
-      .where(eq(contract.projectId, invitation.projectId));
+      .where(and(
+        eq(contract.projectId, invitation.projectId),
+        inArray(contract.status, ["draft", "sent", "partially_signed", "fully_signed", "pending_signature"]),
+      ));
 
-    const operations: any[] = [
-      db
-        .update(projectInvitation)
+    const [existingMember] = await db
+      .select({ id: projectMember.id })
+      .from(projectMember)
+      .where(and(
+        eq(projectMember.projectId, invitation.projectId),
+        eq(projectMember.userId, userId),
+      ));
+
+    const existingSignatures = existingContracts.length === 0
+      ? []
+      : await db
+        .select({ contractId: signature.contractId })
+        .from(signature)
+        .where(and(
+          eq(signature.userId, userId),
+          inArray(signature.contractId, existingContracts.map((item) => item.id)),
+        ));
+    const signedContractIds = new Set(existingSignatures.map((item) => item.contractId));
+    const signatureRows = existingContracts
+      .filter((item) => !signedContractIds.has(item.id))
+      .map((item) => ({
+        id: crypto.randomUUID(),
+        contractId: item.id,
+        userId,
+      }));
+
+    const operations = [
+      db.update(projectInvitation)
         .set({ status: "accepted" })
-        .where(eq(projectInvitation.id, invitation.id)),
-
-      db.insert(projectMember).values({
+        .where(and(eq(projectInvitation.id, invitation.id), eq(projectInvitation.status, "pending"))),
+      ...(existingMember ? [] : [db.insert(projectMember).values({
         id: crypto.randomUUID(),
         projectId: invitation.projectId,
-        userId: userId,
-        role: "client",
-      })
+        userId,
+        role: invitation.role === "agency" ? "agency" : "client",
+      })]),
+      ...(signatureRows.length > 0 ? [db.insert(signature).values(signatureRows)] : []),
     ];
 
-    if (existingContract) {
-      operations.push(
-        db.insert(signature).values({
-          id: crypto.randomUUID(),
-          contractId: existingContract.id,
-          userId: userId,
-        })
-      );
-
-      if (existingContract.status === "signed") {
-        operations.push(
-          db.update(contract)
-            .set({ status: "pending_signature" })
-            .where(eq(contract.id, existingContract.id))
-        );
-      }
+    if (operations.length > 0) {
+      await db.batch(operations);
     }
-
-    await db.batch(operations as any);
 
     await logActivity({
       projectId: invitation.projectId,

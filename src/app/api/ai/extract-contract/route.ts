@@ -1,57 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { get } from "@vercel/blob";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { db } from "@/utils/db";
 import { contract } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getProjectAccess } from "@/lib/project-auth";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
 import { extractAndSaveContractScope, getContractScopeFromDb } from "@/lib/ai/contract-parser";
+import { aiRateLimiter, checkRateLimit } from "@/lib/ratelimit";
+import { z } from "zod";
 
-/**
- * GET /api/ai/extract-contract?contractId=...
- *
- * Retrieves stored AI parsed scope terms for a contract.
- */
+const extractSchema = z.object({ contractId: z.string().min(1) });
+
+async function getAuthorizedContract(contractId: string, userId: string) {
+  const [contractRow] = await db.select().from(contract).where(eq(contract.id, contractId));
+  if (!contractRow) return { contractRow: null, access: null };
+  const access = await getProjectAccess(contractRow.projectId, userId);
+  return { contractRow, access };
+}
+
+/** Retrieves cached scope data. GET deliberately has no AI or database write side effect. */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const contractId = searchParams.get("contractId");
-    if (!contractId) {
-      return NextResponse.json({ error: "contractId is required" }, { status: 400 });
-    }
+    const contractId = new URL(req.url).searchParams.get("contractId");
+    if (!contractId) return NextResponse.json({ error: "Contract ID is required" }, { status: 400 });
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { contractRow, access } = await getAuthorizedContract(contractId, session.user.id);
+    if (!contractRow) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+    if (!access?.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const [contractRow] = await db.select().from(contract).where(eq(contract.id, contractId));
-    if (!contractRow) {
-      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
-    }
-
-    const { isAuthorized } = await getProjectAccess(contractRow.projectId, session.user.id);
-    if (!isAuthorized) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    let terms = await getContractScopeFromDb(contractId);
-
-    // If terms not in DB yet and contract has PDF URL, extract on demand
-    if (!terms && contractRow.fileUrl) {
-      const extraction = await extractAndSaveContractScope(
-        contractId,
-        contractRow.projectId,
-        contractRow.fileUrl,
-      );
-      terms = extraction.terms;
-    }
-
+    const terms = await getContractScopeFromDb(contractId);
     return NextResponse.json({
       success: true,
       contractId,
-      terms: terms || { scopeItems: [], exclusions: [], revisionLimits: [], paymentTerms: [] },
+      terms: terms ?? { scopeItems: [], exclusions: [], revisionLimits: [], paymentTerms: [] },
     });
   } catch (error) {
     console.error("[AI GET Contract Scope Error]", error);
@@ -59,109 +42,28 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/**
- * POST /api/ai/extract-contract
- *
- * Extracts scope terms from a contract PDF using AI.
- *
- * Accepts either:
- * - `contractId` in JSON body → fetches the PDF from the contract's stored URL.
- * - `file` in FormData → parses the uploaded PDF directly.
- *
- * Returns the extracted scope items, exclusions, revision limits, and payment terms.
- */
+/** Extracts terms only from the exact document persisted for this contract. */
 export async function POST(req: NextRequest) {
   try {
-    // --- Auth ---
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const input = extractSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { contractRow, access } = await getAuthorizedContract(input.data.contractId, session.user.id);
+    if (!contractRow) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+    if (!access?.isAuthorized || !canManageProject(access.role)) {
+      return NextResponse.json({ error: "Only the agency can extract contract scope" }, { status: 403 });
     }
+    const rateLimitResult = await checkRateLimit(aiRateLimiter, `ai_extract_${session.user.id}`);
+    if (!rateLimitResult.success) return NextResponse.json({ error: "Too many extraction requests. Please try again later." }, { status: 429 });
 
-    // --- Parse request body ---
-    const contentType = req.headers.get("content-type") ?? "";
-    let contractId: string | null = null;
-    let projectId: string | null = null;
-    let pdfSource: string | Buffer | null = null;
-
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
-      contractId = formData.get("contractId") as string | null;
-
-      const file = formData.get("file") as File | null;
-      if (file) {
-        if (file.type !== "application/pdf") {
-          return NextResponse.json(
-            { error: "Only PDF files are accepted" },
-            { status: 400 },
-          );
-        }
-        pdfSource = Buffer.from(await file.arrayBuffer());
-      }
-    } else {
-      const body = await req.json();
-      contractId = body.contractId ?? null;
-    }
-
-    if (!contractId) {
-      return NextResponse.json(
-        { error: "contractId is required" },
-        { status: 400 },
-      );
-    }
-
-    // --- Fetch contract from DB ---
-    const [contractRow] = await db
-      .select()
-      .from(contract)
-      .where(eq(contract.id, contractId));
-
-    if (!contractRow) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 },
-      );
-    }
-
-    projectId = contractRow.projectId;
-
-    // --- Authorization: user must have project access ---
-    const { isAuthorized } = await getProjectAccess(projectId, session.user.id);
-    if (!isAuthorized) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // --- Determine PDF source ---
-    if (!pdfSource) {
-      if (!contractRow.fileUrl) {
-        return NextResponse.json(
-          { error: "Contract has no file URL and no file was uploaded" },
-          { status: 400 },
-        );
-      }
-      pdfSource = contractRow.fileUrl;
-    }
-
-    // --- Run AI extraction pipeline ---
-    const result = await extractAndSaveContractScope(
-      contractId,
-      projectId,
-      pdfSource,
-    );
-
-    return NextResponse.json({
-      success: true,
-      contractId: result.contractId,
-      extractedCount: result.extractedCount,
-      terms: result.terms,
-    });
+    const storedDocument = await get(contractRow.fileUrl, { access: "private", useCache: false });
+    if (!storedDocument?.stream) return NextResponse.json({ error: "Contract file not found" }, { status: 404 });
+    const documentBuffer = Buffer.from(await new Response(storedDocument.stream).arrayBuffer());
+    const result = await extractAndSaveContractScope(contractRow.id, contractRow.projectId, documentBuffer);
+    return NextResponse.json({ success: true, contractId: result.contractId, extractedCount: result.extractedCount, terms: result.terms });
   } catch (error) {
     console.error("[AI Extract Contract]", error);
-
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to extract contract scope" }, { status: 500 });
   }
 }

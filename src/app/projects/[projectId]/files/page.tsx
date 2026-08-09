@@ -38,5 +38,9 @@ export default async function FilesPage({
     .where(eq(files.projectId, projectId))
     .orderBy(desc(files.createdAt));
 
-  return <FilesVaultClient projectId={projectId} files={projectFiles} />;
+  const filesForClient = projectFiles.map(({ file, uploader }) => ({
+    file: { ...file, url: `/api/files/download?fileId=${encodeURIComponent(file.id)}` },
+    uploader,
+  }));
+  return <FilesVaultClient projectId={projectId} files={filesForClient} />;
 }

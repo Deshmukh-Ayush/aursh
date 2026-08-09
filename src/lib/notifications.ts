@@ -13,7 +13,14 @@ export type NotificationType =
   | "project_completed" 
   | "member_joined"
   | "deliverable_in_review"
-  | "comment_added";
+  | "comment_added"
+  | "proposal_sent"
+  | "proposal_accepted"
+  | "proposal_declined"
+  | "payment_requested"
+  | "payment_completed"
+  | "payment_overdue"
+  | "milestone_created";
 
 export async function createNotification(
   userId: string,

@@ -1,31 +1,72 @@
 import { db } from "@/utils/db";
-import { proposal, proposalLineItems, projectMember, project } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { deliverable, paymentMilestone, proposal, proposalLineItems } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
 import { logActivity } from "@/lib/activity";
+import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
+
+const lineItemSchema = z.object({
+  description: z.string().trim().min(1).max(500),
+  quantity: z.number().int().positive().max(100_000),
+  unitPrice: z.number().int().nonnegative().max(100_000_000),
+});
+
+const proposalInputSchema = z.object({
+  projectId: z.string().min(1),
+  title: z.string().trim().min(1).max(200),
+  scopeSummary: z.string().trim().max(10_000).nullable().optional(),
+  price: z.number().int().nonnegative().max(1_000_000_000),
+  currency: z.string().trim().length(3).transform((value) => value.toUpperCase()).default("INR"),
+  validUntil: z.coerce.date().nullable().optional(),
+  lineItems: z.array(lineItemSchema).min(1).max(100),
+});
+
+const proposalPatchSchema = z.discriminatedUnion("action", [
+  z.object({ proposalId: z.string().min(1), action: z.literal("send") }),
+  z.object({ proposalId: z.string().min(1), action: z.literal("accept") }),
+  z.object({ proposalId: z.string().min(1), action: z.literal("decline") }),
+  proposalInputSchema.omit({ projectId: true }).extend({
+    proposalId: z.string().min(1),
+    action: z.literal("update_draft"),
+  }),
+]);
+
+async function currentUser() {
+  const requestHeaders = await headers();
+  return auth.api.getSession({ headers: requestHeaders });
+}
+
+function buildLineItems(proposalId: string, lineItems: z.infer<typeof lineItemSchema>[]) {
+  return lineItems.map((item, sortOrder) => ({
+    id: crypto.randomUUID(),
+    proposalId,
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    total: item.quantity * item.unitPrice,
+    sortOrder,
+  }));
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const projectId = searchParams.get("projectId");
+    const projectId = new URL(req.url).searchParams.get("projectId");
+    if (!projectId) return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
 
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
-    }
-
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await getProjectAccess(projectId, session.user.id);
+    if (!access.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const proposals = await db.query.proposal.findMany({
       where: eq(proposal.projectId, projectId),
-      with: { lineItems: { orderBy: (lineItems, { asc }) => [asc(lineItems.sortOrder)] } },
-      orderBy: (proposal, { desc }) => [desc(proposal.createdAt)],
+      with: { lineItems: { orderBy: (items, { asc }) => [asc(items.sortOrder)] } },
+      orderBy: (items, { desc }) => [desc(items.createdAt)],
     });
-
     return NextResponse.json({ proposals });
   } catch (error) {
     console.error("GET proposal error:", error);
@@ -35,57 +76,34 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { projectId, title, scopeSummary, price, currency, validUntil, lineItems } = await req.json();
+    const input = proposalInputSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
 
-    if (!projectId || !title || !price || !lineItems) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await getProjectAccess(input.data.projectId, session.user.id);
+    if (!access.isAuthorized || !canManageProject(access.role)) {
+      return NextResponse.json({ error: "Only the agency can create proposals" }, { status: 403 });
     }
 
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-      
-    // Needs to be owner to create proposal
-    if (!member || member.role !== 'owner') {
-      const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-      if (!proj || session.session?.activeOrganizationId !== proj.organizationId) {
-         return NextResponse.json({ error: "Only project owners can create proposals" }, { status: 403 });
-      }
-    }
-
-    const newProposalId = crypto.randomUUID();
-
-    const lineItemsData = lineItems.map((item: any, index: number) => ({
-      id: crypto.randomUUID(),
-      proposalId: newProposalId,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      total: item.quantity * item.unitPrice,
-      sortOrder: index,
-    }));
-
+    const proposalId = crypto.randomUUID();
+    const lineItems = buildLineItems(proposalId, input.data.lineItems);
     await db.batch([
       db.insert(proposal).values({
-        id: newProposalId,
-        projectId,
-        title,
-        scopeSummary,
-        price,
-        currency,
-        validUntil: new Date(validUntil),
+        id: proposalId,
+        projectId: input.data.projectId,
+        title: input.data.title,
+        scopeSummary: input.data.scopeSummary ?? null,
+        price: input.data.price,
+        currency: input.data.currency,
+        validUntil: input.data.validUntil ?? null,
         createdBy: session.user.id,
         status: "draft",
       }),
-      db.insert(proposalLineItems).values(lineItemsData)
+      db.insert(proposalLineItems).values(lineItems),
     ]);
 
-    return NextResponse.json({ success: true, proposalId: newProposalId });
+    return NextResponse.json({ success: true, proposalId }, { status: 201 });
   } catch (error) {
     console.error("POST proposal error:", error);
     return NextResponse.json({ error: "Failed to create proposal" }, { status: 500 });
@@ -94,148 +112,80 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { proposalId, action, title, scopeSummary, price, currency, validUntil, lineItems } = await req.json();
+    const input = proposalPatchSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
 
-    if (!proposalId || !action) {
-      return NextResponse.json({ error: "Proposal ID and action are required" }, { status: 400 });
-    }
-
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const [existing] = await db.select().from(proposal).where(eq(proposal.id, proposalId));
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const [existing] = await db.select().from(proposal).where(eq(proposal.id, input.data.proposalId));
     if (!existing) return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
 
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, existing.projectId), eq(projectMember.userId, session.user.id)));
-      
-    const isOwner = member?.role === 'owner' || session.session?.activeOrganizationId;
+    const access = await getProjectAccess(existing.projectId, session.user.id);
+    if (!access.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    if (action === "update_draft") {
-      if (!isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (input.data.action === "update_draft") {
+      if (!canManageProject(access.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       if (existing.status !== "draft") return NextResponse.json({ error: "Only draft proposals can be updated" }, { status: 400 });
-
-      await db.update(proposal).set({
-        title,
-        scopeSummary,
-        price,
-        currency,
-        validUntil: new Date(validUntil),
-      }).where(eq(proposal.id, proposalId));
-
-      await db.delete(proposalLineItems).where(eq(proposalLineItems.proposalId, proposalId));
-      
-      if (lineItems && lineItems.length > 0) {
-        const lineItemsData = lineItems.map((item: any, index: number) => ({
-          id: crypto.randomUUID(),
-          proposalId,
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          total: item.quantity * item.unitPrice,
-          sortOrder: index,
-        }));
-        await db.insert(proposalLineItems).values(lineItemsData);
-      }
-
+      const lineItems = buildLineItems(existing.id, input.data.lineItems);
+      await db.batch([
+        db.update(proposal).set({
+          title: input.data.title,
+          scopeSummary: input.data.scopeSummary ?? null,
+          price: input.data.price,
+          currency: input.data.currency,
+          validUntil: input.data.validUntil ?? null,
+        }).where(and(eq(proposal.id, existing.id), eq(proposal.status, "draft"))),
+        db.delete(proposalLineItems).where(eq(proposalLineItems.proposalId, existing.id)),
+        db.insert(proposalLineItems).values(lineItems),
+      ]);
       return NextResponse.json({ success: true });
     }
 
-    if (action === "send") {
-      if (!isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      if (existing.status !== "draft") return NextResponse.json({ error: "Only draft proposals can be sent" }, { status: 400 });
-
-      await db.update(proposal).set({ status: "sent", sentAt: new Date() }).where(eq(proposal.id, proposalId));
-      
-      await logActivity({
-        projectId: existing.projectId,
-        userId: session.user.id,
-        type: "proposal_sent" as any,
-        metadata: { proposalId: existing.id, title: existing.title }
-      });
-
-
+    if (input.data.action === "send") {
+      if (!canManageProject(access.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const changed = await db.update(proposal)
+        .set({ status: "sent", sentAt: new Date() })
+        .where(and(eq(proposal.id, existing.id), eq(proposal.status, "draft")))
+        .returning({ id: proposal.id });
+      if (changed.length === 0) return NextResponse.json({ error: "Only draft proposals can be sent" }, { status: 409 });
+      await logActivity({ projectId: existing.projectId, userId: session.user.id, type: "proposal_sent", metadata: { proposalId: existing.id, title: existing.title } });
       return NextResponse.json({ success: true });
     }
 
-    if (action === "accept") {
-      if (existing.status !== "sent") return NextResponse.json({ error: "Proposal must be sent first" }, { status: 400 });
-
-      await db.update(proposal).set({ status: "accepted", acceptedAt: new Date() }).where(eq(proposal.id, proposalId));
-      
-      // Auto-create deliverables AND payment milestones from line items
-      const { deliverable, paymentMilestone } = await import("@/db/schema");
-      const lineItems = await db.query.proposalLineItems.findMany({
-        where: eq(proposalLineItems.proposalId, proposalId)
-      });
-      
-      if (lineItems.length > 0) {
-        const deliverablesData = lineItems.map(item => {
-          const delivId = crypto.randomUUID();
-          const milestoneId = crypto.randomUUID();
-          return {
-            deliv: {
-              id: delivId,
-              projectId: existing.projectId,
-              title: item.description,
-              description: `Auto-generated from proposal "${existing.title}"`,
-              status: "pending" as const,
-              createdBy: session.user.id,
-              dueDate: null,
-            },
-            milestone: {
-              id: milestoneId,
-              projectId: existing.projectId,
-              proposalId: existing.id,
-              deliverableId: delivId,
-              title: `${item.description} Payment`,
-              description: `Payment released upon approval of "${item.description}"`,
-              amount: item.total,
-              currency: existing.currency || "INR",
-              triggerType: "on_approval" as const,
-              status: "upcoming" as const,
-              sortOrder: item.sortOrder,
-              createdBy: session.user.id,
-            }
-          };
-        });
-
-        await db.batch([
-          db.insert(deliverable).values(deliverablesData.map(d => d.deliv)),
-          db.insert(paymentMilestone).values(deliverablesData.map(d => d.milestone))
-        ]);
-      }
-      
-      await logActivity({
-        projectId: existing.projectId,
-        userId: session.user.id,
-        type: "proposal_accepted" as any,
-        metadata: { proposalId: existing.id, title: existing.title }
-      });
-
+    if (access.role !== "client") return NextResponse.json({ error: "Only the client can respond to a proposal" }, { status: 403 });
+    if (input.data.action === "decline") {
+      const changed = await db.update(proposal)
+        .set({ status: "declined", declinedAt: new Date() })
+        .where(and(eq(proposal.id, existing.id), eq(proposal.status, "sent")))
+        .returning({ id: proposal.id });
+      if (changed.length === 0) return NextResponse.json({ error: "Proposal must be sent first" }, { status: 409 });
+      await logActivity({ projectId: existing.projectId, userId: session.user.id, type: "proposal_declined", metadata: { proposalId: existing.id, title: existing.title } });
       return NextResponse.json({ success: true });
     }
 
-    if (action === "decline") {
-      if (existing.status !== "sent") return NextResponse.json({ error: "Proposal must be sent first" }, { status: 400 });
-
-      await db.update(proposal).set({ status: "declined", declinedAt: new Date() }).where(eq(proposal.id, proposalId));
-      
-      await logActivity({
-        projectId: existing.projectId,
-        userId: session.user.id,
-        type: "proposal_declined" as any,
-        metadata: { proposalId: existing.id, title: existing.title }
-      });
-
-
-      return NextResponse.json({ success: true });
+    const lineItems = await db.query.proposalLineItems.findMany({ where: eq(proposalLineItems.proposalId, existing.id) });
+    const deliverableRows = lineItems.map((item) => ({
+      id: crypto.randomUUID(), projectId: existing.projectId, title: item.description,
+      description: `Auto-generated from proposal \"${existing.title}\"`, status: "pending" as const,
+      createdBy: session.user.id, dueDate: null,
+    }));
+    const milestoneRows = lineItems.map((item, index) => ({
+      id: crypto.randomUUID(), projectId: existing.projectId, proposalId: existing.id,
+      deliverableId: deliverableRows[index].id, title: `${item.description} Payment`,
+      description: `Payment released upon approval of \"${item.description}\"`, amount: item.total,
+      currency: existing.currency, triggerType: "on_approval" as const, status: "upcoming" as const,
+      sortOrder: item.sortOrder, createdBy: session.user.id,
+    }));
+    const changed = await db.update(proposal)
+      .set({ status: "accepted", acceptedAt: new Date() })
+      .where(and(eq(proposal.id, existing.id), eq(proposal.status, "sent")))
+      .returning({ id: proposal.id });
+    if (changed.length === 0) return NextResponse.json({ error: "Proposal must be sent first" }, { status: 409 });
+    if (deliverableRows.length > 0) {
+      await db.batch([db.insert(deliverable).values(deliverableRows), db.insert(paymentMilestone).values(milestoneRows)]);
     }
-
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    await logActivity({ projectId: existing.projectId, userId: session.user.id, type: "proposal_accepted", metadata: { proposalId: existing.id, title: existing.title } });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("PATCH proposal error:", error);
     return NextResponse.json({ error: "Failed to process proposal action" }, { status: 500 });
@@ -244,36 +194,16 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const proposalId = searchParams.get("proposalId");
-
-    if (!proposalId) {
-      return NextResponse.json({ error: "Proposal ID is required" }, { status: 400 });
-    }
-
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const proposalId = new URL(req.url).searchParams.get("proposalId");
+    if (!proposalId) return NextResponse.json({ error: "Proposal ID is required" }, { status: 400 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const [existing] = await db.select().from(proposal).where(eq(proposal.id, proposalId));
     if (!existing) return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
-
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, existing.projectId), eq(projectMember.userId, session.user.id)));
-      
-    const isOwner = member?.role === 'owner' || session.session?.activeOrganizationId;
-    if (!isOwner) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    if (existing.status !== 'draft') {
-      return NextResponse.json({ error: "Cannot delete a proposal that is not a draft" }, { status: 400 });
-    }
-
-    await db.delete(proposal).where(eq(proposal.id, proposalId));
-
+    const access = await getProjectAccess(existing.projectId, session.user.id);
+    if (!access.isAuthorized || !canManageProject(access.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const deleted = await db.delete(proposal).where(and(eq(proposal.id, existing.id), eq(proposal.status, "draft"))).returning({ id: proposal.id });
+    if (deleted.length === 0) return NextResponse.json({ error: "Only draft proposals can be deleted" }, { status: 409 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE proposal error:", error);

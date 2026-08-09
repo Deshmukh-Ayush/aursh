@@ -88,13 +88,15 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
         id: c.contract.id,
         projectId: c.contract.projectId,
         fileName: c.contract.fileName,
-        fileUrl: c.contract.fileUrl,
+        fileUrl: `/api/contracts/download?contractId=${encodeURIComponent(c.contract.id)}`,
         documentType: isDocumentType(c.contract.documentType)
           ? c.contract.documentType
           : "sow",
         uploadedByRole: c.contract.uploadedByRole === "client" ? "client" : "agency",
         status: isContractStatus(c.contract.status) ? c.contract.status : "draft",
-        signedDocumentUrl: c.contract.signedDocumentUrl,
+        signedDocumentUrl: c.contract.signedDocumentUrl
+          ? `/api/contracts/download?contractId=${encodeURIComponent(c.contract.id)}`
+          : null,
         documentHash: c.contract.documentHash,
         createdAt: c.contract.createdAt,
       },

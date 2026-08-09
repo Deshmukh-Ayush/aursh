@@ -1,34 +1,59 @@
 import { db } from "@/utils/db";
-import { paymentMilestone, payment, projectMember, project } from "@/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { deliverable, payment, paymentMilestone } from "@/db/schema";
+import { asc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import crypto from "crypto";
+import { z } from "zod";
+
+const milestoneFields = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(10_000).nullable().optional(),
+  amount: z.number().int().positive().max(1_000_000_000),
+  currency: z.string().trim().length(3).transform((value) => value.toUpperCase()).default("INR"),
+  triggerType: z.enum(["upfront", "on_approval", "on_date", "manual"]).default("manual"),
+  dueDate: z.coerce.date().nullable().optional(),
+  deliverableId: z.string().min(1).nullable().optional(),
+});
+
+const createSchema = milestoneFields.extend({ projectId: z.string().min(1) });
+const patchSchema = z.object({
+  milestoneId: z.string().min(1),
+  status: z.enum(["upcoming", "due", "overdue", "paid", "waived"]).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().max(10_000).nullable().optional(),
+  amount: z.number().int().positive().max(1_000_000_000).optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+});
+
+async function currentUser() {
+  return auth.api.getSession({ headers: await headers() });
+}
+
+async function ensureDeliverableBelongsToProject(deliverableId: string | null | undefined, projectId: string) {
+  if (!deliverableId) return true;
+  const [linkedDeliverable] = await db.select({ projectId: deliverable.projectId }).from(deliverable).where(eq(deliverable.id, deliverableId));
+  return linkedDeliverable?.projectId === projectId;
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const projectId = searchParams.get("projectId");
+    const projectId = new URL(req.url).searchParams.get("projectId");
+    if (!projectId) return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await getProjectAccess(projectId, session.user.id);
+    if (!access.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID required" }, { status: 400 });
-    }
-
-    const milestones = await db
-      .select()
-      .from(paymentMilestone)
-      .where(eq(paymentMilestone.projectId, projectId))
-      .orderBy(asc(paymentMilestone.sortOrder), asc(paymentMilestone.createdAt));
-
-    const paymentsList = await db
-      .select()
-      .from(payment)
-      .where(eq(payment.projectId, projectId));
-
-    return NextResponse.json({ milestones, payments: paymentsList });
+    const [milestones, payments] = await Promise.all([
+      db.select().from(paymentMilestone).where(eq(paymentMilestone.projectId, projectId)).orderBy(asc(paymentMilestone.sortOrder), asc(paymentMilestone.createdAt)),
+      db.select().from(payment).where(eq(payment.projectId, projectId)),
+    ]);
+    return NextResponse.json({ milestones, payments });
   } catch (error) {
     console.error("GET milestones error:", error);
     return NextResponse.json({ error: "Failed to fetch milestones" }, { status: 500 });
@@ -37,62 +62,28 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const input = createSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await getProjectAccess(input.data.projectId, session.user.id);
+    if (!access.isAuthorized || !canManageProject(access.role)) return NextResponse.json({ error: "Only the agency can create payment milestones" }, { status: 403 });
+    if (!(await ensureDeliverableBelongsToProject(input.data.deliverableId, input.data.projectId))) {
+      return NextResponse.json({ error: "The selected deliverable does not belong to this project" }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { projectId, title, description, amount, currency = "INR", triggerType = "manual", dueDate, deliverableId } = body;
-
-    if (!projectId || !title || !amount) {
-      return NextResponse.json({ error: "Project ID, Title, and Amount are required" }, { status: 400 });
-    }
-
-    const userId = session.user.id;
-
-    // Check membership
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-
-    const isAgency = member?.role === "owner" || member?.role === "agency" || (proj && session.session?.activeOrganizationId === proj.organizationId);
-    if (!isAgency) {
-      return NextResponse.json({ error: "Only agency members can create payment milestones" }, { status: 403 });
-    }
-
-    const newMilestoneId = crypto.randomUUID();
-    const parsedAmount = Math.round(Number(amount)); // amount in paise / currency units
-
+    const milestoneId = crypto.randomUUID();
     await db.insert(paymentMilestone).values({
-      id: newMilestoneId,
-      projectId,
-      title,
-      description: description || null,
-      amount: parsedAmount,
-      currency: currency.toUpperCase(),
-      triggerType: triggerType as any,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      deliverableId: deliverableId || null,
-      status: triggerType === "upfront" ? "due" : "upcoming",
-      createdBy: userId,
+      id: milestoneId, projectId: input.data.projectId, title: input.data.title,
+      description: input.data.description ?? null, amount: input.data.amount,
+      currency: input.data.currency, triggerType: input.data.triggerType,
+      dueDate: input.data.dueDate ?? null, deliverableId: input.data.deliverableId ?? null,
+      status: input.data.triggerType === "upfront" ? "due" : "upcoming", createdBy: session.user.id,
     });
-
-    await logActivity({
-      projectId,
-      userId,
-      type: "milestone_created",
-      metadata: { milestoneTitle: title, amount: parsedAmount, currency }
-    });
-
-    revalidatePath(`/projects/${projectId}`);
-    revalidatePath(`/projects/${projectId}/payments`);
-
-    return NextResponse.json({ success: true, milestoneId: newMilestoneId });
+    await logActivity({ projectId: input.data.projectId, userId: session.user.id, type: "milestone_created", metadata: { milestoneTitle: input.data.title, amount: input.data.amount, currency: input.data.currency } });
+    revalidatePath(`/projects/${input.data.projectId}`);
+    revalidatePath(`/projects/${input.data.projectId}/payments`);
+    return NextResponse.json({ success: true, milestoneId }, { status: 201 });
   } catch (error) {
     console.error("POST milestone error:", error);
     return NextResponse.json({ error: "Failed to create milestone" }, { status: 500 });
@@ -101,36 +92,21 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const input = patchSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const [existing] = await db.select().from(paymentMilestone).where(eq(paymentMilestone.id, input.data.milestoneId));
+    if (!existing) return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
+    const access = await getProjectAccess(existing.projectId, session.user.id);
+    if (!access.isAuthorized || !canManageProject(access.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (input.data.status === "paid") return NextResponse.json({ error: "Use the payment confirmation flow to mark a milestone paid" }, { status: 400 });
 
-    const body = await req.json();
-    const { milestoneId, status, title, description, amount, dueDate } = body;
-
-    if (!milestoneId) {
-      return NextResponse.json({ error: "Milestone ID required" }, { status: 400 });
-    }
-
-    const [existing] = await db.select().from(paymentMilestone).where(eq(paymentMilestone.id, milestoneId));
-    if (!existing) {
-      return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
-    }
-
-    const updates: Record<string, any> = {};
-    if (status) updates.status = status;
-    if (title) updates.title = title;
-    if (description !== undefined) updates.description = description;
-    if (amount) updates.amount = Math.round(Number(amount));
-    if (dueDate !== undefined) updates.dueDate = dueDate ? new Date(dueDate) : null;
-
-    await db.update(paymentMilestone).set(updates).where(eq(paymentMilestone.id, milestoneId));
-
+    const { milestoneId: _milestoneId, ...updates } = input.data;
+    if (Object.keys(updates).length === 0) return NextResponse.json({ error: "No changes supplied" }, { status: 400 });
+    await db.update(paymentMilestone).set({ ...updates, updatedAt: new Date() }).where(eq(paymentMilestone.id, existing.id));
     revalidatePath(`/projects/${existing.projectId}`);
     revalidatePath(`/projects/${existing.projectId}/payments`);
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("PATCH milestone error:", error);
@@ -140,29 +116,18 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const milestoneId = searchParams.get("milestoneId");
-
-    if (!milestoneId) {
-      return NextResponse.json({ error: "Milestone ID required" }, { status: 400 });
-    }
-
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({ headers: reqHeaders });
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const milestoneId = new URL(req.url).searchParams.get("milestoneId");
+    if (!milestoneId) return NextResponse.json({ error: "Milestone ID is required" }, { status: 400 });
+    const session = await currentUser();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const [existing] = await db.select().from(paymentMilestone).where(eq(paymentMilestone.id, milestoneId));
-    if (!existing) {
-      return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
-    }
-
-    await db.delete(paymentMilestone).where(eq(paymentMilestone.id, milestoneId));
-
+    if (!existing) return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
+    const access = await getProjectAccess(existing.projectId, session.user.id);
+    if (!access.isAuthorized || !canManageProject(access.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (existing.status === "paid") return NextResponse.json({ error: "Paid milestones cannot be deleted" }, { status: 400 });
+    await db.delete(paymentMilestone).where(eq(paymentMilestone.id, existing.id));
     revalidatePath(`/projects/${existing.projectId}`);
     revalidatePath(`/projects/${existing.projectId}/payments`);
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE milestone error:", error);

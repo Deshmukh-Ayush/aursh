@@ -29,6 +29,7 @@ export const authRateLimiter = createLimiter(10, "1 m"); // 10 requests per minu
 export const uploadRateLimiter = createLimiter(10, "1 m"); // 10 uploads per minute
 export const inviteRateLimiter = createLimiter(5, "10 m"); // 5 invites per 10 minutes
 export const commentRateLimiter = createLimiter(20, "1 m"); // 20 comments per minute
+export const aiRateLimiter = createLimiter(10, "1 h");
 
 export async function checkRateLimit(
   limiter: Ratelimit | null,

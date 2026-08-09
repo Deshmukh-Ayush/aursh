@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob';
+import { del, put } from '@vercel/blob';
 import { db } from "@/utils/db";
 import { contract, signature, projectMember } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,7 +10,7 @@ import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
 import { z } from "zod";
-import { getProjectAccess } from "@/lib/project-auth";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
 
 const documentTypeSchema = z.enum(["sow", "nda", "noc", "msa", "addendum", "other"]);
 
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
     const { projectId, documentType } = uploadInput.data;
     const { role, isAuthorized } = await getProjectAccess(projectId, userId);
-    if (!isAuthorized || (role !== "owner" && role !== "agency")) {
+    if (!isAuthorized || !canManageProject(role)) {
       return NextResponse.json({ error: "Only the project owner or agency can upload contracts" }, { status: 403 });
     }
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     const storageFileName = toStorageFileName(file.name);
 
     const blob = await put(`contracts/${projectId}/${newContractId}/${storageFileName}`, file, {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       allowOverwrite: true,
     });
@@ -89,19 +89,25 @@ export async function POST(req: NextRequest) {
       userId: signerId,
     }));
 
-    await db.insert(contract).values({
-      id: newContractId,
-      projectId,
-      fileUrl: blob.url,
-      fileName: file.name,
-      documentType,
-      uploadedByRole: "agency",
-      documentHash: docHash,
-      status: "draft",
-      uploadedBy: userId,
-    });
-
-    await db.insert(signature).values(signatureInserts);
+    try {
+      await db.batch([
+        db.insert(contract).values({
+          id: newContractId,
+          projectId,
+          fileUrl: blob.url,
+          fileName: file.name,
+          documentType,
+          uploadedByRole: "agency",
+          documentHash: docHash,
+          status: "draft",
+          uploadedBy: userId,
+        }),
+        db.insert(signature).values(signatureInserts),
+      ]);
+    } catch (error) {
+      await del(blob.url).catch(() => undefined);
+      throw error;
+    }
 
     await logActivity({
       projectId,
@@ -148,7 +154,7 @@ export async function PATCH(req: NextRequest) {
     if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
 
     const { role, isAuthorized } = await getProjectAccess(existing.projectId, userId);
-    if (!isAuthorized || (role !== "owner" && role !== "agency")) {
+    if (!isAuthorized || !canManageProject(role)) {
       return NextResponse.json({ error: "Only the project owner or agency can request signatures" }, { status: 403 });
     }
 
@@ -186,16 +192,18 @@ export async function DELETE(req: NextRequest) {
     if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
 
     const { role, isAuthorized } = await getProjectAccess(existing.projectId, session.user.id);
-    if (!isAuthorized || (role !== "owner" && role !== "agency")) {
+    if (!isAuthorized || !canManageProject(role)) {
       return NextResponse.json({ error: "Only the project owner or agency can delete the contract" }, { status: 403 });
     }
 
-    // if (existing.status === 'signed') {
-    //   return NextResponse.json({ error: "Cannot delete a signed contract" }, { status: 400 });
-    // }
+    if (existing.status === "signed") {
+      return NextResponse.json({ error: "Signed contracts are immutable and cannot be deleted" }, { status: 400 });
+    }
 
-    await db.delete(signature).where(eq(signature.contractId, contractId));
     await db.delete(contract).where(eq(contract.id, contractId));
+    await del(existing.fileUrl).catch((error: unknown) => {
+      console.error("Failed to remove contract blob:", error);
+    });
 
     revalidatePath("/dashboard");
     revalidatePath(`/projects/${existing.projectId}`);

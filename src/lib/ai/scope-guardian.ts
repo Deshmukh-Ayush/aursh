@@ -1,6 +1,6 @@
 import { db } from "@/utils/db";
-import { contractScopeTerm, deliverable } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { activityLog, contract, contractScopeTerm } from "@/db/schema";
+import { desc, eq, and } from "drizzle-orm";
 import type { ScopeEvaluation } from "./schemas";
 
 /**
@@ -18,13 +18,31 @@ export async function evaluateScopeStatus(
   projectId: string,
   currentRevision: number,
 ): Promise<ScopeEvaluation> {
-  // Fetch all revision_limit terms for this project
+  // Only the latest signed agreement is authoritative. Historical agreements
+  // must not change the scope policy for the current engagement.
+  const [activeContract] = await db
+    .select({ id: contract.id })
+    .from(contract)
+    .where(and(eq(contract.projectId, projectId), eq(contract.status, "signed")))
+    .orderBy(desc(contract.createdAt))
+    .limit(1);
+
+  if (!activeContract) {
+    return {
+      status: "within_scope",
+      isScopeCreep: false,
+      maxRevisions: null,
+      currentRevision,
+      message: "No signed contract with revision limits exists. All revisions are allowed.",
+    };
+  }
+
   const revisionRules = await db
     .select()
     .from(contractScopeTerm)
     .where(
       and(
-        eq(contractScopeTerm.projectId, projectId),
+        eq(contractScopeTerm.contractId, activeContract.id),
         eq(contractScopeTerm.termType, "revision_limit"),
       ),
     );
@@ -37,7 +55,7 @@ export async function evaluateScopeStatus(
       maxRevisions: null,
       currentRevision,
       message:
-        "No revision limits found in project contracts. All revisions are allowed.",
+        "No revision limits found in the active contract. All revisions are allowed.",
     };
   }
 
@@ -78,25 +96,21 @@ export async function evaluateScopeStatus(
 }
 
 /**
- * Counts revision requests for a specific deliverable by looking at
- * how many times its status has been set to "revision_requested".
- *
- * Since we don't track a separate revision counter, we use the activity log
- * or count deliverables in "revision_requested" state. For now, this accepts
- * the count as input and can be enhanced later with activity log queries.
+ * Counts revision requests from the immutable activity history, rather than
+ * the current status of unrelated deliverables.
  */
 export async function getProjectRevisionCount(
   projectId: string,
 ): Promise<number> {
-  const revisionDeliverables = await db
+  const revisionActivities = await db
     .select()
-    .from(deliverable)
+    .from(activityLog)
     .where(
       and(
-        eq(deliverable.projectId, projectId),
-        eq(deliverable.status, "revision_requested"),
+        eq(activityLog.projectId, projectId),
+        eq(activityLog.type, "revision_requested"),
       ),
     );
 
-  return revisionDeliverables.length;
+  return revisionActivities.length;
 }

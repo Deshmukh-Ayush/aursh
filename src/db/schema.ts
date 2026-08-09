@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, integer, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -299,7 +299,8 @@ export const projectMember = pgTable("project_member", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("pm_project_idx").on(table.projectId),
-  index("pm_user_idx").on(table.userId)
+  index("pm_user_idx").on(table.userId),
+  uniqueIndex("pm_project_user_unique").on(table.projectId, table.userId),
 ]);
 
 export const projectInvitation = pgTable("project_invitation", {
@@ -405,6 +406,7 @@ export const signature = pgTable("signature", {
 }, (table) => [
   index("signature_contract_idx").on(table.contractId),
   index("signature_user_idx").on(table.userId),
+  uniqueIndex("signature_contract_user_unique").on(table.contractId, table.userId),
 ]);
 
 export const files = pgTable("files", {

@@ -1,12 +1,20 @@
 import { db } from "@/utils/db";
-import { paymentMilestone, payment, projectMember } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { paymentMilestone, payment } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import crypto from "crypto";
+import { z } from "zod";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
+
+const paymentConfirmationSchema = z.object({
+  milestoneId: z.string().min(1),
+  paymentMethod: z.string().trim().min(1).max(50).default("upi"),
+  referenceNote: z.string().trim().max(500).nullable().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,11 +24,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { milestoneId, paymentMethod = "upi", referenceNote } = await req.json();
-
-    if (!milestoneId) {
-      return NextResponse.json({ error: "Milestone ID required" }, { status: 400 });
-    }
+    const input = paymentConfirmationSchema.safeParse(await req.json());
+    if (!input.success) return NextResponse.json({ error: input.error.issues[0].message }, { status: 400 });
+    const { milestoneId, paymentMethod, referenceNote } = input.data;
 
     const [milestone] = await db.select().from(paymentMilestone).where(eq(paymentMilestone.id, milestoneId));
     if (!milestone) {
@@ -33,20 +39,18 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // Check project membership
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, milestone.projectId), eq(projectMember.userId, userId)));
-
-    if (!member) {
-      return NextResponse.json({ error: "Forbidden: Not a project member" }, { status: 403 });
-    }
+    const access = await getProjectAccess(milestone.projectId, userId);
+    if (!access.isAuthorized || !canManageProject(access.role)) return NextResponse.json({ error: "Only the agency can record payments" }, { status: 403 });
 
     const newPaymentId = crypto.randomUUID();
     const now = new Date();
 
-    // 1. Insert payment verification record (neon-http driver executes sequentially)
+    const changed = await db.update(paymentMilestone)
+      .set({ status: "paid", updatedAt: now })
+      .where(and(eq(paymentMilestone.id, milestoneId), eq(paymentMilestone.status, milestone.status)))
+      .returning({ id: paymentMilestone.id });
+    if (changed.length === 0) return NextResponse.json({ error: "Payment state changed; refresh and try again" }, { status: 409 });
+
     await db.insert(payment).values({
       id: newPaymentId,
       milestoneId,
@@ -59,13 +63,6 @@ export async function POST(req: NextRequest) {
       paidAt: now,
     });
 
-    // 2. Update milestone status to paid
-    await db
-      .update(paymentMilestone)
-      .set({ status: "paid", updatedAt: now })
-      .where(eq(paymentMilestone.id, milestoneId));
-
-    // 3. Log activity
     await logActivity({
       projectId: milestone.projectId,
       userId,

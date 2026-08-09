@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
 import { db } from "@/utils/db";
 import { contract, signature, user as userTable } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -50,9 +50,9 @@ export async function POST(req: NextRequest) {
 
     if (existing.fileUrl) {
       try {
-        const pdfRes = await fetch(existing.fileUrl);
-        if (pdfRes.ok) {
-          originalBuffer = await pdfRes.arrayBuffer();
+        const storedDocument = await get(existing.fileUrl, { access: "private", useCache: false });
+        if (storedDocument?.stream) {
+          originalBuffer = await new Response(storedDocument.stream).arrayBuffer();
           currentDocHash = hashDocument(originalBuffer);
           if (existing.documentHash && currentDocHash !== existing.documentHash) {
             return NextResponse.json({ error: "Document has changed since upload" }, { status: 409 });
@@ -63,26 +63,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // A legacy contract can be missing a recipient row. Recover it on the
-    // signing path so an eligible client is never silently excluded.
     const [existingSig] = await db
       .select()
       .from(signature)
       .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));
 
     if (!existingSig) {
-      await db.insert(signature).values({
-        id: crypto.randomUUID(),
-        contractId,
-        userId,
-        signedAt: new Date(),
-        signatureData: signatureData || null,
-        signatureMethod: signatureMethod || "draw",
-        ipAddress,
-        userAgent,
-        documentHash: currentDocHash,
-        auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod: signatureMethod || "draw" })],
-      });
+      return NextResponse.json({ error: "You are not a recipient of this contract" }, { status: 403 });
     } else {
       await db
         .update(signature)
@@ -127,7 +114,7 @@ export async function POST(req: NextRequest) {
 
           const signedPdfBuffer = await embedSignaturesInPdf(originalBuffer, sigItems);
           const finalBlob = await put(`contracts/${existing.projectId}/${contractId}/signed_${existing.fileName}`, signedPdfBuffer, {
-            access: "public",
+            access: "private",
             addRandomSuffix: false,
             allowOverwrite: true,
           });
