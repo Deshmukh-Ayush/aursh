@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Geist_Mono, Inter, Instrument_Serif } from "next/font/google"
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -49,6 +50,7 @@ export default function RootLayout({
         >
           <TooltipProvider delayDuration={200}>
             {children}
+            <SpeedInsights />
             {process.env.NODE_ENV === "development" && <Agentation />}
             <Toaster richColors position="top-center" />
           </TooltipProvider>
