@@ -7,7 +7,6 @@ import {
 import {
   CurrencyInrIcon,
   TrendUpIcon,
-  CalendarBlankIcon,
 } from "@phosphor-icons/react"
 import type {
   OverviewProject,
