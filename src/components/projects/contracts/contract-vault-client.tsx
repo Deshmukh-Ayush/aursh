@@ -45,7 +45,6 @@ type ContractVaultClientProps = {
   contracts: ContractWithSignatures[];
   currentUserId: string;
   userRole: "owner" | "agency" | "client";
-  orgPlan: string;
 };
 
 const DOC_TYPE_MAP: Record<string, { label: string; tag: string }> = {
@@ -62,7 +61,6 @@ export function ContractVaultClient({
   contracts,
   currentUserId,
   userRole,
-  orgPlan = "free",
 }: ContractVaultClientProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<string>("sow");
@@ -142,10 +140,13 @@ export function ContractVaultClient({
         contractId: signingContractId,
         signatureData,
         signatureMethod: method,
-        orgPlan,
       });
       if (res.data.success) {
-        toast.success("Document signed & cryptographic seal generated!");
+        toast.success(
+          res.data.fullySigned
+            ? "Document fully signed and cryptographic seal generated."
+            : "Signature recorded. Waiting for the remaining signers.",
+        );
         setIsSignatureModalOpen(false);
         setSigningContractId(null);
         router.refresh();

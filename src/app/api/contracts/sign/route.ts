@@ -10,12 +10,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
 import { embedSignaturesInPdf, buildAuditTrailEvent } from "@/lib/pdf-signing";
 import { z } from "zod";
+import { getProjectAccess } from "@/lib/project-auth";
 
 const signSchema = z.object({
   contractId: z.string().min(1, "Contract ID is required"),
   signatureData: z.string().optional().nullable(),
   signatureMethod: z.string().optional().nullable(),
-  orgPlan: z.enum(["free", "freelancer", "agency"]).optional().default("free"),
 });
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
 
-    const { contractId, signatureData, signatureMethod, orgPlan } = validationResult.data;
+    const { contractId, signatureData, signatureMethod } = validationResult.data;
 
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
@@ -37,7 +37,11 @@ export async function POST(req: NextRequest) {
     const [existing] = await db.select().from(contract).where(eq(contract.id, contractId));
     if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
 
-    const isPaidPlan = orgPlan === "freelancer" || orgPlan === "agency";
+    const { isAuthorized } = await getProjectAccess(existing.projectId, userId);
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
     const userAgent = req.headers.get("user-agent") || "unknown";
 
@@ -50,13 +54,17 @@ export async function POST(req: NextRequest) {
         if (pdfRes.ok) {
           originalBuffer = await pdfRes.arrayBuffer();
           currentDocHash = hashDocument(originalBuffer);
+          if (existing.documentHash && currentDocHash !== existing.documentHash) {
+            return NextResponse.json({ error: "Document has changed since upload" }, { status: 409 });
+          }
         }
       } catch (e) {
         console.error("Failed to fetch contract PDF buffer:", e);
       }
     }
 
-    // Ensure user has a signature record for this contract
+    // A legacy contract can be missing a recipient row. Recover it on the
+    // signing path so an eligible client is never silently excluded.
     const [existingSig] = await db
       .select()
       .from(signature)
@@ -93,10 +101,11 @@ export async function POST(req: NextRequest) {
     const allSigs = await db.select().from(signature).where(eq(signature.contractId, contractId));
     const signedSigs = allSigs.filter((sig) => sig.signedAt !== null);
 
-    // Contract is signed if any party signed
-    const isSigned = signedSigs.length > 0;
+    // A contract is complete only after every recipient has signed. Marking it
+    // signed after the first signature hid later uploads from the client flow.
+    const isFullySigned = allSigs.length > 0 && signedSigs.length === allSigs.length;
 
-    if (isSigned) {
+    if (isFullySigned) {
       const finalStatusUpdate: { status: "signed"; signedDocumentUrl?: string } = { status: "signed" };
 
       if (originalBuffer) {
@@ -117,7 +126,7 @@ export async function POST(req: NextRequest) {
           });
 
           const signedPdfBuffer = await embedSignaturesInPdf(originalBuffer, sigItems);
-          const finalBlob = await put(`contracts/${existing.projectId}/signed_${existing.fileName}`, signedPdfBuffer, {
+          const finalBlob = await put(`contracts/${existing.projectId}/${contractId}/signed_${existing.fileName}`, signedPdfBuffer, {
             access: "public",
             addRandomSuffix: false,
             allowOverwrite: true,
@@ -129,18 +138,28 @@ export async function POST(req: NextRequest) {
       }
 
       await db.update(contract).set(finalStatusUpdate).where(eq(contract.id, contractId));
+    } else {
+      await db
+        .update(contract)
+        .set({ status: "pending_signature" })
+        .where(eq(contract.id, contractId));
     }
 
     await logActivity({
       projectId: existing.projectId,
       userId: session.user.id,
       type: "contract_signed",
-      metadata: { fullySigned: isSigned },
+      metadata: { fullySigned: isFullySigned },
     });
 
+    revalidatePath("/dashboard");
     revalidatePath(`/projects/${existing.projectId}`);
     revalidatePath(`/projects/${existing.projectId}/contract`);
-    return NextResponse.json({ success: true, fullySigned: isSigned });
+    return NextResponse.json({
+      success: true,
+      fullySigned: isFullySigned,
+      remainingSignatures: allSigs.length - signedSigs.length,
+    });
   } catch (error) {
     console.error("Contract sign error:", error);
     return NextResponse.json({ error: "Failed to process contract signature." }, { status: 500 });

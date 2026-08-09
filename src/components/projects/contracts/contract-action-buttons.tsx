@@ -14,13 +14,11 @@ export function ContractActionButtons({
   status, 
   role, 
   hasSigned,
-  orgPlan
 }: { 
   contractId: string;
   status: string;
   role: string;
   hasSigned: boolean;
-  orgPlan: string;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,8 +32,9 @@ export function ContractActionButtons({
         toast.success("Signatures requested successfully");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to request signatures");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to request signatures";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -45,19 +44,18 @@ export function ContractActionButtons({
     setIsLoading(true);
     setIsModalOpen(false);
     try {
-      const res = await axios.patch('/api/contracts', { 
+      const res = await axios.post('/api/contracts/sign', {
         contractId, 
-        action: "sign",
         signatureData,
         signatureMethod,
-        orgPlan
       });
       if (res.data.success) {
         toast.success("Contract signed successfully");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to sign contract");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to sign contract";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +70,9 @@ export function ContractActionButtons({
         toast.success("Contract deleted successfully");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to delete contract");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete contract";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -99,11 +98,7 @@ export function ContractActionButtons({
           <>
             <Button 
               onClick={() => {
-                if (orgPlan === "free") {
-                  handleSign(); // Basic sign
-                } else {
-                  setIsModalOpen(true); // E-Signature Modal
-                }
+                setIsModalOpen(true);
               }} 
               disabled={isLoading} 
               className="flex-1 bg-primary"

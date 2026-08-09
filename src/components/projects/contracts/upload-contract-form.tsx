@@ -26,8 +26,9 @@ export function UploadContractForm({ projectId }: { projectId: string }) {
         toast.success("Contract uploaded successfully");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to upload contract");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to upload contract";
+      toast.error(message);
     } finally {
       setIsUploading(false);
     }

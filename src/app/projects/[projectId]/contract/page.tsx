@@ -6,14 +6,28 @@ export const metadata: Metadata = {
 };
 
 import { db } from "@/utils/db";
-import { contract, signature, projectMember, user, project, organization } from "@/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { contract, signature, user } from "@/db/schema";
+import { eq, desc, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
 import { getProjectAccess } from "@/lib/project-auth";
-import crypto from "crypto";
+
+const documentTypes = ["sow", "nda", "noc", "msa", "addendum", "other"] as const;
+const contractStatuses = ["draft", "pending_signature", "signed"] as const;
+
+function isDocumentType(
+  value: string,
+): value is ContractWithSignatures["contract"]["documentType"] {
+  return documentTypes.includes(value as (typeof documentTypes)[number]);
+}
+
+function isContractStatus(
+  value: string,
+): value is ContractWithSignatures["contract"]["status"] {
+  return contractStatuses.includes(value as (typeof contractStatuses)[number]);
+}
 
 export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -27,10 +41,6 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
   const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
   if (!isAuthorized || !proj || !role) return redirect("/dashboard");
 
-  // Fetch org plan
-  const [org] = await db.select().from(organization).where(eq(organization.id, proj.organizationId));
-  const orgPlan = org?.plan || "free";
-
   // Fetch all contracts for this project
   const allContracts = await db
     .select({
@@ -43,28 +53,6 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
     .orderBy(desc(contract.createdAt));
 
   const contractIds = allContracts.map((c) => c.contract.id);
-
-  // Auto-heal missing signature rows for current user
-  if (contractIds.length > 0) {
-    const existingUserSigs = await db
-      .select()
-      .from(signature)
-      .where(and(inArray(signature.contractId, contractIds), eq(signature.userId, userId)));
-
-    const missingContractIds = contractIds.filter(
-      (cid) => !existingUserSigs.some((s) => s.contractId === cid)
-    );
-
-    if (missingContractIds.length > 0) {
-      await db.insert(signature).values(
-        missingContractIds.map((cid) => ({
-          id: crypto.randomUUID(),
-          contractId: cid,
-          userId,
-        }))
-      );
-    }
-  }
 
   // Fetch all signatures and linked users
   let allSignatures: Array<{
@@ -83,21 +71,13 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
       .where(inArray(signature.contractId, contractIds));
   }
 
-  // Group signatures by contractId & auto-promote contracts with signatures to signed
+  // Group signatures by contract. Contract lifecycle transitions happen only
+  // in the signing endpoint, never as a side effect of rendering this page.
   const signaturesByContract = new Map<string, typeof allSignatures>();
   for (const s of allSignatures) {
     const list = signaturesByContract.get(s.sig.contractId) || [];
     list.push(s);
     signaturesByContract.set(s.sig.contractId, list);
-  }
-
-  for (const c of allContracts) {
-    const sigs = signaturesByContract.get(c.contract.id) || [];
-    const hasSignedSig = sigs.some((s) => s.sig.signedAt !== null);
-    if (hasSignedSig && c.contract.status !== "signed") {
-      c.contract.status = "signed";
-      await db.update(contract).set({ status: "signed" }).where(eq(contract.id, c.contract.id));
-    }
   }
 
   // `server-serialization`: structure contracts payload for ContractVaultClient
@@ -109,9 +89,11 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
         projectId: c.contract.projectId,
         fileName: c.contract.fileName,
         fileUrl: c.contract.fileUrl,
-        documentType: (c.contract.documentType || "sow") as any,
-        uploadedByRole: (c.contract.uploadedByRole || "agency") as any,
-        status: c.contract.status as any,
+        documentType: isDocumentType(c.contract.documentType)
+          ? c.contract.documentType
+          : "sow",
+        uploadedByRole: c.contract.uploadedByRole === "client" ? "client" : "agency",
+        status: isContractStatus(c.contract.status) ? c.contract.status : "draft",
         signedDocumentUrl: c.contract.signedDocumentUrl,
         documentHash: c.contract.documentHash,
         createdAt: c.contract.createdAt,
@@ -134,7 +116,6 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
       contracts={serializedContracts}
       currentUserId={userId}
       userRole={role}
-      orgPlan={orgPlan}
     />
   );
 }

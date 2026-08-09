@@ -13,8 +13,14 @@ type SignatureModalProps = {
   onConfirm: (signatureData: string, method: string) => void;
 };
 
+type SignatureMethod = "draw" | "type" | "upload";
+
+function isSignatureMethod(value: string): value is SignatureMethod {
+  return value === "draw" || value === "type" || value === "upload";
+}
+
 export function SignatureModal({ isOpen, onClose, onConfirm }: SignatureModalProps) {
-  const [method, setMethod] = useState<"draw" | "type" | "upload">("draw");
+  const [method, setMethod] = useState<SignatureMethod>("draw");
   const [typedName, setTypedName] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const typedCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -149,7 +155,12 @@ export function SignatureModal({ isOpen, onClose, onConfirm }: SignatureModalPro
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="draw" onValueChange={(val) => setMethod(val as any)}>
+        <Tabs
+          defaultValue="draw"
+          onValueChange={(value) => {
+            if (isSignatureMethod(value)) setMethod(value);
+          }}
+        >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="draw">Draw</TabsTrigger>
             <TabsTrigger value="type">Type</TabsTrigger>

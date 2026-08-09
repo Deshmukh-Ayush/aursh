@@ -1,7 +1,7 @@
 import { put } from '@vercel/blob';
 import { db } from "@/utils/db";
-import { contract, signature, projectMember, project } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { contract, signature, projectMember } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
@@ -9,18 +9,40 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
-import { embedSignaturesInPdf, buildAuditTrailEvent } from "@/lib/pdf-signing";
 import { z } from "zod";
+import { getProjectAccess } from "@/lib/project-auth";
+
+const documentTypeSchema = z.enum(["sow", "nda", "noc", "msa", "addendum", "other"]);
+
+const uploadContractSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  documentType: documentTypeSchema.catch("sow"),
+});
+
+const requestSignaturesSchema = z.object({
+  contractId: z.string().min(1, "Contract ID is required"),
+  action: z.literal("request_signatures"),
+});
+
+function toStorageFileName(fileName: string): string {
+  const normalized = fileName.replace(/[^a-zA-Z0-9._-]+/g, "_");
+  return normalized || "contract.pdf";
+}
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const projectId = formData.get("projectId") as string;
-    const file = formData.get('file') as File;
-    const documentType = (formData.get('documentType') as string) || 'sow';
+    const uploadInput = uploadContractSchema.safeParse({
+      projectId: formData.get("projectId"),
+      documentType: formData.get("documentType") ?? "sow",
+    });
+    if (!uploadInput.success) {
+      return NextResponse.json({ error: uploadInput.error.issues[0].message }, { status: 400 });
+    }
 
-    if (!projectId || !file) {
-      return NextResponse.json({ error: "Project ID and file are required" }, { status: 400 });
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "A contract PDF is required" }, { status: 400 });
     }
 
     if (file.type !== 'application/pdf') {
@@ -35,24 +57,24 @@ export async function POST(req: NextRequest) {
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const userId = session.user.id;
-
-    // Check member role
-    const members = await db.select().from(projectMember).where(eq(projectMember.projectId, projectId));
-    const currentMember = members.find(m => m.userId === userId);
-    
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    
-    let uploadedByRole: "agency" | "client" = "agency";
-    if (currentMember?.role === 'client') {
-      uploadedByRole = "client";
-    } else if (currentMember?.role === 'owner' || currentMember?.role === 'agency' || (proj && session.session?.activeOrganizationId === proj.organizationId)) {
-      uploadedByRole = "agency";
+    const { projectId, documentType } = uploadInput.data;
+    const { role, isAuthorized } = await getProjectAccess(projectId, userId);
+    if (!isAuthorized || (role !== "owner" && role !== "agency")) {
+      return NextResponse.json({ error: "Only the project owner or agency can upload contracts" }, { status: 403 });
     }
 
-    const validDocTypes = ["sow", "nda", "noc", "msa", "addendum", "other"];
-    const safeDocType = validDocTypes.includes(documentType) ? (documentType as any) : "sow";
+    const members = await db
+      .select({ userId: projectMember.userId })
+      .from(projectMember)
+      .where(eq(projectMember.projectId, projectId));
 
-    const blob = await put(`contracts/${projectId}/${Date.now()}_${file.name}`, file, {
+    const signerIds = new Set(members.map((member) => member.userId));
+    signerIds.add(userId);
+
+    const newContractId = crypto.randomUUID();
+    const storageFileName = toStorageFileName(file.name);
+
+    const blob = await put(`contracts/${projectId}/${newContractId}/${storageFileName}`, file, {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
@@ -61,12 +83,10 @@ export async function POST(req: NextRequest) {
     const fileBuffer = await file.arrayBuffer();
     const docHash = hashDocument(fileBuffer);
 
-    const newContractId = crypto.randomUUID();
-
-    const signatureInserts = members.map(m => ({
+    const signatureInserts: Array<typeof signature.$inferInsert> = Array.from(signerIds, (signerId) => ({
       id: crypto.randomUUID(),
       contractId: newContractId,
-      userId: m.userId,
+      userId: signerId,
     }));
 
     await db.insert(contract).values({
@@ -74,27 +94,36 @@ export async function POST(req: NextRequest) {
       projectId,
       fileUrl: blob.url,
       fileName: file.name,
-      documentType: safeDocType,
-      uploadedByRole,
+      documentType,
+      uploadedByRole: "agency",
       documentHash: docHash,
       status: "draft",
       uploadedBy: userId,
     });
 
-    if (signatureInserts.length > 0) {
-      await db.insert(signature).values(signatureInserts);
-    }
+    await db.insert(signature).values(signatureInserts);
 
     await logActivity({
       projectId,
       userId,
       type: "contract_uploaded",
-      metadata: { fileName: file.name, documentType: safeDocType, uploadedByRole }
+      metadata: { fileName: file.name, documentType, uploadedByRole: "agency" }
     });
 
+    revalidatePath("/dashboard");
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/contract`);
-    return NextResponse.json({ success: true, contractId: newContractId });
+    return NextResponse.json({
+      success: true,
+      contractId: newContractId,
+      contract: {
+        id: newContractId,
+        projectId,
+        fileName: file.name,
+        documentType,
+        status: "draft",
+      },
+    }, { status: 201 });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Failed to upload contract." }, { status: 500 });
@@ -103,22 +132,12 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const payload = await req.json();
-
-    const patchSchema = z.object({
-      contractId: z.string().min(1, "Contract ID is required"),
-      action: z.enum(["request_signatures", "sign"]),
-      signatureData: z.string().optional().nullable(),
-      signatureMethod: z.string().optional().nullable(),
-      orgPlan: z.enum(["free", "freelancer", "agency"]).optional().default("free"),
-    });
-
-    const validationResult = patchSchema.safeParse(payload);
+    const validationResult = requestSignaturesSchema.safeParse(await req.json());
     if (!validationResult.success) {
       return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
     }
 
-    const { contractId, action, signatureData, signatureMethod, orgPlan } = validationResult.data;
+    const { contractId } = validationResult.data;
 
     const reqHeaders = await headers();
     const session = await auth.api.getSession({ headers: reqHeaders });
@@ -128,119 +147,21 @@ export async function PATCH(req: NextRequest) {
     const [existing] = await db.select().from(contract).where(eq(contract.id, contractId));
     if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
 
-    if (action === "request_signatures") {
-      if (existing.status !== 'draft') return NextResponse.json({ error: "Contract is not in draft state" }, { status: 400 });
-
-      await db.update(contract).set({ status: 'pending_signature' }).where(eq(contract.id, contractId));
-      
-      // We don't log signature request right now as per original code logic
-
-      revalidatePath(`/projects/${existing.projectId}`);
-      revalidatePath(`/projects/${existing.projectId}/contract`);
-      return NextResponse.json({ success: true });
-    } 
-    
-    if (action === "sign") {
-      if (existing.status !== 'pending_signature') return NextResponse.json({ error: "Contract is not pending signature" }, { status: 400 });
-
-      const isPaidPlan = orgPlan === "freelancer" || orgPlan === "agency";
-      
-      const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
-      const userAgent = req.headers.get("user-agent") || "unknown";
-
-      let currentDocHash = null;
-      let originalBuffer = null;
-
-      if (isPaidPlan) {
-        // Fetch and verify PDF
-        const pdfRes = await fetch(existing.fileUrl);
-        if (!pdfRes.ok) {
-          throw new Error(`Failed to fetch contract PDF: ${pdfRes.status} ${pdfRes.statusText}`);
-        }
-        originalBuffer = await pdfRes.arrayBuffer();
-        currentDocHash = hashDocument(originalBuffer);
-
-        if (currentDocHash !== existing.documentHash) {
-           return NextResponse.json({ error: "Document has been tampered with since upload." }, { status: 400 });
-        }
-      }
-
-      await db.update(signature)
-        .set({ 
-          signedAt: new Date(),
-          ...(isPaidPlan && {
-             signatureData,
-             signatureMethod: signatureMethod as string | null,
-             ipAddress,
-             userAgent,
-             documentHash: currentDocHash,
-             auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod: signatureMethod as string })]
-          })
-        })
-        .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));
-
-      const allSigs = await db.select().from(signature).where(eq(signature.contractId, contractId));
-      const allSigned = allSigs.every(sig => sig.signedAt !== null);
-
-      if (allSigned) {
-        let finalStatusUpdate: any = { status: 'signed' };
-
-        if (isPaidPlan && originalBuffer) {
-           // Embed signatures
-           try {
-             // Get users to attach names/emails
-             const sigMembers = await db.query.signature.findMany({
-               where: eq(signature.contractId, contractId),
-               with: { user: true } // Assuming we have relation but we don't, need to fetch users
-             });
-             
-             // Since we didn't add the `with: { user: true }` relation in schema for signature, we fetch manually
-             // But actually we did: signatureRelations has `user`. 
-           } catch(e) {} // ignore for now to write raw query
-
-           const userIds = allSigs.map(s => s.userId).filter((id): id is string => Boolean(id));
-           const users = userIds.length > 0 ? await db.query.user.findMany({
-              where: (u, { inArray }) => inArray(u.id, userIds)
-           }) : [];
-
-           const sigItems = allSigs.map(sig => {
-              const u = users.find(u => u.id === sig.userId);
-              return {
-                 name: u?.name || "Unknown",
-                 email: u?.email || "Unknown",
-                 ip: sig.ipAddress || "Unknown",
-                 timestamp: sig.signedAt?.toISOString() || new Date().toISOString(),
-                 signatureData: sig.signatureData || "",
-                 method: sig.signatureMethod || "unknown",
-              };
-           });
-
-           const signedPdfBuffer = await embedSignaturesInPdf(originalBuffer, sigItems);
-           const finalBlob = await put(`contracts/${existing.projectId}/signed_${existing.fileName}`, signedPdfBuffer, {
-              access: 'public',
-              addRandomSuffix: false,
-              allowOverwrite: true,
-           });
-           finalStatusUpdate.signedDocumentUrl = finalBlob.url;
-        }
-
-        await db.update(contract).set(finalStatusUpdate).where(eq(contract.id, contractId));
-      }
-
-      await logActivity({
-        projectId: existing.projectId,
-        userId: session.user.id,
-        type: "contract_signed",
-        metadata: { fullySigned: allSigned }
-      });
-
-
-      revalidatePath(`/projects/${existing.projectId}`);
-      revalidatePath(`/projects/${existing.projectId}/contract`);
-      return NextResponse.json({ success: true });
+    const { role, isAuthorized } = await getProjectAccess(existing.projectId, userId);
+    if (!isAuthorized || (role !== "owner" && role !== "agency")) {
+      return NextResponse.json({ error: "Only the project owner or agency can request signatures" }, { status: 403 });
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    if (existing.status !== "draft") {
+      return NextResponse.json({ error: "Contract has already been sent for signature" }, { status: 400 });
+    }
+
+    await db.update(contract).set({ status: "pending_signature" }).where(eq(contract.id, contractId));
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/projects/${existing.projectId}`);
+    revalidatePath(`/projects/${existing.projectId}/contract`);
+    return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error("Contract PATCH error:", error);
@@ -264,21 +185,8 @@ export async function DELETE(req: NextRequest) {
     const [existing] = await db.select().from(contract).where(eq(contract.id, contractId));
     if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
 
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, existing.projectId), eq(projectMember.userId, session.user.id)));
-
-    const [proj] = await db.select().from(project).where(eq(project.id, existing.projectId));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (proj && session.session?.activeOrganizationId === proj.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'owner' && role !== 'agency')) {
+    const { role, isAuthorized } = await getProjectAccess(existing.projectId, session.user.id);
+    if (!isAuthorized || (role !== "owner" && role !== "agency")) {
       return NextResponse.json({ error: "Only the project owner or agency can delete the contract" }, { status: 403 });
     }
 
@@ -289,6 +197,7 @@ export async function DELETE(req: NextRequest) {
     await db.delete(signature).where(eq(signature.contractId, contractId));
     await db.delete(contract).where(eq(contract.id, contractId));
 
+    revalidatePath("/dashboard");
     revalidatePath(`/projects/${existing.projectId}`);
     revalidatePath(`/projects/${existing.projectId}/contract`);
     return NextResponse.json({ success: true });
