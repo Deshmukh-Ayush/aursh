@@ -69,9 +69,9 @@ export default async function DocsPage() {
               ['Folder Structure', '#folders'],
               ['Design System & Component Rules', '#design-system'],
               ['EvilCharts Analytics Architecture', '#evilcharts'],
+              ['AI Scope Guardian & Clause Engine', '#ai-engine'],
               ['Multi-Currency Engine (INR / USD)', '#currency'],
               ['Database Schema', '#schema'],
-              ['Payment Milestones Engine', '#payments'],
               ['Contract & E-Signature Vault', '#contracts'],
               ['API Routes Specification', '#api'],
               ['Environment Variables', '#env'],
@@ -91,7 +91,7 @@ export default async function DocsPage() {
         {/* ─── OVERVIEW ─── */}
         <Section id="overview" title="What is Scrunity?">
           <P>
-            Scrunity is an AI-powered agency revenue protection and client collaboration OS. It replaces fragmented tools (DocuSign, Trello, WhatsApp, Excel invoices) with a single source of truth for payment tracking, contract execution, deliverable reviews, and audit logs.
+            Scrunity is an AI-powered agency revenue protection and client collaboration OS. It replaces fragmented tools (DocuSign, Trello, WhatsApp, Excel invoices) with a single source of truth for payment tracking, contract execution, deliverable reviews, AI scope creep guardian, and audit logs.
           </P>
           <P>User roles and permissions:</P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
@@ -108,11 +108,12 @@ export default async function DocsPage() {
             rows={[
               ['Framework', 'Next.js 16 (App Router)', 'RSC by default, Turbopack, async params'],
               ['Language', 'TypeScript 5', 'Strict type safety (tsc --noEmit)'],
+              ['AI Engine', 'Vercel AI SDK + Groq', 'Primary: openai/gpt-oss-120b | Fallback: llama-3.3-70b-versatile'],
               ['Charts & Analytics', 'EvilCharts Component Suite', 'EChartsRadialChart, EChartsAreaChart, EChartsBarChart'],
               ['Database', 'Neon (Serverless Postgres)', 'Stateless HTTP driver @neondatabase/serverless'],
               ['ORM', 'Drizzle ORM', 'Schema defined in src/db/schema.ts'],
               ['Auth', 'Better Auth', 'Google OAuth + organization plugin'],
-              ['State Management', 'Zustand', 'Modular stores in src/store/ with persist middleware'],
+              ['State Management', 'Zustand', 'Modular stores in src/store/ (ai-store.ts, etc.)'],
               ['Icons', 'Phosphor Icons & Lucide', '@phosphor-icons/react in client components, Lucide in RSC'],
               ['Styling', 'Tailwind CSS v4 & CSS Variables', 'Brand color #00AAF7, dark mode, custom neutral tokens'],
               ['Storage', 'Vercel Blob', 'PDF contract uploads and attachment storage'],
@@ -129,32 +130,39 @@ export default async function DocsPage() {
 │   ├── globals.css             # Brand color #00AAF7, Tailwind v4 theme
 │   ├── docs/                   # Developer documentation route
 │   ├── dashboard/              # Main organization dashboard
+│   ├── api/ai/                 # AI Engine API endpoints
+│   │   ├── extract-contract/   # PDF Scope Extraction & DB persistence
+│   │   ├── check-scope/        # Revision limit evaluator & scope creep alert
+│   │   └── generate-addendum/  # AI Change Order SOW addendum generator
 │   └── projects/[projectId]/   # Project workspace routes
 │       ├── page.tsx            # Overview dashboard (2 Hero KPI Cards, EvilCharts)
 │       ├── payments/           # PaymentsRadialChart, multi-currency, milestones
 │       ├── proposal/           # ProposalDonutChart, proposal builder drawer
-│       ├── deliverables/       # DeliverablesVelocityChart (EvilCharts Area), list view
-│       ├── contract/           # ContractStatusChart (Legal Vault Radial), e-signatures
-│       ├── activity/           # ActivityBarChart (Monospace Bar), category filters
-│       ├── files/              # FilesStorageChart (Storage Vault), file list
+│       ├── deliverables/       # DeliverablesVelocityChart, Scope Guardian badges
+│       ├── contract/           # ContractStatusChart, ContractAIDrawer, e-signatures
+│       ├── activity/           # ActivityBarChart, category filters
+│       ├── files/              # FilesStorageChart, file list
 │       └── settings/           # Project settings & member management
 │
 ├── components/
 │   ├── evilcharts/             # EvilCharts Visualization Library
-│   │   ├── charts/             # echarts-radial-chart, echarts-area-chart, echarts-bar-chart
-│   │   └── ui/                 # echarts-dot, echarts-brush
 │   └── projects/               # Domain Component Modules
 │       ├── overview/           # ProjectOverviewHero, MomentumChart, StatusChart
-│       ├── payments/           # PaymentsRadialChart, MilestoneItem
-│       ├── proposal/           # ProposalDonutChart, ProposalCard
-│       ├── deliverables/       # DeliverablesVelocityChart, DeliverableList
-│       ├── contracts/          # ContractStatusChart, ContractVaultClient
-│       ├── activity/           # ActivityBarChart, ActivityLogClient
-│       └── files/              # FilesStorageChart, FilesVaultClient
+│       ├── deliverables/       # DeliverablesVelocityChart, ScopeGuardianPill
+│       ├── contracts/          # ContractVaultClient, ContractAIDrawer, ContractAIStepper
+│       └── proposal/           # ProposalDonutChart, AddendumModal
 │
-├── store/                      # Zustand State Management Architecture
+├── lib/ai/                     # Core AI Layer
+│   ├── client.ts               # Groq AI client with LLM model fallback engine
+│   ├── schemas.ts              # Zod v4 schemas with strict preprocessors
+│   ├── pdf-extractor.ts        # PDF text extraction via unpdf
+│   ├── contract-parser.ts      # AI PDF scope parser & DB persistence
+│   ├── scope-guardian.ts       # Scope revision limit evaluator
+│   └── addendum-generator.ts   # SOW Change Order addendum engine
+│
+├── store/                      # Zustand State Management (ai-store.ts)
 ├── db/                         # Drizzle schema definitions (schema.ts)
-└── lib/                        # Server actions, Better Auth, pdf signing, activity logger`}</CodeBlock>
+└── lib/                        # Server actions, Better Auth, pdf signing`}</CodeBlock>
         </Section>
 
         {/* ─── DESIGN SYSTEM ─── */}
@@ -194,6 +202,19 @@ export default async function DocsPage() {
           />
         </Section>
 
+        {/* ─── AI SCOPE GUARDIAN ENGINE ─── */}
+        <Section id="ai-engine" title="AI Scope Guardian & Clause Engine">
+          <P>
+            Scrunity protects agency profit margins by automatically analyzing uploaded PDF contracts, extracting scope boundaries, evaluating revision counts, and generating Change Order SOW addendums:
+          </P>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
+            <li><strong className="text-foreground font-medium">Model Fallback Architecture:</strong> Uses <Code>openai/gpt-oss-120b</Code> as the primary LLM engine on Groq with automated fallback to <Code>llama-3.3-70b-versatile</Code> if rate limits occur.</li>
+            <li><strong className="text-foreground font-medium">Universal Preprocessors & Type Safety:</strong> Zero <Code>any</Code> types. Uses Zod v4 preprocessors to coerce LLM JSON variations cleanly into typed objects.</li>
+            <li><strong className="text-foreground font-medium">AI Clause Inspector Drawer:</strong> Slide-over panel (<Code>ContractAIDrawer</Code>) displaying extracted scope items, exclusions, revision limits, and payment terms.</li>
+            <li><strong className="text-foreground font-medium">Scope Creep Alert & Addendum Generator:</strong> <Code>ScopeGuardianPill</Code> evaluates deliverable revision counts against contract terms (<Code>within_scope</Code> | <Code>limit_reached</Code> | <Code>scope_creep_alert</Code>) and launches the AI Addendum Drafter (<Code>AddendumModal</Code>).</li>
+          </ul>
+        </Section>
+
         {/* ─── MULTI-CURRENCY ENGINE ─── */}
         <Section id="currency" title="Multi-Currency Engine (INR / USD)">
           <P>
@@ -219,11 +240,12 @@ export default async function DocsPage() {
             ]}
           />
 
-          <H3>Contract, Proposal & Activity Tables</H3>
+          <H3>Contract, AI Scope, Proposal & Activity Tables</H3>
           <Table
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
               ['contract', 'projectId, fileUrl, fileName, documentType, uploadedByRole, status, signedDocumentUrl, documentHash', 'Supports sow | nda | noc | msa | addendum | other'],
+              ['contract_scope_term', 'contractId, projectId, termType, title, description, maxRevisions', 'Enum: scope | exclusion | revision_limit | payment_term'],
               ['signature', 'contractId, userId, signatureData, signatureMethod, ipAddress, userAgent, documentHash', 'Bi-directional e-signature execution & cryptographic audit logs'],
               ['proposal', 'projectId, title, price, currency, status', 'Status: draft | sent | accepted | declined'],
               ['deliverable', 'projectId, title, status, dueDate, submissionTitle, submissionUrl', 'Status: pending | in_review | approved | revision_requested'],
@@ -238,6 +260,9 @@ export default async function DocsPage() {
           <Table
             headers={['Route', 'Method', 'Purpose']}
             rows={[
+              ['/api/ai/extract-contract', 'GET/POST', 'Extract scope clauses from contract PDF via Groq AI & persist in DB'],
+              ['/api/ai/check-scope', 'POST', 'Evaluate deliverable revision count against AI scope terms'],
+              ['/api/ai/generate-addendum', 'POST', 'Draft itemized SOW Change Order addendum with pricing'],
               ['/api/milestones', 'GET/POST/PATCH/DELETE', 'Fetch, create, update, or delete payment milestones'],
               ['/api/milestones/mark-paid', 'POST', 'Record manual payment verification & UTR reference note'],
               ['/api/contracts', 'GET/POST/PATCH/DELETE', 'Upload agreements, fetch contracts, update status'],
@@ -256,6 +281,7 @@ export default async function DocsPage() {
             headers={['Variable', 'Required', 'Description']}
             rows={[
               ['DATABASE_URL', 'Yes', 'Neon Serverless Postgres connection string'],
+              ['GROQ_API_KEY', 'Yes', 'Groq API Key for LLM model processing (gpt-oss-120b & llama-3.3-70b)'],
               ['GOOGLE_CLIENT_ID', 'Yes', 'Google OAuth client ID'],
               ['GOOGLE_CLIENT_SECRET', 'Yes', 'Google OAuth client secret'],
               ['BETTER_AUTH_SECRET', 'Yes', 'Session encryption secret'],
