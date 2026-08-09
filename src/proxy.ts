@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const protectedPaths = ["/onboarding", "/dashboard"];
+const protectedPaths = ["/onboarding", "/dashboard", "/projects"];
 
 export async function proxy(request: NextRequest) {
   try {
@@ -51,5 +51,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/sign-in", "/onboarding", "/dashboard", "/dashboard/:path*"],
+  matcher: [
+    "/sign-in",
+    "/onboarding",
+    "/dashboard",
+    "/dashboard/:path*",
+    "/projects/:path*",
+  ],
 };
