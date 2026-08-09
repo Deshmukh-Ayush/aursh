@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
 import { getProjectAccess } from "@/lib/project-auth";
+import crypto from "crypto";
 
 export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
   const reqHeaders = await headers();
@@ -43,6 +44,28 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
 
   const contractIds = allContracts.map((c) => c.contract.id);
 
+  // Auto-heal missing signature rows for current user
+  if (contractIds.length > 0) {
+    const existingUserSigs = await db
+      .select()
+      .from(signature)
+      .where(and(inArray(signature.contractId, contractIds), eq(signature.userId, userId)));
+
+    const missingContractIds = contractIds.filter(
+      (cid) => !existingUserSigs.some((s) => s.contractId === cid)
+    );
+
+    if (missingContractIds.length > 0) {
+      await db.insert(signature).values(
+        missingContractIds.map((cid) => ({
+          id: crypto.randomUUID(),
+          contractId: cid,
+          userId,
+        }))
+      );
+    }
+  }
+
   // Fetch all signatures and linked users
   let allSignatures: Array<{
     sig: typeof signature.$inferSelect;
@@ -60,12 +83,21 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
       .where(inArray(signature.contractId, contractIds));
   }
 
-  // `js-combine-iterations`: group signatures by contractId
+  // Group signatures by contractId & auto-promote contracts with signatures to signed
   const signaturesByContract = new Map<string, typeof allSignatures>();
   for (const s of allSignatures) {
     const list = signaturesByContract.get(s.sig.contractId) || [];
     list.push(s);
     signaturesByContract.set(s.sig.contractId, list);
+  }
+
+  for (const c of allContracts) {
+    const sigs = signaturesByContract.get(c.contract.id) || [];
+    const hasSignedSig = sigs.some((s) => s.sig.signedAt !== null);
+    if (hasSignedSig && c.contract.status !== "signed") {
+      c.contract.status = "signed";
+      await db.update(contract).set({ status: "signed" }).where(eq(contract.id, c.contract.id));
+    }
   }
 
   // `server-serialization`: structure contracts payload for ContractVaultClient

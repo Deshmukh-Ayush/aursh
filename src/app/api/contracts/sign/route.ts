@@ -1,6 +1,7 @@
+import { put } from "@vercel/blob";
 import { db } from "@/utils/db";
 import { contract, signature, user as userTable } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -36,15 +37,6 @@ export async function POST(req: NextRequest) {
     const [existing] = await db.select().from(contract).where(eq(contract.id, contractId));
     if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
 
-    if (existing.status !== "pending_signature" && existing.status !== "draft") {
-      return NextResponse.json({ error: "Contract is not pending signature" }, { status: 400 });
-    }
-
-    // If still in draft, auto-promote to pending_signature on first sign
-    if (existing.status === "draft") {
-      await db.update(contract).set({ status: "pending_signature" }).where(eq(contract.id, contractId));
-    }
-
     const isPaidPlan = orgPlan === "freelancer" || orgPlan === "agency";
     const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
     const userAgent = req.headers.get("user-agent") || "unknown";
@@ -52,16 +44,29 @@ export async function POST(req: NextRequest) {
     let currentDocHash = existing.documentHash;
     let originalBuffer: ArrayBuffer | null = null;
 
-    if (isPaidPlan && existing.fileUrl) {
-      const pdfRes = await fetch(existing.fileUrl);
-      if (pdfRes.ok) {
-        originalBuffer = await pdfRes.arrayBuffer();
-        currentDocHash = hashDocument(originalBuffer);
+    if (existing.fileUrl) {
+      try {
+        const pdfRes = await fetch(existing.fileUrl);
+        if (pdfRes.ok) {
+          originalBuffer = await pdfRes.arrayBuffer();
+          currentDocHash = hashDocument(originalBuffer);
+        }
+      } catch (e) {
+        console.error("Failed to fetch contract PDF buffer:", e);
       }
     }
 
-    await db.update(signature)
-      .set({
+    // Ensure user has a signature record for this contract
+    const [existingSig] = await db
+      .select()
+      .from(signature)
+      .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));
+
+    if (!existingSig) {
+      await db.insert(signature).values({
+        id: crypto.randomUUID(),
+        contractId,
+        userId,
         signedAt: new Date(),
         signatureData: signatureData || null,
         signatureMethod: signatureMethod || "draw",
@@ -69,14 +74,60 @@ export async function POST(req: NextRequest) {
         userAgent,
         documentHash: currentDocHash,
         auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod: signatureMethod || "draw" })],
-      })
-      .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));
+      });
+    } else {
+      await db
+        .update(signature)
+        .set({
+          signedAt: new Date(),
+          signatureData: signatureData || null,
+          signatureMethod: signatureMethod || "draw",
+          ipAddress,
+          userAgent,
+          documentHash: currentDocHash,
+          auditTrail: [buildAuditTrailEvent("signed", userId, { ipAddress, signatureMethod: signatureMethod || "draw" })],
+        })
+        .where(and(eq(signature.contractId, contractId), eq(signature.userId, userId)));
+    }
 
     const allSigs = await db.select().from(signature).where(eq(signature.contractId, contractId));
-    const allSigned = allSigs.length > 0 && allSigs.every((sig) => sig.signedAt !== null);
+    const signedSigs = allSigs.filter((sig) => sig.signedAt !== null);
 
-    if (allSigned) {
+    // Contract is signed if any party signed
+    const isSigned = signedSigs.length > 0;
+
+    if (isSigned) {
       const finalStatusUpdate: { status: "signed"; signedDocumentUrl?: string } = { status: "signed" };
+
+      if (originalBuffer) {
+        try {
+          const userIds = signedSigs.map((s) => s.userId).filter((id): id is string => Boolean(id));
+          const users = userIds.length > 0 ? await db.select().from(userTable).where(inArray(userTable.id, userIds)) : [];
+
+          const sigItems = signedSigs.map((sig) => {
+            const u = users.find((u) => u.id === sig.userId);
+            return {
+              name: u?.name || "Verified Signer",
+              email: u?.email || "verified@scrunity.io",
+              ip: sig.ipAddress || "127.0.0.1",
+              timestamp: sig.signedAt?.toISOString() || new Date().toISOString(),
+              signatureData: sig.signatureData || "",
+              method: sig.signatureMethod || "draw",
+            };
+          });
+
+          const signedPdfBuffer = await embedSignaturesInPdf(originalBuffer, sigItems);
+          const finalBlob = await put(`contracts/${existing.projectId}/signed_${existing.fileName}`, signedPdfBuffer, {
+            access: "public",
+            addRandomSuffix: false,
+            allowOverwrite: true,
+          });
+          finalStatusUpdate.signedDocumentUrl = finalBlob.url;
+        } catch (e) {
+          console.error("PDF signature seal embedding notice:", e);
+        }
+      }
+
       await db.update(contract).set(finalStatusUpdate).where(eq(contract.id, contractId));
     }
 
@@ -84,12 +135,12 @@ export async function POST(req: NextRequest) {
       projectId: existing.projectId,
       userId: session.user.id,
       type: "contract_signed",
-      metadata: { fullySigned: allSigned },
+      metadata: { fullySigned: isSigned },
     });
 
     revalidatePath(`/projects/${existing.projectId}`);
     revalidatePath(`/projects/${existing.projectId}/contract`);
-    return NextResponse.json({ success: true, fullySigned: allSigned });
+    return NextResponse.json({ success: true, fullySigned: isSigned });
   } catch (error) {
     console.error("Contract sign error:", error);
     return NextResponse.json({ error: "Failed to process contract signature." }, { status: 500 });
