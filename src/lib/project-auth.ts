@@ -1,6 +1,7 @@
 import { db } from "@/utils/db";
-import { project, projectMember, member } from "@/db/schema";
+import { project, projectMember, member, user as userTable, projectInvitation } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import crypto from "crypto";
 
 export interface ProjectAccessResult {
   proj: typeof project.$inferSelect | null;
@@ -52,6 +53,35 @@ export async function getProjectAccess(
       return {
         proj,
         role: "agency",
+        isAuthorized: true,
+      };
+    }
+  }
+
+  // 4. Fallback check: check user's email against project invitations or signatures
+  const [usr] = await db.select().from(userTable).where(eq(userTable.id, userId));
+  if (usr?.email) {
+    const [inv] = await db
+      .select()
+      .from(projectInvitation)
+      .where(and(eq(projectInvitation.projectId, projectId), eq(projectInvitation.email, usr.email)));
+
+    if (inv) {
+      // Auto-heal missing projectMember record
+      try {
+        await db.insert(projectMember).values({
+          id: crypto.randomUUID(),
+          projectId,
+          userId,
+          role: (inv.role as "client" | "agency") || "client",
+        });
+      } catch {
+        // Ignore duplicate insert errors
+      }
+
+      return {
+        proj,
+        role: (inv.role as "client" | "agency") || "client",
         isAuthorized: true,
       };
     }

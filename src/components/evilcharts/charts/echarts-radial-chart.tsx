@@ -1029,17 +1029,28 @@ export function EChartsRadialChart<TData extends Record<string, unknown>>({
     const container = containerRef.current;
     if (!mount || !container) return;
 
-    const chart = echarts.init(mount);
-    echartsRef.current = chart;
+    let chart: EChartsInstance | null = null;
+
+    const initChartIfNeeded = () => {
+      if (chart) return chart;
+      if (mount.clientWidth > 0 && mount.clientHeight > 0) {
+        chart = echarts.init(mount);
+        echartsRef.current = chart;
+        return chart;
+      }
+      return null;
+    };
+
+    chart = initChartIfNeeded();
 
     const resizeObserver = new ResizeObserver(() => {
-      // Observers always fire once right after observe(). Repushing on that
-      // no-op fire would land one frame into the intro and stomp the reveal —
-      // only react when the renderer size actually changed.
-      if (mount.clientWidth === chart.getWidth() && mount.clientHeight === chart.getHeight()) {
+      const activeChart = initChartIfNeeded();
+      if (!activeChart) return;
+
+      if (mount.clientWidth === activeChart.getWidth() && mount.clientHeight === activeChart.getHeight()) {
         return;
       }
-      chart.resize();
+      activeChart.resize();
       live.repush();
     });
     resizeObserver.observe(mount);
@@ -1051,7 +1062,7 @@ export function EChartsRadialChart<TData extends Record<string, unknown>>({
       attributeFilter: ["class"],
     });
 
-    chart.on("click", (params) => {
+    chart?.on("click", (params) => {
       if (!live.handlers.clickable) return;
       const p = params as { seriesId?: string; dataIndex?: number; componentType?: string };
       // Only the main ring series is clickable; the track/skeleton are silent.
@@ -1064,7 +1075,7 @@ export function EChartsRadialChart<TData extends Record<string, unknown>>({
     return () => {
       resizeObserver.disconnect();
       themeObserver.disconnect();
-      chart.dispose();
+      chart?.dispose();
       echartsRef.current = null;
       // The reveal guard belongs to the chart instance it guarded. Without this
       // reset, StrictMode's dev-only mount→unmount→remount plays the entrance on

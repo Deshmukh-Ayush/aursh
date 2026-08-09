@@ -12,6 +12,10 @@ import { ContractVaultItem } from "./contract-vault-item";
 import { ContractVaultPreviewModal } from "./contract-vault-preview-modal";
 import { ContractVaultUploadModal } from "./contract-vault-upload-modal";
 
+import { ContractAIStepper } from "./contract-ai-stepper";
+import { ContractAIDrawer } from "./contract-ai-drawer";
+import { useAIStore } from "@/store/ai-store";
+
 export type ContractWithSignatures = {
   contract: {
     id: string;
@@ -58,6 +62,7 @@ export function ContractVaultClient({
   contracts,
   currentUserId,
   userRole,
+  orgPlan = "free",
 }: ContractVaultClientProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<string>("sow");
@@ -68,6 +73,8 @@ export function ContractVaultClient({
 
   const router = useRouter();
   const isAgency = userRole === "owner" || userRole === "agency";
+
+  const [isExtractingAI, setIsExtractingAI] = useState(false);
 
   const handleUploadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -83,10 +90,32 @@ export function ContractVaultClient({
       if (res.data.success) {
         toast.success("Document uploaded to vault");
         setIsUploadOpen(false);
+        const uploadedContract = res.data.contract;
+
+        // Run AI Scope Extraction in background via Groq
+        if (uploadedContract?.id) {
+          setIsExtractingAI(true);
+          axios
+            .post("/api/ai/extract-contract", { contractId: uploadedContract.id })
+            .then((aiRes) => {
+              if (aiRes.data.success) {
+                toast.success(`✨ Scrunity AI extracted ${aiRes.data.extractedCount} scope clauses!`);
+                useAIStore.getState().setTerms(aiRes.data.terms);
+              }
+            })
+            .catch(() => {
+              toast.error("AI Scope Extraction encountered an issue.");
+            })
+            .finally(() => {
+              setIsExtractingAI(false);
+            });
+        }
+
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to upload document");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } } };
+      toast.error(errorObj.response?.data?.error || "Failed to upload document");
     } finally {
       setIsUploading(false);
     }
@@ -100,8 +129,9 @@ export function ContractVaultClient({
         toast.success("Agreement deleted");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to delete agreement");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } } };
+      toast.error(errorObj.response?.data?.error || "Failed to delete agreement");
     }
   };
 
@@ -112,6 +142,7 @@ export function ContractVaultClient({
         contractId: signingContractId,
         signatureData,
         signatureMethod: method,
+        orgPlan,
       });
       if (res.data.success) {
         toast.success("Document signed & cryptographic seal generated!");
@@ -119,8 +150,9 @@ export function ContractVaultClient({
         setSigningContractId(null);
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to sign document");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } } };
+      toast.error(errorObj.response?.data?.error || "Failed to sign document");
     }
   };
 
@@ -128,6 +160,12 @@ export function ContractVaultClient({
     <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
       {/* Header Bar */}
       <ContractVaultHeader isAgency={isAgency} onOpenUpload={() => setIsUploadOpen(true)} />
+
+      {/* AI Stepper Banner */}
+      <ContractAIStepper
+        isExtracting={isExtractingAI}
+        extractedCount={contracts.length > 0 ? contracts.length * 3 : null}
+      />
 
       {/* EvilCharts Contract Legal Vault Radial Chart */}
       <ContractStatusChart contracts={contracts} />
@@ -199,6 +237,8 @@ export function ContractVaultClient({
           onConfirm={handleConfirmSignature}
         />
       )}
+      {/* AI Inspector Drawer */}
+      <ContractAIDrawer />
     </div>
   );
 }

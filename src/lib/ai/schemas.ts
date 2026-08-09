@@ -181,7 +181,7 @@ export const addendumSchema = z.preprocess((val) => {
             : 5000;
     const currency = String(obj.currency ?? "INR");
 
-    let rawLineItems: any[] = [];
+    let rawLineItems: unknown[] = [];
     if (Array.isArray(obj.lineItems)) {
       rawLineItems = obj.lineItems;
     } else if (Array.isArray(obj.line_items)) {
@@ -200,19 +200,19 @@ export const addendumSchema = z.preprocess((val) => {
       summary,
       additionalPrice,
       currency,
-      lineItems: rawLineItems.map((item) => ({
-        description: String(
-          typeof item === "string"
-            ? item
-            : item?.description ?? item?.name ?? "Additional line item",
-        ),
-        amount:
-          typeof item === "object" && item && typeof item.amount === "number"
-            ? item.amount
-            : typeof item === "object" && item && typeof item.cost === "number"
-              ? item.cost
-              : additionalPrice,
-      })),
+      lineItems: rawLineItems.map((rawItem) => {
+        const item = rawItem as Record<string, unknown> | string;
+        const description = typeof item === "string"
+          ? item
+          : String(item?.description ?? item?.name ?? "Additional line item");
+        const amount = typeof item === "object" && item && typeof item.amount === "number"
+          ? item.amount
+          : typeof item === "object" && item && typeof item.cost === "number"
+            ? item.cost
+            : additionalPrice;
+
+        return { description, amount };
+      }),
     };
   }
   return val;

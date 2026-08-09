@@ -1856,18 +1856,28 @@ export function EChartsAreaChart<TData extends Record<string, unknown>>({
     const container = containerRef.current;
     if (!mount || !container) return;
 
-    const chart = echarts.init(mount);
-    echartsRef.current = chart;
+    let chart: EChartsInstance | null = null;
+
+    const initChartIfNeeded = () => {
+      if (chart) return chart;
+      if (mount.clientWidth > 0 && mount.clientHeight > 0) {
+        chart = echarts.init(mount);
+        echartsRef.current = chart;
+        return chart;
+      }
+      return null;
+    };
+
+    chart = initChartIfNeeded();
 
     const resizeObserver = new ResizeObserver(() => {
-      // Observers always fire once right after observe(). Repushing on that
-      // no-op fire would land one frame into the intro and stomp the line's
-      // reveal clip — only react when the renderer size actually changed.
-      if (mount.clientWidth === chart.getWidth() && mount.clientHeight === chart.getHeight()) {
+      const activeChart = initChartIfNeeded();
+      if (!activeChart) return;
+
+      if (mount.clientWidth === activeChart.getWidth() && mount.clientHeight === activeChart.getHeight()) {
         return;
       }
-      chart.resize();
-      // 2D gradient textures are baked at renderer size — rebuild them to fit.
+      activeChart.resize();
       live.repush();
     });
     resizeObserver.observe(mount);
@@ -1881,237 +1891,203 @@ export function EChartsAreaChart<TData extends Record<string, unknown>>({
       attributeFilter: ["class"],
     });
 
-    chart.on("click", (params) => {
-      const { clickableKeys: clickable, seriesKeys: keys } = live.handlers;
-      const p = params as {
-        seriesId?: string;
-        seriesIndex?: number;
-        event?: { offsetX?: number; offsetY?: number };
-      };
-      // Symbol clicks carry seriesId; area-polygon clicks (triggerEvent)
-      // only carry seriesIndex — recover the key from the last build's index map,
-      // which accounts for the extra `__buffer-`/`__reveal-`/`__mini-` series
-      // interleaved between the main ones (a raw seriesKeys lookup would miss).
-      let id =
-        p.seriesId ??
-        (typeof p.seriesIndex === "number" ? live.seriesKeyByIndex[p.seriesIndex] : undefined);
-      // Overlapping polygons: the native hit is the topmost series, not the
-      // band the pointer is visually inside — resolve geometrically.
-      if (typeof p.event?.offsetX === "number" && typeof p.event?.offsetY === "number") {
-        const resolved = resolveAreaAtPixel(
-          chart,
-          live.plottedTops,
-          keys,
-          p.event.offsetX,
-          p.event.offsetY,
-        );
-        if (resolved) id = resolved;
-      }
-      if (typeof id === "string" && clickable.has(id)) toggleSelection(id);
-    });
-
-    // Hover-highlight is POINTER-driven, not series-mouseover-driven:
-    // overlapping polygons would pin the native hover on the topmost series and
-    // never re-fire while the pointer moves within it. A zrender mousemove
-    // tracker resolves the visually-hovered band, drives the canvas emphasis
-    // via dispatchAction, and mirrors into the HTML legend (React state) and
-    // tooltip (live.hoveredKey — its formatter runs per pointer move).
-    const applyHoverKey = (key: string | null) => {
-      if (live.hoveredKey === key) return;
-      const previous = live.hoveredKey;
-      live.hoveredKey = key;
-      setHoveredDataKey(key);
-      // Dispatch by seriesId (buffer/reveal series shift the numeric indices), and
-      // link each key's silent companions (buffer tail, reveal base) so
-      // focus:"series" never strands them apart from their parent.
-      if (previous) {
-        chart.dispatchAction({ type: "downplay", seriesId: previous });
-        for (const id of live.companionIdsByKey.get(previous) ?? [])
-          chart.dispatchAction({ type: "downplay", seriesId: id });
-      }
-      if (key) {
-        chart.dispatchAction({ type: "highlight", seriesId: key });
-        for (const id of live.companionIdsByKey.get(key) ?? [])
-          chart.dispatchAction({ type: "highlight", seriesId: id });
-      }
-    };
-
-    // Hover-reveal: color each area up to the pointer's x-index, mute the rest.
-    // Purely TARGETED series updates (real series data + muted base opacity) — we
-    // NEVER rebuild the whole option on mousemove, which would replay transitions
-    // and fight the tooltip's axis pointer.
-    const pushReveal = (idx: number | null) => {
-      const keys = live.handlers.seriesKeys;
-      const on = idx !== null;
-      chart.setOption(
-        {
-          series: keys.flatMap((key) => [
-            {
-              id: key,
-              data: on
-                ? sliceToNull(live.revealValues[key] ?? [], idx)
-                : (live.revealValues[key] ?? []),
-            },
-            {
-              id: `${REVEAL_PREFIX}${key}`,
-              // Gray tail keeps only the region from the cursor onward.
-              data: on
-                ? sliceFrom(live.revealValues[key] ?? [], idx)
-                : (live.revealValues[key] ?? []),
-              lineStyle: { opacity: on ? 0.3 : 0 },
-            },
-          ]),
-        },
-        // NOT lazy: the highlight dispatched just below re-draws the active dot
-        // the setOption wipes, so the option must be committed first — a queued
-        // (lazy) update would land after the dispatch and erase the dot again.
-        { silent: true },
-      );
-      // The per-frame setOption above cancels the axis tooltip's transient hover
-      // symbol, so the <ActiveDot> never lands at the cursor. Re-assert it:
-      // highlighting a real series at the cursor index draws its emphasis symbol
-      // (the active dot) even with showSymbol:false; downplay clears it on exit.
-      for (const key of keys) {
-        chart.dispatchAction(
-          on
-            ? { type: "highlight", seriesId: key, dataIndex: idx as number }
-            : { type: "downplay", seriesId: key },
-        );
-      }
-    };
-    const applyReveal = (event: { offsetX?: number; offsetY?: number }) => {
-      const len = live.dataLength;
-      if (len < 1) return;
-      const x = event.offsetX ?? -1;
-      const y = event.offsetY ?? -1;
-      if (!chart.containPixel({ gridIndex: 0 }, [x, y])) {
-        clearReveal();
-        return;
-      }
-      const raw = chart.convertFromPixel({ gridIndex: 0 }, [x, y])[0];
-      const idx = Math.max(0, Math.min(len - 1, Math.round(raw)));
-      if (idx === live.revealIndex) return;
-      live.revealIndex = idx;
-      pushReveal(idx);
-    };
-    const clearReveal = () => {
-      if (live.revealIndex === null) return;
-      live.revealIndex = null;
-      pushReveal(null);
-    };
-
-    const zrHover = chart.getZr();
-    const onZrHoverMove = (event: { offsetX?: number; offsetY?: number }) => {
-      // Reveal is a standalone hover mode and takes precedence over highlight.
-      if (live.handlers.enableHoverReveal) {
-        applyReveal(event);
-        return;
-      }
-      if (!live.handlers.enableHoverHighlight) return;
-      // A click selection owns the canvas dim — hover highlighting stops
-      // entirely while one exists and resumes once it clears.
-      if (live.handlers.selectedDataKey !== null) return;
-      applyHoverKey(
-        resolveAreaAtPixel(
-          chart,
-          live.plottedTops,
-          live.handlers.seriesKeys,
-          event.offsetX ?? -1,
-          event.offsetY ?? -1,
-        ),
-      );
-    };
-    const onZrHoverOut = () => {
-      if (live.handlers.enableHoverReveal) clearReveal();
-      else if (live.handlers.enableHoverHighlight) applyHoverKey(null);
-    };
-    zrHover.on("mousemove", onZrHoverMove);
-    zrHover.on("globalout", onZrHoverOut);
-
-    // The native hover still emphasizes whichever element the pointer entered —
-    // cancel it whenever it disagrees with the tracker's resolved key.
-    chart.on("mouseover", (params) => {
-      const { enableHoverHighlight: hoverOn, enableHoverReveal: revealOn } = live.handlers;
-      if (!hoverOn || revealOn) return;
-      // While a selection is active, hover highlighting is disabled — never
-      // dispatch emphasis/downplay so the selection dim is the only dimming.
-      if (live.handlers.selectedDataKey !== null) return;
-      const p = params as { seriesIndex?: number; componentType?: string };
-      if (p.componentType !== "series" || typeof p.seriesIndex !== "number") return;
-      const key = live.seriesKeyByIndex[p.seriesIndex];
-      if (!key || key.startsWith("__")) return;
-      if (key !== live.hoveredKey) {
-        chart.dispatchAction({ type: "downplay", seriesIndex: p.seriesIndex });
-        if (live.hoveredKey) {
-          chart.dispatchAction({ type: "highlight", seriesId: live.hoveredKey });
+    if (chart) {
+      chart.on("click", (params) => {
+        const { clickableKeys: clickable, seriesKeys: keys } = live.handlers;
+        const p = params as {
+          seriesId?: string;
+          seriesIndex?: number;
+          event?: { offsetX?: number; offsetY?: number };
+        };
+        let id =
+          p.seriesId ??
+          (typeof p.seriesIndex === "number" ? live.seriesKeyByIndex[p.seriesIndex] : undefined);
+        if (typeof p.event?.offsetX === "number" && typeof p.event?.offsetY === "number" && chart) {
+          const resolved = resolveAreaAtPixel(
+            chart,
+            live.plottedTops,
+            keys,
+            p.event.offsetX,
+            p.event.offsetY,
+          );
+          if (resolved) id = resolved;
         }
-      }
-    });
-
-    chart.on("datazoom", () => {
-      const option = chart.getOption() as { dataZoom?: { start?: number; end?: number }[] };
-      const zoom = option.dataZoom?.[0];
-      if (!zoom) return;
-
-      // Ride the selection — pure zrender updates, so the drag stays 1:1.
-      live.brushRange = { start: zoom.start ?? 0, end: zoom.end ?? 100 };
-      syncBrushOverlayNow();
-
-      const { onBrushChange: onChange } = live.handlers;
-      if (!onChange) return;
-      const len = live.dataLength;
-      const startIndex = Math.round(((zoom.start ?? 0) / 100) * (len - 1));
-      const endIndex = Math.round(((zoom.end ?? 100) / 100) * (len - 1));
-      onChange({ startIndex, endIndex });
-    });
-
-    // Hover tracking for the overlay: labels show while the pointer is over the
-    // brush, and each pill brightens when the pointer is near its edge.
-    const zr = chart.getZr();
-    const applyHover = (next: { inside: boolean; left: boolean; right: boolean }) => {
-      const prev = live.brushHover;
-      if (prev.inside === next.inside && prev.left === next.left && prev.right === next.right) {
-        return;
-      }
-      live.brushHover = next;
-      syncBrushOverlayNow();
-    };
-    const onZrMove = (event: { offsetX?: number; offsetY?: number }) => {
-      const geom = live.brushGeom;
-      if (!geom) return;
-      const x = event.offsetX ?? -1;
-      const y = event.offsetY ?? -1;
-      const top = chart.getHeight() - geom.bottom - geom.height;
-      const inside = y >= top - 4 && y <= top + geom.height + 4;
-      const trackLeft = 8;
-      const trackWidth = Math.max(chart.getWidth() - 16, 1);
-      const { start, end } = live.brushRange;
-      const selectionLeft = trackLeft + (trackWidth * start) / 100;
-      const selectionRight = trackLeft + (trackWidth * end) / 100;
-      applyHover({
-        inside,
-        left: inside && Math.abs(x - selectionLeft) <= 8,
-        right: inside && Math.abs(x - selectionRight) <= 8,
+        if (typeof id === "string" && clickable.has(id)) toggleSelection(id);
       });
-    };
-    const onZrOut = () => applyHover({ inside: false, left: false, right: false });
-    zr.on("mousemove", onZrMove);
-    zr.on("globalout", onZrOut);
+
+      const applyHoverKey = (key: string | null) => {
+        if (!chart || live.hoveredKey === key) return;
+        const previous = live.hoveredKey;
+        live.hoveredKey = key;
+        setHoveredDataKey(key);
+        if (previous) {
+          chart.dispatchAction({ type: "downplay", seriesId: previous });
+          for (const id of live.companionIdsByKey.get(previous) ?? [])
+            chart.dispatchAction({ type: "downplay", seriesId: id });
+        }
+        if (key) {
+          chart.dispatchAction({ type: "highlight", seriesId: key });
+          for (const id of live.companionIdsByKey.get(key) ?? [])
+            chart.dispatchAction({ type: "highlight", seriesId: id });
+        }
+      };
+
+      const pushReveal = (idx: number | null) => {
+        if (!chart) return;
+        const keys = live.handlers.seriesKeys;
+        const on = idx !== null;
+        chart.setOption(
+          {
+            series: keys.flatMap((key) => [
+              {
+                id: key,
+                data: on
+                  ? sliceToNull(live.revealValues[key] ?? [], idx)
+                  : (live.revealValues[key] ?? []),
+              },
+              {
+                id: `${REVEAL_PREFIX}${key}`,
+                data: on
+                  ? sliceFrom(live.revealValues[key] ?? [], idx)
+                  : (live.revealValues[key] ?? []),
+                lineStyle: { opacity: on ? 0.3 : 0 },
+              },
+            ]),
+          },
+          { silent: true },
+        );
+        for (const key of keys) {
+          chart.dispatchAction(
+            on
+              ? { type: "highlight", seriesId: key, dataIndex: idx as number }
+              : { type: "downplay", seriesId: key },
+          );
+        }
+      };
+
+      const applyReveal = (event: { offsetX?: number; offsetY?: number }) => {
+        if (!chart) return;
+        const len = live.dataLength;
+        if (len < 1) return;
+        const x = event.offsetX ?? -1;
+        const y = event.offsetY ?? -1;
+        if (!chart.containPixel({ gridIndex: 0 }, [x, y])) {
+          clearReveal();
+          return;
+        }
+        const raw = chart.convertFromPixel({ gridIndex: 0 }, [x, y])[0];
+        const idx = Math.max(0, Math.min(len - 1, Math.round(raw)));
+        if (idx === live.revealIndex) return;
+        live.revealIndex = idx;
+        pushReveal(idx);
+      };
+
+      const clearReveal = () => {
+        if (live.revealIndex === null) return;
+        live.revealIndex = null;
+        pushReveal(null);
+      };
+
+      const zrHover = chart.getZr();
+      const onZrHoverMove = (event: { offsetX?: number; offsetY?: number }) => {
+        if (live.handlers.enableHoverReveal) {
+          applyReveal(event);
+          return;
+        }
+        if (!live.handlers.enableHoverHighlight || !chart) return;
+        if (live.handlers.selectedDataKey !== null) return;
+        applyHoverKey(
+          resolveAreaAtPixel(
+            chart,
+            live.plottedTops,
+            live.handlers.seriesKeys,
+            event.offsetX ?? -1,
+            event.offsetY ?? -1,
+          ),
+        );
+      };
+      const onZrHoverOut = () => {
+        if (live.handlers.enableHoverReveal) clearReveal();
+        else if (live.handlers.enableHoverHighlight) applyHoverKey(null);
+      };
+      zrHover.on("mousemove", onZrHoverMove);
+      zrHover.on("globalout", onZrHoverOut);
+
+      chart.on("mouseover", (params) => {
+        if (!chart) return;
+        const { enableHoverHighlight: hoverOn, enableHoverReveal: revealOn } = live.handlers;
+        if (!hoverOn || revealOn) return;
+        if (live.handlers.selectedDataKey !== null) return;
+        const p = params as { seriesIndex?: number; componentType?: string };
+        if (p.componentType !== "series" || typeof p.seriesIndex !== "number") return;
+        const key = live.seriesKeyByIndex[p.seriesIndex];
+        if (!key || key.startsWith("__")) return;
+        if (key !== live.hoveredKey) {
+          chart.dispatchAction({ type: "downplay", seriesIndex: p.seriesIndex });
+          if (live.hoveredKey) {
+            chart.dispatchAction({ type: "highlight", seriesId: live.hoveredKey });
+          }
+        }
+      });
+
+      chart.on("datazoom", () => {
+        if (!chart) return;
+        const option = chart.getOption() as { dataZoom?: { start?: number; end?: number }[] };
+        const zoom = option.dataZoom?.[0];
+        if (!zoom) return;
+
+        live.brushRange = { start: zoom.start ?? 0, end: zoom.end ?? 100 };
+        syncBrushOverlayNow();
+
+        const { onBrushChange: onChange } = live.handlers;
+        if (!onChange) return;
+        const len = live.dataLength;
+        const startIndex = Math.round(((zoom.start ?? 0) / 100) * (len - 1));
+        const endIndex = Math.round(((zoom.end ?? 100) / 100) * (len - 1));
+        onChange({ startIndex, endIndex });
+      });
+
+      const zr = chart.getZr();
+      const applyHover = (next: { inside: boolean; left: boolean; right: boolean }) => {
+        const prev = live.brushHover;
+        if (prev.inside === next.inside && prev.left === next.left && prev.right === next.right) {
+          return;
+        }
+        live.brushHover = next;
+        syncBrushOverlayNow();
+      };
+      const onZrMove = (event: { offsetX?: number; offsetY?: number }) => {
+        if (!chart) return;
+        const geom = live.brushGeom;
+        if (!geom) return;
+        const x = event.offsetX ?? -1;
+        const y = event.offsetY ?? -1;
+        const top = chart.getHeight() - geom.bottom - geom.height;
+        const inside = y >= top - 4 && y <= top + geom.height + 4;
+        const trackLeft = 8;
+        const trackWidth = Math.max(chart.getWidth() - 16, 1);
+        const { start, end } = live.brushRange;
+        const selectionLeft = trackLeft + (trackWidth * start) / 100;
+        const selectionRight = trackLeft + (trackWidth * end) / 100;
+        applyHover({
+          inside,
+          left: inside && Math.abs(x - selectionLeft) <= 8,
+          right: inside && Math.abs(x - selectionRight) <= 8,
+        });
+      };
+      const onZrOut = () => applyHover({ inside: false, left: false, right: false });
+      zr.on("mousemove", onZrMove);
+      zr.on("globalout", onZrOut);
+    }
 
     return () => {
-      zrHover.off("mousemove", onZrHoverMove);
-      zrHover.off("globalout", onZrHoverOut);
-      zr.off("mousemove", onZrMove);
-      zr.off("globalout", onZrOut);
       resizeObserver.disconnect();
       themeObserver.disconnect();
-      chart.dispose();
-      echartsRef.current = null;
-      // The overlay elements died with the zrender instance.
+      if (echartsRef.current) {
+        echartsRef.current.dispose();
+        echartsRef.current = null;
+      }
       live.brushOverlay = null;
-      // The reveal guard belongs to the chart instance it guarded. Without this
-      // reset, StrictMode's dev-only mount→unmount→remount plays the entrance on
-      // the throwaway instance and the surviving one renders without it.
       live.hasRevealed = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

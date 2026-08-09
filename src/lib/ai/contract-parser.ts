@@ -152,3 +152,36 @@ export async function extractAndSaveContractScope(
     terms,
   };
 }
+
+/**
+ * Retrieves stored contract scope terms from DB for a given contract.
+ */
+export async function getContractScopeFromDb(
+  contractId: string,
+): Promise<ContractScope | null> {
+  const terms = await db
+    .select()
+    .from(contractScopeTerm)
+    .where(eq(contractScopeTerm.contractId, contractId));
+
+  if (!terms || terms.length === 0) return null;
+
+  return {
+    scopeItems: terms
+      .filter((t) => t.termType === "scope")
+      .map((t) => ({ title: t.title, description: t.description || "" })),
+    exclusions: terms
+      .filter((t) => t.termType === "exclusion")
+      .map((t) => ({ title: t.title, description: t.description || "" })),
+    revisionLimits: terms
+      .filter((t) => t.termType === "revision_limit")
+      .map((t) => ({
+        title: t.title,
+        maxRevisions: t.maxRevisions ?? 1,
+        description: t.description || undefined,
+      })),
+    paymentTerms: terms
+      .filter((t) => t.termType === "payment_term")
+      .map((t) => ({ title: t.title, description: t.description || "" })),
+  };
+}

@@ -8,14 +8,29 @@ import { SealCheckIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
 import { DeliverableActions } from "./deliverable-actions";
 import type { DeliverableItem as DeliverableType } from "./types";
 
+import { useState } from "react";
+import { ScopeGuardianPill } from "./scope-guardian-pill";
+import { AddendumModal } from "../proposal/addendum-modal";
+import type { ScopeEvaluation } from "@/lib/ai/schemas";
+
 type DeliverableItemProps = {
   item: DeliverableType;
   index: number;
   commentCount: number;
   memberRole: string;
+  scopeEvaluation?: ScopeEvaluation | null;
+  contractId?: string;
 };
 
-export function DeliverableItem({ item, index, commentCount, memberRole }: DeliverableItemProps) {
+export function DeliverableItem({
+  item,
+  index,
+  commentCount,
+  memberRole,
+  scopeEvaluation,
+  contractId,
+}: DeliverableItemProps) {
+  const [isAddendumOpen, setIsAddendumOpen] = useState(false);
   const isOverdue = item.dueDate && isPast(new Date(item.dueDate)) && item.status !== "approved";
 
   const getStatusConfig = (status: string) => {
@@ -67,6 +82,12 @@ export function DeliverableItem({ item, index, commentCount, memberRole }: Deliv
         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${statusConfig.bg} shrink-0`}>
           {statusConfig.label}
         </span>
+
+        {/* Scope Guardian Pill */}
+        <ScopeGuardianPill
+          evaluation={scopeEvaluation || null}
+          onDraftAddendum={() => setIsAddendumOpen(true)}
+        />
       </div>
 
       {/* Right: Due Date & Actions */}
@@ -92,6 +113,16 @@ export function DeliverableItem({ item, index, commentCount, memberRole }: Deliv
           </AccordionItem>
         </div>
       </div>
+
+      {/* AI Addendum Modal */}
+      {contractId && (
+        <AddendumModal
+          isOpen={isAddendumOpen}
+          contractId={contractId}
+          reason={`Deliverable "${item.title}" requested additional revision round exceeding contract limit.`}
+          onClose={() => setIsAddendumOpen(false)}
+        />
+      )}
     </div>
   );
 }

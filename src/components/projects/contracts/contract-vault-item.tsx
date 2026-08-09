@@ -2,10 +2,11 @@
 
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { Clock, Download, Eye, Trash2, ArrowRight } from "lucide-react";
+import { Clock, Download, Eye, Trash2, ArrowRight, SparklesIcon } from "lucide-react";
 import { SealCheckIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ContractWithSignatures } from "./contract-vault-client";
+import { useAIStore } from "@/store/ai-store";
 
 type ContractVaultItemProps = {
   item: ContractWithSignatures;
@@ -85,6 +86,18 @@ export function ContractVaultItem({
         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${statusConfig.bg} shrink-0`}>
           {statusConfig.label}
         </span>
+
+        {/* AI Clause Inspector Button */}
+        <button
+          onClick={() => {
+            const { openDrawer } = useAIStore.getState();
+            openDrawer(item.contract.id, item.contract.fileName);
+          }}
+          className="inline-flex items-center gap-1 rounded-full bg-[#00AAF7]/10 px-2 py-0.5 text-[10px] font-semibold text-[#00AAF7] hover:bg-[#00AAF7]/20 transition-colors active:scale-[0.96] shrink-0"
+        >
+          <SparklesIcon className="h-3 w-3" />
+          <span>AI Clauses</span>
+        </button>
       </div>
 
       {/* Right: Signers, Date & Actions */}

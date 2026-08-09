@@ -1,5 +1,6 @@
 import { groq } from "@ai-sdk/groq";
 import { generateText, Output } from "ai";
+import { z } from "zod";
 
 /**
  * AI Model Provider Configuration for Scrunity.
@@ -24,7 +25,7 @@ export async function generateStructuredWithFallback<T>({
   system,
   prompt,
 }: {
-  schema: any;
+  schema: z.ZodType<T>;
   system: string;
   prompt: string;
 }): Promise<T> {

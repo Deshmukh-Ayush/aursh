@@ -5,7 +5,59 @@ import { db } from "@/utils/db";
 import { contract } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getProjectAccess } from "@/lib/project-auth";
-import { extractAndSaveContractScope } from "@/lib/ai/contract-parser";
+import { extractAndSaveContractScope, getContractScopeFromDb } from "@/lib/ai/contract-parser";
+
+/**
+ * GET /api/ai/extract-contract?contractId=...
+ *
+ * Retrieves stored AI parsed scope terms for a contract.
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const contractId = searchParams.get("contractId");
+    if (!contractId) {
+      return NextResponse.json({ error: "contractId is required" }, { status: 400 });
+    }
+
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const [contractRow] = await db.select().from(contract).where(eq(contract.id, contractId));
+    if (!contractRow) {
+      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+    }
+
+    const { isAuthorized } = await getProjectAccess(contractRow.projectId, session.user.id);
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    let terms = await getContractScopeFromDb(contractId);
+
+    // If terms not in DB yet and contract has PDF URL, extract on demand
+    if (!terms && contractRow.fileUrl) {
+      const extraction = await extractAndSaveContractScope(
+        contractId,
+        contractRow.projectId,
+        contractRow.fileUrl,
+      );
+      terms = extraction.terms;
+    }
+
+    return NextResponse.json({
+      success: true,
+      contractId,
+      terms: terms || { scopeItems: [], exclusions: [], revisionLimits: [], paymentTerms: [] },
+    });
+  } catch (error) {
+    console.error("[AI GET Contract Scope Error]", error);
+    return NextResponse.json({ error: "Failed to fetch contract scope terms" }, { status: 500 });
+  }
+}
 
 /**
  * POST /api/ai/extract-contract
