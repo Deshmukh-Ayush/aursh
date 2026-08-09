@@ -1,10 +1,11 @@
 import { db } from "@/utils/db";
-import { projectMember, project } from "@/db/schema";
+import { projectMember } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { canManageProject, getProjectAccess } from "@/lib/project-auth";
 
 export async function DELETE(req: NextRequest) {
   try {
@@ -20,26 +21,13 @@ export async function DELETE(req: NextRequest) {
     const session = await auth.api.getSession({ headers: reqHeaders });
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (!proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (session.session?.activeOrganizationId === proj.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'owner' && role !== 'agency')) {
+    const access = await getProjectAccess(projectId, session.user.id);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized || !canManageProject(access.role)) {
       return NextResponse.json({ error: "Only the project owner or agency can remove members." }, { status: 403 });
     }
 
-    if (proj.createdBy === targetUserId) {
+    if (access.proj.createdBy === targetUserId) {
       return NextResponse.json({ error: "Cannot remove the project creator." }, { status: 400 });
     }
 

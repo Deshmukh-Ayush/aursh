@@ -1,3 +1,8 @@
+/**
+ * @deprecated Prefer `checkRateLimit` from `@/lib/ratelimit` which uses
+ * Upstash Redis for distributed rate limiting. This in-memory fallback
+ * is unreliable in serverless environments (state lost on cold starts).
+ */
 // Basic in-memory rate limiter for Vercel Serverless Functions.
 // Note: This state is lost on cold starts, but it's enough to prevent basic spam loops.
 

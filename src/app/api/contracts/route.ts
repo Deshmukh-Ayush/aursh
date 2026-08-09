@@ -196,8 +196,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Only the project owner or agency can delete the contract" }, { status: 403 });
     }
 
-    if (existing.status === "signed") {
-      return NextResponse.json({ error: "Signed contracts are immutable and cannot be deleted" }, { status: 400 });
+    const immutableStatuses = ["signed", "partially_signed", "fully_signed"];
+    if (immutableStatuses.includes(existing.status)) {
+      return NextResponse.json({ error: "Contracts with signatures are immutable and cannot be deleted" }, { status: 400 });
     }
 
     await db.delete(contract).where(eq(contract.id, contractId));

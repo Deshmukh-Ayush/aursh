@@ -1,5 +1,5 @@
 import { db } from "@/utils/db";
-import { deliverable, projectMember, project, paymentMilestone } from "@/db/schema";
+import { deliverable, paymentMilestone } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -8,6 +8,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
+import { getProjectAccess, canManageProject } from "@/lib/project-auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,23 +36,13 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (!proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (session.session?.activeOrganizationId === proj.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'agency' && role !== 'owner')) {
+    const access = await getProjectAccess(projectId, userId);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized || !canManageProject(access.role)) {
       return NextResponse.json({ error: "Only the agency can create deliverables." }, { status: 403 });
+    }
+    if (access.proj.status === 'completed') {
+      return NextResponse.json({ error: "Cannot create deliverables on a completed project." }, { status: 400 });
     }
 
     const deliverableId = crypto.randomUUID();
@@ -108,32 +99,27 @@ export async function PATCH(req: NextRequest) {
     const [deliv] = await db.select().from(deliverable).where(eq(deliverable.id, deliverableId));
     if (!deliv) return NextResponse.json({ error: "Deliverable not found." }, { status: 404 });
 
-    const [proj] = await db.select().from(project).where(eq(project.id, deliv.projectId));
-    if (proj?.status === 'completed') {
+    const access = await getProjectAccess(deliv.projectId, userId);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized) return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+    if (access.proj.status === 'completed') {
       return NextResponse.json({ error: "Cannot modify deliverables on a completed project." }, { status: 400 });
     }
 
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, deliv.projectId), eq(projectMember.userId, userId)));
-
-    if (!member) return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
-
-    if (member.role === 'owner' || member.role === 'agency') {
-      // Owners/agencies can freely move cards
-    } else if (member.role === 'client') {
+    if (access.role === 'client') {
       if (status !== 'approved' && status !== 'revision_requested') {
         return NextResponse.json({ error: "Clients can only approve or request revisions." }, { status: 403 });
       }
       if (deliv.status !== 'in_review') {
         return NextResponse.json({ error: "Deliverable must be in review before action." }, { status: 400 });
       }
+    } else if (!canManageProject(access.role)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
     }
 
     await db.update(deliverable).set({ status, updatedAt: new Date() }).where(eq(deliverable.id, deliverableId));
 
-    let activityType: any = "deliverable_in_review";
+    let activityType: "deliverable_in_review" | "deliverable_approved" | "revision_requested" = "deliverable_in_review";
     if (status === 'approved') activityType = "deliverable_approved";
     if (status === 'revision_requested') activityType = "revision_requested";
 

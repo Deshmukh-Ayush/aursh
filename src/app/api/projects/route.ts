@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { sendProjectInvitationEmail } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
+import { getProjectAccess, canManageProject } from "@/lib/project-auth";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -142,26 +143,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (!proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (session.session?.activeOrganizationId === proj.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'owner' && role !== 'agency')) {
+    const access = await getProjectAccess(projectId, session.user.id);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized || !canManageProject(access.role)) {
       return NextResponse.json({ error: "Only the project owner or agency can update the project." }, { status: 403 });
     }
 
-    const updates: any = {};
+    const updates: Partial<{ name: string; description: string; status: "active" | "completed" | "archived" }> = {};
     if (newName !== undefined && newName.trim() !== '') updates.name = newName.trim();
     if (description !== undefined) updates.description = description.trim();
     if (status && (status === "active" || status === "completed")) updates.status = status;
@@ -192,22 +180,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [proj] = await db.select().from(project).where(eq(project.id, projectId));
-    if (!proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-
-    let role: "agency" | "client" | "owner" | null = null;
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, session.user.id)));
-
-    if (member) {
-      role = member.role as "agency" | "client" | "owner";
-    } else if (session.session?.activeOrganizationId === proj.organizationId) {
-      role = "agency";
-    }
-
-    if (!role || (role !== 'owner' && role !== 'agency')) {
+    const access = await getProjectAccess(projectId, session.user.id);
+    if (!access.proj) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    if (!access.isAuthorized || !canManageProject(access.role)) {
       return NextResponse.json({ error: "Only the project owner or agency can delete the project." }, { status: 403 });
     }
 

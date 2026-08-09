@@ -41,9 +41,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Only the agency can bulk update deliverables" }, { status: 403 });
     }
 
-    await db.batch(input.data.updates.map(({ id, ...update }) =>
+    const batchOps = input.data.updates.map(({ id, ...update }) =>
       db.update(deliverable).set({ ...update, updatedAt: new Date() }).where(eq(deliverable.id, id)),
-    ));
+    );
+    if (batchOps.length > 0) {
+      await db.batch([batchOps[0], ...batchOps.slice(1)]);
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("PATCH bulk deliverables error:", error);

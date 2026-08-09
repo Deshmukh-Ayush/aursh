@@ -4,9 +4,12 @@ import { member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 
+type SessionType = Awaited<ReturnType<typeof auth.api.getSession>>;
+type UserType = NonNullable<SessionType>["user"];
+
 export interface TenantContextResult {
-  session: any;
-  user: any;
+  session: SessionType | null;
+  user: UserType | null;
   organizationId: string;
   memberRole?: "owner" | "agency" | "client" | string;
   error?: string;

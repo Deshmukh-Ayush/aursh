@@ -1,5 +1,5 @@
 import { db } from "@/utils/db";
-import { comment, projectMember, deliverable } from "@/db/schema";
+import { comment, deliverable } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
 import { commentRateLimiter, checkRateLimit } from "@/lib/ratelimit";
+import { getProjectAccess } from "@/lib/project-auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,12 +45,8 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-
-    if (!member) {
+    const access = await getProjectAccess(projectId, userId);
+    if (!access.isAuthorized) {
       return NextResponse.json({ error: "You are not a member of this project." }, { status: 403 });
     }
 
@@ -73,7 +70,7 @@ export async function POST(req: NextRequest) {
     await logActivity({
       projectId,
       userId,
-      type: "comment_added" as any,
+      type: "comment_added",
       metadata: { commentId: newComment.id, contextTitle }
     });
 
@@ -112,16 +109,12 @@ export async function DELETE(req: NextRequest) {
 
     const projectId = existingComment.projectId;
 
-    const [member] = await db
-      .select()
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-
-    if (!member) {
+    const access = await getProjectAccess(existingComment.projectId, userId);
+    if (!access.isAuthorized) {
       return NextResponse.json({ error: "You are not a member of this project." }, { status: 403 });
     }
 
-    if (existingComment.userId !== userId && member.role !== 'owner') {
+    if (existingComment.userId !== userId && access.role !== 'owner' && access.role !== 'agency') {
       return NextResponse.json({ error: "You can only delete your own comments." }, { status: 403 });
     }
 

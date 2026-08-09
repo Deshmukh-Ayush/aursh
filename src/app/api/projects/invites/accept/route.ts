@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       .from(contract)
       .where(and(
         eq(contract.projectId, invitation.projectId),
-        inArray(contract.status, ["draft", "sent", "partially_signed", "fully_signed", "pending_signature"]),
+        inArray(contract.status, ["draft", "sent", "partially_signed", "pending_signature"]),
       ));
 
     const [existingMember] = await db
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     ];
 
     if (operations.length > 0) {
-      await db.batch(operations);
+      await db.batch([operations[0], ...operations.slice(1)]);
     }
 
     await logActivity({

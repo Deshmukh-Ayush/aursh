@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     const inviteLink = `${baseUrl}/invite/org/${inviteId}`;
     
     // Send email using the project invite template for now
-    await sendProjectInvitationEmail(email.trim().toLowerCase(), org.name, inviteLink, org.plan as any);
+    await sendProjectInvitationEmail(email.trim().toLowerCase(), org.name, inviteLink, org.plan);
 
     revalidatePath("/dashboard/settings");
     

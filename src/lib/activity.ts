@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { createNotification } from "./notifications";
 import { sendActivityNotificationEmail } from "./email";
+import { after } from "next/server";
 
 type ActivityType = 
   | "contract_uploaded" 
@@ -93,35 +94,33 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
     // 4. Distribute to all other members asynchronously (Non-blocking)
     const org = proj.organization;
     
-    const notificationPromises = proj.members
-      .filter(m => m.userId !== userId) // Skip the actor
-      .map(async (member) => {
-        try {
-          // In-app Notification
-          await createNotification(
-            member.userId,
-            projectId,
-            type,
-            activityMessage
-          );
-
-          // Email Notification
-          await sendActivityNotificationEmail(
-            member.user.email,
-            proj.name,
-            activityMessage,
-            projectId,
-            org?.plan as "free" | "freelancer" | "agency" | undefined,
-            org?.logoUrl
-          );
-        } catch (err) {
-          console.error(`Failed to dispatch notification for user ${member.userId}:`, err);
+    // Use Next.js `after()` to ensure notifications complete in serverless
+    after(async () => {
+      const results = await Promise.allSettled(
+        proj.members
+          .filter(m => m.userId !== userId)
+          .map(async (projMember) => {
+            await createNotification(
+              projMember.userId,
+              projectId,
+              type,
+              activityMessage
+            );
+            await sendActivityNotificationEmail(
+              projMember.user.email,
+              proj.name,
+              activityMessage,
+              projectId,
+              org?.plan as "free" | "freelancer" | "agency" | undefined,
+              org?.logoUrl
+            );
+          })
+      );
+      for (const result of results) {
+        if (result.status === "rejected") {
+          console.error("Notification delivery failed:", result.reason);
         }
-      });
-
-    // Fire-and-forget: do not block the API response on Resend HTTP calls
-    Promise.allSettled(notificationPromises).catch((err) => {
-      console.error("Background notification dispatch error:", err);
+      }
     });
 
   } catch (error) {

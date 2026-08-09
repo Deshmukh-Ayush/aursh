@@ -7,7 +7,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsLogin: boolean, token?: string, overrideText?: string }) {
+export function AcceptOrgInviteButton({ needsLogin, inviteId, overrideText }: { needsLogin: boolean, inviteId?: string, overrideText?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -27,16 +27,12 @@ export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsL
       return;
     }
 
-    if (!token) return;
+    if (!inviteId) return;
 
     try {
-      const res = await axios.post('/api/projects/invites/accept', { token });
+      const res = await axios.post('/api/organizations/invites/accept', { inviteId });
       if (res.data.success) {
-        if (res.data.projectId) {
-          router.push(`/projects/${res.data.projectId}/contract`);
-        } else {
-          router.push("/dashboard");
-        }
+        router.push("/dashboard");
       }
     } catch (err: unknown) {
       const message = axios.isAxiosError(err) ? err.response?.data?.error : null;

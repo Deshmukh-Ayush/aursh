@@ -30,6 +30,7 @@ export const uploadRateLimiter = createLimiter(10, "1 m"); // 10 uploads per min
 export const inviteRateLimiter = createLimiter(5, "10 m"); // 5 invites per 10 minutes
 export const commentRateLimiter = createLimiter(20, "1 m"); // 20 comments per minute
 export const aiRateLimiter = createLimiter(10, "1 h");
+export const generalRateLimiter = createLimiter(10, "1 m"); // 10 requests per minute
 
 export async function checkRateLimit(
   limiter: Ratelimit | null,
@@ -37,6 +38,7 @@ export async function checkRateLimit(
 ): Promise<{ success: boolean; limit?: number; remaining?: number; reset?: number }> {
   // If Upstash is not configured, bypass rate limiting safely
   if (!limiter) {
+    console.warn(`[rate-limit] Redis not configured — bypassing rate limit for: ${identifier}`);
     return { success: true };
   }
 
@@ -49,8 +51,7 @@ export async function checkRateLimit(
       reset: result.reset,
     };
   } catch (err) {
-    console.error("Rate limiting check error:", err);
-    // Fallback to true if Redis connection temporarily fails so user action is not blocked
+    console.warn(`[rate-limit] Redis check failed for ${identifier}, allowing request:`, err);
     return { success: true };
   }
 }
