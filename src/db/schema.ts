@@ -497,6 +497,37 @@ export const notificationRelations = relations(notification, ({ one }) => ({
   project: one(project, { fields: [notification.projectId], references: [project.id] }),
 }));
 
+export const contractScopeTerm = pgTable("contract_scope_term", {
+  id: text("id").primaryKey(),
+  contractId: text("contract_id")
+    .notNull()
+    .references(() => contract.id, { onDelete: "cascade" }),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  termType: text("term_type", {
+    enum: ["scope", "exclusion", "revision_limit", "payment_term"],
+  }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  maxRevisions: integer("max_revisions"),
+  extractedAt: timestamp("extracted_at").defaultNow().notNull(),
+}, (table) => [
+  index("cst_contract_idx").on(table.contractId),
+  index("cst_project_idx").on(table.projectId),
+]);
+
+export const contractScopeTermRelations = relations(contractScopeTerm, ({ one }) => ({
+  contract: one(contract, {
+    fields: [contractScopeTerm.contractId],
+    references: [contract.id],
+  }),
+  project: one(project, {
+    fields: [contractScopeTerm.projectId],
+    references: [project.id],
+  }),
+}));
+
 export const contractRelations = relations(contract, ({ one, many }) => ({
   project: one(project, {
     fields: [contract.projectId],
@@ -507,6 +538,7 @@ export const contractRelations = relations(contract, ({ one, many }) => ({
     references: [user.id],
   }),
   signatures: many(signature),
+  scopeTerms: many(contractScopeTerm),
 }));
 
 export const signatureRelations = relations(signature, ({ one }) => ({
