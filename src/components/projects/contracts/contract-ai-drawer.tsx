@@ -1,11 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect } from "react";
 import axios from "axios";
 import { useAIStore } from "@/store/ai-store";
 import { ContractAIDrawerTabs } from "./contract-ai-drawer-tabs";
 import { ContractAIDrawerContent } from "./contract-ai-drawer-content";
-import { SparklesIcon, XIcon, Loader2Icon } from "lucide-react";
+import { XIcon, Loader2Icon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function ContractAIDrawer() {
@@ -72,8 +73,14 @@ export function ContractAIDrawer() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/40 pb-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00AAF7]/10 text-[#00AAF7] dark:bg-[#00AAF7]/20">
-                <SparklesIcon className="h-4 w-4" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#00AAF7]/10 p-1 dark:bg-[#00AAF7]/20 border border-[#00AAF7]/20">
+                <Image
+                  src="/logo/scrunity_logo_svg.svg"
+                  alt="Scrunity AI Logo"
+                  width={20}
+                  height={20}
+                  className="h-4 w-4 object-contain dark:invert"
+                />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">

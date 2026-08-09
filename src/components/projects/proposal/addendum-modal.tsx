@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+import axios from "axios";
 import { SparklesIcon, XIcon, Loader2Icon, CheckCircle2Icon } from "lucide-react";
 import type { Addendum } from "@/lib/ai/schemas";
 
@@ -67,8 +69,14 @@ export function AddendumModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/40 pb-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00AAF7]/10 text-[#00AAF7]">
-              <SparklesIcon className="h-4 w-4" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#00AAF7]/10 p-1 border border-[#00AAF7]/20">
+              <Image
+                src="/logo/scrunity_logo_svg.svg"
+                alt="Scrunity AI Logo"
+                width={20}
+                height={20}
+                className="h-4 w-4 object-contain dark:invert"
+              />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">

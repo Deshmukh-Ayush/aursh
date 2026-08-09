@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { SparklesIcon, CheckCircle2Icon, AlertCircleIcon, ShieldCheckIcon } from "lucide-react";
+import { CheckCircle2Icon, AlertCircleIcon, ShieldCheckIcon } from "lucide-react";
 
 interface ContractAIStepperProps {
   isExtracting: boolean;
@@ -50,8 +51,14 @@ export function ContractAIStepper({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Left: AI Status info */}
         <div className="flex items-center gap-3">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-[#00AAF7]/10 text-[#00AAF7] dark:bg-[#00AAF7]/20">
-            <SparklesIcon className={`h-4 w-4 ${isExtracting ? "animate-spin" : ""}`} />
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#00AAF7]/10 p-1.5 dark:bg-[#00AAF7]/20 border border-[#00AAF7]/20">
+            <Image
+              src="/logo/scrunity_logo_svg.svg"
+              alt="Scrunity AI Logo"
+              width={24}
+              height={24}
+              className={`h-5 w-5 object-contain dark:invert ${isExtracting ? "animate-pulse" : ""}`}
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -88,7 +95,13 @@ export function ContractAIStepper({
                   : "bg-muted/40 text-muted-foreground"
             }`}
           >
-            <SparklesIcon className="h-3.5 w-3.5" />
+            <Image
+              src="/logo/scrunity_logo_svg.svg"
+              alt=""
+              width={14}
+              height={14}
+              className="h-3.5 w-3.5 object-contain dark:invert"
+            />
             <span>{isExtracting ? "Parsing Scope..." : "AI Parsed"}</span>
           </div>
 
