@@ -255,6 +255,19 @@ export default async function DocsPage() {
           />
         </Section>
 
+        {/* ─── CONTRACT & SECURITY ARCHITECTURE ─── */}
+        <Section id="contracts" title="Contract Vault & Security Architecture">
+          <P>
+            Scrunity implements defense-in-depth authorization, private document storage, and cryptographic lifecycle verification:
+          </P>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
+            <li><strong className="text-foreground font-medium">Centralized Project Authorization Policy:</strong> Solves cookie vs. session <Code>activeOrganizationId</Code> mismatches using <Code>getProjectAccess(projectId, userId)</Code> in <Code>src/lib/project-auth.ts</Code>. Side-effect free; querying access never mutates database membership.</li>
+            <li><strong className="text-foreground font-medium">Private Document Vault:</strong> PDF contracts and project files are uploaded using Vercel Blob <Code>access: &quot;private&quot;</Code>. Public direct URLs are prohibited; downloads pass through auth-gated proxies (<Code>/api/contracts/download</Code> &amp; <Code>/api/files/download</Code>).</li>
+            <li><strong className="text-foreground font-medium">Immutable Signed Contracts:</strong> Contracts with any signature state (<Code>signed</Code>, <Code>partially_signed</Code>, <Code>fully_signed</Code>) are immutable and cannot be deleted.</li>
+            <li><strong className="text-foreground font-medium">Durable Serverless Notifications:</strong> Activity logging and transactional email dispatches use Next.js 16&apos;s <Code>after()</Code> API in <Code>src/lib/activity.ts</Code> to guarantee background delivery without timing out in serverless runtimes.</li>
+          </ul>
+        </Section>
+
         {/* ─── API ─── */}
         <Section id="api" title="API Routes Specification">
           <Table
@@ -266,10 +279,15 @@ export default async function DocsPage() {
               ['/api/milestones', 'GET/POST/PATCH/DELETE', 'Fetch, create, update, or delete payment milestones'],
               ['/api/milestones/mark-paid', 'POST', 'Record manual payment verification & UTR reference note'],
               ['/api/contracts', 'GET/POST/PATCH/DELETE', 'Upload agreements, fetch contracts, update status'],
+              ['/api/contracts/download', 'GET', 'Auth-gated private stream proxy for downloading contract PDFs'],
               ['/api/contracts/sign', 'POST', 'Execute e-signature and generate cryptographic SHA-256 seal'],
               ['/api/deliverables', 'POST/PATCH', 'Create deliverable, update status & trigger linked milestones'],
-              ['/api/proposals', 'POST/PATCH', 'Create proposal and convert line items to deliverables/milestones'],
+              ['/api/deliverables/bulk', 'PATCH', 'Bulk update deliverables within a single project atomically'],
+              ['/api/proposals', 'GET/POST/PATCH/DELETE', 'Manage proposals and convert line items to deliverables/milestones'],
               ['/api/files', 'POST/DELETE', 'Upload and manage project files'],
+              ['/api/files/download', 'GET', 'Auth-gated private stream proxy for downloading project files'],
+              ['/api/organizations/invites/accept', 'POST', 'Process and accept organization teammate invitations'],
+              ['/api/projects/invites/accept', 'POST', 'Accept project invitation and sync contract signature rows'],
               ['/api/notifications', 'GET/POST', 'Fetch unread notifications & mark read'],
             ]}
           />
