@@ -1,0 +1,105 @@
+import { headers } from "next/headers"
+import { db } from "@/utils/db"
+import { project, proposal, deliverable } from "@/db/schema"
+import { eq, inArray } from "drizzle-orm"
+import { getTenantContext } from "@/lib/tenant-context"
+import { AnalyticsKpiRowClient, AnalyticsKpiData } from "./analytics-kpi-row-client"
+
+export async function AnalyticsKpiRow() {
+  const reqHeaders = await headers()
+  const ctx = await getTenantContext(reqHeaders)
+
+  if (!ctx.organizationId) {
+    return null
+  }
+
+  // Fetch workspace project IDs first
+  const orgProjects = await db
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.organizationId, ctx.organizationId))
+
+  const projectIds = orgProjects.map((p) => p.id)
+
+  if (projectIds.length === 0) {
+    const emptyData: AnalyticsKpiData = {
+      wonRevenue: 0,
+      pipelineValue: 0,
+      winRate: 0,
+      acceptedProposalsCount: 0,
+      totalClosedProposalsCount: 0,
+      deliverableApprovalRate: 0,
+      approvedDeliverablesCount: 0,
+      totalDeliverablesCount: 0,
+    }
+    return <AnalyticsKpiRowClient data={emptyData} />
+  }
+
+  // Execute queries concurrently (Vercel async-parallel rule)
+  const [proposalsList, deliverablesList] = await Promise.all([
+    db
+      .select({
+        price: proposal.price,
+        status: proposal.status,
+      })
+      .from(proposal)
+      .where(inArray(proposal.projectId, projectIds)),
+    db
+      .select({
+        status: deliverable.status,
+      })
+      .from(deliverable)
+      .where(inArray(deliverable.projectId, projectIds)),
+  ])
+
+  // Single-pass calculation for proposals
+  let wonRevenue = 0
+  let pipelineValue = 0
+  let acceptedProposalsCount = 0
+  let closedProposalsCount = 0
+
+  proposalsList.forEach((p) => {
+    if (p.status === "accepted") {
+      wonRevenue += p.price
+      acceptedProposalsCount++
+      closedProposalsCount++
+    } else if (p.status === "sent") {
+      pipelineValue += p.price
+    } else if (p.status === "declined") {
+      closedProposalsCount++
+    }
+  })
+
+  const winRate =
+    closedProposalsCount > 0
+      ? Math.round((acceptedProposalsCount / closedProposalsCount) * 100)
+      : 0
+
+  // Single-pass calculation for deliverables
+  let approvedDeliverablesCount = 0
+  const totalDeliverablesCount = deliverablesList.length
+
+  deliverablesList.forEach((d) => {
+    if (d.status === "approved") {
+      approvedDeliverablesCount++
+    }
+  })
+
+  const deliverableApprovalRate =
+    totalDeliverablesCount > 0
+      ? Math.round((approvedDeliverablesCount / totalDeliverablesCount) * 100)
+      : 0
+
+  const kpiData: AnalyticsKpiData = {
+    wonRevenue,
+    pipelineValue,
+    winRate,
+    acceptedProposalsCount,
+    totalClosedProposalsCount: closedProposalsCount,
+    deliverableApprovalRate,
+    approvedDeliverablesCount,
+    totalDeliverablesCount,
+  }
+
+  return <AnalyticsKpiRowClient data={kpiData} />
+}
