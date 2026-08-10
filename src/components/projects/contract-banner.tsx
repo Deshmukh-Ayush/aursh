@@ -9,10 +9,10 @@ export function ContractBanner({
   role 
 }: { 
   projectId: string; 
-  status: "none" | "draft" | "pending_signature" | "signed"; 
+  status: "none" | "draft" | "sent" | "pending_signature" | "partially_signed" | "fully_signed" | "signed"; 
   role: "owner" | "client" | "agency"; 
 }) {
-  if (status === "signed") return null;
+  if (status === "signed" || status === "fully_signed") return null;
 
   const isOwner = role === "owner";
 

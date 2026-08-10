@@ -26,7 +26,7 @@ export type ContractWithSignatures = {
     fileUrl: string;
     documentType: "sow" | "nda" | "noc" | "msa" | "addendum" | "other";
     uploadedByRole: "agency" | "client";
-    status: "draft" | "pending_signature" | "signed";
+    status: "draft" | "sent" | "pending_signature" | "partially_signed" | "fully_signed" | "signed";
     signedDocumentUrl: string | null;
     documentHash: string | null;
     createdAt: Date;

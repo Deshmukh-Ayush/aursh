@@ -13,9 +13,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
 import { getProjectAccess } from "@/lib/project-auth";
+import crypto from "crypto";
 
 const documentTypes = ["sow", "nda", "noc", "msa", "addendum", "other"] as const;
-const contractStatuses = ["draft", "pending_signature", "signed"] as const;
+const contractStatuses = ["draft", "sent", "pending_signature", "partially_signed", "fully_signed", "signed"] as const;
 
 function isDocumentType(
   value: string,
@@ -71,13 +72,43 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
       .where(inArray(signature.contractId, contractIds));
   }
 
-  // Group signatures by contract. Contract lifecycle transitions happen only
-  // in the signing endpoint, never as a side effect of rendering this page.
+  // Group signatures by contract.
   const signaturesByContract = new Map<string, typeof allSignatures>();
   for (const s of allSignatures) {
     const list = signaturesByContract.get(s.sig.contractId) || [];
     list.push(s);
     signaturesByContract.set(s.sig.contractId, list);
+  }
+
+  // Ensure active user has a signature recipient record for every contract in the project
+  const contractsNeedingSig = allContracts.filter(
+    (c) => !(signaturesByContract.get(c.contract.id) || []).some((s) => s.sig.userId === userId)
+  );
+
+  if (contractsNeedingSig.length > 0) {
+    const newSigRows = contractsNeedingSig.map((c) => ({
+      id: crypto.randomUUID(),
+      contractId: c.contract.id,
+      userId: userId,
+    }));
+    await db.insert(signature).values(newSigRows).catch(() => undefined);
+
+    // Re-query signatures so the page receives full signature recipient data
+    allSignatures = await db
+      .select({
+        sig: signature,
+        usr: user,
+      })
+      .from(signature)
+      .leftJoin(user, eq(signature.userId, user.id))
+      .where(inArray(signature.contractId, contractIds));
+
+    signaturesByContract.clear();
+    for (const s of allSignatures) {
+      const list = signaturesByContract.get(s.sig.contractId) || [];
+      list.push(s);
+      signaturesByContract.set(s.sig.contractId, list);
+    }
   }
 
   // `server-serialization`: structure contracts payload for ContractVaultClient

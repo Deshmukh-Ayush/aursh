@@ -32,13 +32,22 @@ export function ContractVaultItem({
   const getStatusConfig = (status: string) => {
     switch (status) {
       case "signed":
+      case "fully_signed":
         return {
           label: "Signed",
           Icon: SealCheckIcon,
           color: "text-emerald-500",
           bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
         };
+      case "partially_signed":
+        return {
+          label: "Partially Signed",
+          Icon: PaperPlaneTiltIcon,
+          color: "text-amber-500",
+          bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+        };
       case "pending_signature":
+      case "sent":
         return {
           label: "Pending Signature",
           Icon: PaperPlaneTiltIcon,
@@ -58,7 +67,7 @@ export function ContractVaultItem({
   const statusConfig = getStatusConfig(item.contract.status);
   const StatusIcon = statusConfig.Icon;
   const docType = docTypeMap[item.contract.documentType] || docTypeMap.other;
-  const isSigned = item.contract.status === "signed";
+  const isSigned = item.contract.status === "signed" || item.contract.status === "fully_signed";
   
   const userSig = item.signatures.find((s) => s.userId === currentUserId);
   const hasCurrentUserSigned = !!userSig?.signedAt;
