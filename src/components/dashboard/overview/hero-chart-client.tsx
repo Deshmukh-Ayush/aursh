@@ -7,18 +7,18 @@ import { MonospaceMetricStat } from "@/components/dashboard/shared/monospace-met
 
 interface DashboardHeroChartUIProps {
   chartData: { day: string; activity: number; [key: string]: unknown }[]
-  totalVelocity: number
-  peakDayLabel: string
-  peakDayValue: number
-  dailyAverage: number
+  totalEvents: number
+  topDayLabel: string
+  topDayCount: number
+  avgDaily: number
 }
 
 export function DashboardHeroChartUI({
   chartData,
-  totalVelocity,
-  peakDayLabel,
-  peakDayValue,
-  dailyAverage,
+  totalEvents,
+  topDayLabel,
+  topDayCount,
+  avgDaily,
 }: DashboardHeroChartUIProps) {
   const chartConfig = {
     activity: {
@@ -40,7 +40,7 @@ export function DashboardHeroChartUI({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[32px] leading-none font-bold tracking-tight text-foreground tabular-nums">
-              {totalVelocity} Actions
+              {totalEvents} Actions
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               Active Pace
@@ -54,12 +54,12 @@ export function DashboardHeroChartUI({
         <div className="flex items-center gap-6 shrink-0 text-right sm:text-right">
           <MonospaceMetricStat
             tag="[⬆] Peak Day"
-            value={peakDayLabel}
-            subtext={`(${peakDayValue} actions)`}
+            value={topDayLabel}
+            subtext={`(${topDayCount} actions)`}
           />
           <MonospaceMetricStat
             tag="[~] Daily Avg"
-            value={dailyAverage}
+            value={avgDaily}
             subtext="actions/day"
           />
         </div>
