@@ -12,6 +12,7 @@ import { useProposalStore } from "@/store/proposal-store";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 interface ProposalDashboardClientProps {
   projectId: string;
@@ -39,6 +40,7 @@ export function ProposalDashboardClient({ projectId, proposals, role }: Proposal
     try {
       setIsSending(proposalId);
       await axios.patch("/api/proposals", { proposalId, action: "send" });
+      posthog.capture("proposal_sent");
       toast.success("Proposal sent to client successfully!");
       router.refresh();
     } catch (err: any) {

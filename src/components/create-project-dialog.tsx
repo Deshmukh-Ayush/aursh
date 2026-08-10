@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 export function CreateProjectDialog() {
   const [open, setOpen] = useState(false);
@@ -32,6 +33,7 @@ export function CreateProjectDialog() {
       const res = await axios.post('/api/projects', formData);
       
       if (res.data.success) {
+        posthog.capture("project_created");
         setOpen(false);
         router.refresh();
       }

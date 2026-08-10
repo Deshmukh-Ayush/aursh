@@ -9,6 +9,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Check, XCircle, Send } from "lucide-react";
+import posthog from "posthog-js";
 
 export function DeliverableActions({ 
   deliverableId, 
@@ -29,6 +30,9 @@ export function DeliverableActions({
     try {
       const res = await axios.patch('/api/deliverables', { deliverableId, status: newStatus });
       if (res.data.success) {
+        if (newStatus === "approved") {
+          posthog.capture("deliverable_approved");
+        }
         toast.success(newStatus === 'approved' ? "Deliverable approved!" : "Submitted for review");
         router.refresh();
       }

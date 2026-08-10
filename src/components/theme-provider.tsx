@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
+import posthog from "posthog-js"
+import { useSession } from "@/lib/auth-client"
 
 function ThemeProvider({
   children,
@@ -15,10 +17,43 @@ function ThemeProvider({
       disableTransitionOnChange
       {...props}
     >
+      <PostHogIdentity />
       <ThemeHotkey />
       {children}
     </NextThemesProvider>
   )
+}
+
+function PostHogIdentity() {
+  const { data: sessionData } = useSession()
+  const identifiedUserId = React.useRef<string | null>(null)
+  const user = sessionData?.user
+
+  React.useEffect(() => {
+    if (!user?.id) {
+      if (identifiedUserId.current) {
+        posthog.reset()
+        identifiedUserId.current = null
+      }
+      return
+    }
+
+    if (identifiedUserId.current === user.id) {
+      return
+    }
+
+    if (identifiedUserId.current) {
+      posthog.reset()
+    }
+
+    posthog.identify(user.id, {
+      email: user.email,
+      name: user.name,
+    })
+    identifiedUserId.current = user.id
+  }, [user?.email, user?.id, user?.name])
+
+  return null
 }
 
 function isTypingTarget(target: EventTarget | null) {
