@@ -44,7 +44,7 @@ export default async function ProjectOverviewPage({
         members: { with: { user: true } },
         deliverables: { orderBy: (deliverables, { asc }) => [asc(deliverables.createdAt)] },
         files: true,
-        contracts: true,
+        contracts: { orderBy: (contracts, { desc }) => [desc(contracts.createdAt)] },
       },
     }),
     db

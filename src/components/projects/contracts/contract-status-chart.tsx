@@ -15,8 +15,8 @@ type ContractStatusChartProps = {
 export function ContractStatusChart({ contracts }: ContractStatusChartProps) {
   const totalCount = contracts.length;
 
-  const signedCount = contracts.filter((c) => c.contract.status === "signed").length;
-  const pendingCount = contracts.filter((c) => c.contract.status === "pending_signature").length;
+  const signedCount = contracts.filter((c) => c.contract.status === "signed" || c.contract.status === "fully_signed").length;
+  const pendingCount = contracts.filter((c) => c.contract.status === "pending_signature" || c.contract.status === "partially_signed" || c.contract.status === "sent").length;
   const draftCount = contracts.filter((c) => c.contract.status === "draft").length;
 
   const calcPercent = (count: number) => {

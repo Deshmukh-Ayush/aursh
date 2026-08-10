@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     } else {
       await db
         .update(contract)
-        .set({ status: "pending_signature" })
+        .set({ status: signedSigs.length > 0 ? "partially_signed" : "pending_signature" })
         .where(eq(contract.id, contractId));
     }
 

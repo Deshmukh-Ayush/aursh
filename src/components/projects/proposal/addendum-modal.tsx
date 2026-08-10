@@ -5,6 +5,7 @@ import { useState } from "react";
 import axios from "axios";
 import { SparklesIcon, XIcon, Loader2Icon, CheckCircle2Icon } from "lucide-react";
 import type { Addendum } from "@/lib/ai/schemas";
+import { ThinkingOrb } from "thinking-orbs";
 
 interface AddendumModalProps {
   isOpen: boolean;
@@ -120,9 +121,14 @@ export function AddendumModal({
         )}
 
         {isGenerating && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
-            <Loader2Icon className="h-6 w-6 animate-spin text-[#00AAF7]" />
-            <p className="text-xs">Drafting SOW Addendum via Groq GPT-OSS-120B...</p>
+          <div className="flex flex-col items-center justify-center py-10 gap-4 text-center">
+            <ThinkingOrb state="weaving" size={64} theme="auto" />
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-foreground">Scrunity AI Drafting SOW Addendum</p>
+              <p className="text-[11px] t-shimmer max-w-xs leading-relaxed" data-text="Calculating change order pricing & terms...">
+                Calculating change order pricing &amp; terms...
+              </p>
+            </div>
           </div>
         )}
 
