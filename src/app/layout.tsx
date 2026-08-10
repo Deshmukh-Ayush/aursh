@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Agentation } from "agentation";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title: {
@@ -51,6 +52,7 @@ export default function RootLayout({
           <TooltipProvider delayDuration={200}>
             {children}
             <SpeedInsights />
+            <Analytics />
             {process.env.NODE_ENV === "development" && <Agentation />}
             <Toaster richColors position="top-center" />
           </TooltipProvider>
