@@ -76,7 +76,12 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsClientContainer
-        user={ctx.user}
+        user={{
+          id: ctx.user.id,
+          name: ctx.user.name,
+          email: ctx.user.email,
+          image: ctx.user.image ?? null,
+        }}
         org={{
           id: org.id,
           name: org.name,

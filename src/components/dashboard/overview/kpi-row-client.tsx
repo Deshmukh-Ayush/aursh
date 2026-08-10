@@ -1,13 +1,13 @@
 "use client"
 
 import { CurrencyInrIcon, FolderIcon } from "@phosphor-icons/react"
-import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
+import { EChartsAreaChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-area-chart"
 
 interface DashboardKpiRowUIProps {
   totalIncome: number
   activeProjectsCount: number
-  trendData1: { day: number; value: number }[]
-  trendData2: { day: number; value: number }[]
+  trendData1: { day: number; value: number; [key: string]: unknown }[]
+  trendData2: { day: number; value: number; [key: string]: unknown }[]
 }
 
 export function DashboardKpiRowUI({
@@ -16,6 +16,14 @@ export function DashboardKpiRowUI({
   trendData1,
   trendData2,
 }: DashboardKpiRowUIProps) {
+  const config1 = {
+    value: { label: "Value", colors: { light: ["#10B981"], dark: ["#10B981"] } },
+  } satisfies ChartConfig
+
+  const config2 = {
+    value: { label: "Projects", colors: { light: ["#0284C7"], dark: ["#0284C7"] } },
+  } satisfies ChartConfig
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {/* KPI 1: Total Income */}
@@ -43,20 +51,10 @@ export function DashboardKpiRowUI({
             <div className="h-12 w-24 shrink-0">
               <EChartsAreaChart
                 data={trendData1}
-                xAxisKey="day"
                 className="h-full w-full"
-                showAxis={false}
-                showGrid={false}
-                showTooltip={false}
-                config={{
-                  value: { label: "Value", color: "#10B981" }
-                }}
+                config={config1}
               >
-                <EChartsAreaChart.Area
-                  dataKey="value"
-                  strokeWidth={2}
-                  fillOpacity={0.15}
-                />
+                <EChartsAreaChart.Area dataKey="value" />
               </EChartsAreaChart>
             </div>
           </div>
@@ -88,20 +86,10 @@ export function DashboardKpiRowUI({
             <div className="h-12 w-24 shrink-0">
               <EChartsAreaChart
                 data={trendData2}
-                xAxisKey="day"
                 className="h-full w-full"
-                showAxis={false}
-                showGrid={false}
-                showTooltip={false}
-                config={{
-                  value: { label: "Projects", color: "#0284C7" }
-                }}
+                config={config2}
               >
-                <EChartsAreaChart.Area
-                  dataKey="value"
-                  strokeWidth={2}
-                  fillOpacity={0.15}
-                />
+                <EChartsAreaChart.Area dataKey="value" />
               </EChartsAreaChart>
             </div>
           </div>

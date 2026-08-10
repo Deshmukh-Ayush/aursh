@@ -3,7 +3,7 @@
 import { EChartsAreaChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-area-chart"
 import { TrendingUp, Sparkles } from "lucide-react"
 
-export interface MonthlyVelocityPoint {
+export interface MonthlyVelocityPoint extends Record<string, unknown> {
   month: string
   revenue: number
   pipeline: number

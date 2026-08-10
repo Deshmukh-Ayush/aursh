@@ -3,7 +3,7 @@
 import { EChartsBarChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-bar-chart"
 import { Users, TrendingUp } from "lucide-react"
 
-export interface MonthlyClientConversionPoint {
+export interface MonthlyClientConversionPoint extends Record<string, unknown> {
   month: string
   sent: number
   closed: number
