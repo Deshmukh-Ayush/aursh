@@ -2,6 +2,7 @@
 
 import { ShieldCheckIcon, ShieldAlertIcon, SparklesIcon } from "lucide-react";
 import type { ScopeEvaluation } from "@/lib/ai/schemas";
+import { ThinkingOrb } from "thinking-orbs";
 
 interface ScopeGuardianPillProps {
   evaluation: ScopeEvaluation | null;
@@ -31,9 +32,9 @@ export function ScopeGuardianPill({ evaluation, onDraftAddendum }: ScopeGuardian
         {onDraftAddendum && (
           <button
             onClick={onDraftAddendum}
-            className="inline-flex items-center gap-1 rounded-full bg-[#00AAF7] px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-xs transition-transform active:scale-[0.96]"
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#00AAF7] to-[#0284C7] px-3 py-1 text-[10px] font-bold text-white shadow-md transition-transform active:scale-[0.96]"
           >
-            <SparklesIcon className="h-3 w-3" />
+            <ThinkingOrb state="weaving" size={20} theme="auto" />
             <span>Draft Change Order</span>
           </button>
         )}

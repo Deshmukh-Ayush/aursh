@@ -8,6 +8,7 @@ import { ContractAIDrawerTabs } from "./contract-ai-drawer-tabs";
 import { ContractAIDrawerContent } from "./contract-ai-drawer-content";
 import { XIcon, Loader2Icon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ThinkingOrb } from "thinking-orbs";
 
 export function ContractAIDrawer() {
   const {
@@ -103,9 +104,14 @@ export function ContractAIDrawer() {
           {/* Body */}
           <div className="flex-1 overflow-y-auto pt-4 space-y-4">
             {isLoading && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-                <Loader2Icon className="h-6 w-6 animate-spin text-[#00AAF7]" />
-                <p className="text-xs">Extracting contract clauses with Groq AI...</p>
+              <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground text-center">
+                <ThinkingOrb state="searching" size={64} theme="auto" />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-foreground">Scrunity AI Analyzing Clauses</p>
+                  <p className="text-[11px] t-shimmer max-w-[220px]" data-text="Reading PDF stream & structuring terms...">
+                    Reading PDF stream &amp; structuring terms...
+                  </p>
+                </div>
               </div>
             )}
 

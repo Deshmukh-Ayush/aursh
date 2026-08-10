@@ -16,6 +16,8 @@ import { ContractAIStepper } from "./contract-ai-stepper";
 import { ContractAIDrawer } from "./contract-ai-drawer";
 import { useAIStore } from "@/store/ai-store";
 
+import { AiProcessingModal } from "@/components/ui/ai-processing-modal";
+
 export type ContractWithSignatures = {
   contract: {
     id: string;
@@ -72,7 +74,9 @@ export function ContractVaultClient({
   const router = useRouter();
   const isAgency = userRole === "owner" || userRole === "agency";
 
-  const [isExtractingAI, setIsExtractingAI] = useState(false);
+  const [isAiProcessingOpen, setIsAiProcessingOpen] = useState(false);
+  const [isAiProcessingComplete, setIsAiProcessingComplete] = useState(false);
+  const [lastUploadedContract, setLastUploadedContract] = useState<{ id: string; name: string } | null>(null);
 
   const handleUploadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -90,22 +94,24 @@ export function ContractVaultClient({
         setIsUploadOpen(false);
         const uploadedContract = res.data.contract;
 
-        // Run AI Scope Extraction in background via Groq
+        // Run AI Scope Extraction with interactive AI Thinking Orb Modal
         if (uploadedContract?.id) {
-          setIsExtractingAI(true);
+          setLastUploadedContract({ id: uploadedContract.id, name: uploadedContract.fileName || "Contract PDF" });
+          setIsAiProcessingOpen(true);
+          setIsAiProcessingComplete(false);
+
           axios
             .post("/api/ai/extract-contract", { contractId: uploadedContract.id })
             .then((aiRes) => {
               if (aiRes.data.success) {
                 toast.success(`✨ Scrunity AI extracted ${aiRes.data.extractedCount} scope clauses!`);
                 useAIStore.getState().setTerms(aiRes.data.terms);
+                setIsAiProcessingComplete(true);
               }
             })
             .catch(() => {
               toast.error("AI Scope Extraction encountered an issue.");
-            })
-            .finally(() => {
-              setIsExtractingAI(false);
+              setIsAiProcessingOpen(false);
             });
         }
 
@@ -164,7 +170,7 @@ export function ContractVaultClient({
 
       {/* AI Stepper Banner */}
       <ContractAIStepper
-        isExtracting={isExtractingAI}
+        isExtracting={isAiProcessingOpen}
         extractedCount={contracts.length > 0 ? contracts.length * 3 : null}
       />
 
@@ -238,6 +244,21 @@ export function ContractVaultClient({
           onConfirm={handleConfirmSignature}
         />
       )}
+      {/* AI Processing Modal */}
+      <AiProcessingModal
+        isOpen={isAiProcessingOpen}
+        isComplete={isAiProcessingComplete}
+        title="Scrunity AI Parsing Contract PDF"
+        subtitle={`Extracting scope clauses, revision limits, and payment terms from ${lastUploadedContract?.name || "document"}...`}
+        onViewResults={() => {
+          setIsAiProcessingOpen(false);
+          if (lastUploadedContract) {
+            useAIStore.getState().openDrawer(lastUploadedContract.id, lastUploadedContract.name);
+          }
+        }}
+        onClose={() => setIsAiProcessingOpen(false)}
+      />
+
       {/* AI Inspector Drawer */}
       <ContractAIDrawer />
     </div>
