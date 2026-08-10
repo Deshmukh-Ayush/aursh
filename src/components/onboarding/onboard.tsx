@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import posthog from "posthog-js";
 
 function slugify(name: string) {
   return name
@@ -49,6 +50,7 @@ export const Onboard = () => {
       await authClient.organization.setActive({ organizationId: data.id });
     }
 
+    posthog.capture("organization_onboarding_completed");
     router.push("/dashboard");
     router.refresh();
   };

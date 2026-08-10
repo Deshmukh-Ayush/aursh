@@ -6,6 +6,7 @@ import { usePaymentStore } from "@/store/payment-store";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 type PaymentConfirmModalProps = {
   formatMoney: (amountInUnits: number, curr?: string) => string;
@@ -42,6 +43,10 @@ export function PaymentConfirmModal({ formatMoney }: PaymentConfirmModalProps) {
       });
 
       if (res.data.success) {
+        posthog.capture("milestone_payment_confirmed", {
+          currency: milestone.currency,
+          payment_method: selectedMethod,
+        });
         toast.success("Payment marked as received");
         handleClose();
         router.refresh();

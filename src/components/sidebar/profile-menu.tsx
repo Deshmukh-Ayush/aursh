@@ -7,6 +7,7 @@ import { MoreHorizontal, Sun, Moon, Monitor, ArrowUpRight } from "lucide-react"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import posthog from "posthog-js"
 
 // Define strict types to fix TypeErrors
 interface User {
@@ -47,6 +48,7 @@ export function ProfileMenu() {
   }, [isOpen])
 
   const handleLogout = async () => {
+    posthog.reset()
     await authClient.signOut()
     router.push("/sign-in")
   }

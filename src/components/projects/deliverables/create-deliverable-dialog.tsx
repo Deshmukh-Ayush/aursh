@@ -10,6 +10,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import posthog from "posthog-js";
 
 export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
@@ -39,6 +40,7 @@ export function CreateDeliverableDialog({ projectId }: { projectId: string }) {
         }
       });
       if (res.data.success) {
+        posthog.capture("deliverable_created", { has_due_date: Boolean(dueDate) });
         toast.success("Deliverable created successfully");
         setTitle("");
         setDescription("");

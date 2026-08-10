@@ -8,6 +8,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
+import posthog from "posthog-js";
 
 type CreateMilestoneModalProps = {
   projectId: string;
@@ -63,6 +64,11 @@ export function CreateMilestoneModal({ projectId, deliverablesList }: CreateMile
       });
 
       if (res.data.success) {
+        posthog.capture("milestone_created", {
+          currency,
+          trigger_type: triggerType,
+          has_due_date: Boolean(dueDate),
+        });
         toast.success("Milestone created");
         handleClose();
         router.refresh();

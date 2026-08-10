@@ -15,6 +15,7 @@ import { ContractVaultUploadModal } from "./contract-vault-upload-modal";
 import { ContractAIStepper } from "./contract-ai-stepper";
 import { ContractAIDrawer } from "./contract-ai-drawer";
 import { useAIStore } from "@/store/ai-store";
+import posthog from "posthog-js";
 
 import { AiProcessingModal } from "@/components/ui/ai-processing-modal";
 
@@ -90,6 +91,7 @@ export function ContractVaultClient({
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (res.data.success) {
+        posthog.capture("contract_uploaded", { document_type: selectedDocType });
         toast.success("Document uploaded to vault");
         setIsUploadOpen(false);
         const uploadedContract = res.data.contract;
@@ -148,6 +150,10 @@ export function ContractVaultClient({
         signatureMethod: method,
       });
       if (res.data.success) {
+        posthog.capture("contract_signed", {
+          signature_method: method,
+          fully_signed: Boolean(res.data.fullySigned),
+        });
         toast.success(
           res.data.fullySigned
             ? "Document fully signed and cryptographic seal generated."

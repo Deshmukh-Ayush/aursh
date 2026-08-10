@@ -10,6 +10,7 @@ import { useProposalStore } from "@/store/proposal-store";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { ThinkingOrb } from "thinking-orbs";
 
 interface ProposalBuilderProps {
@@ -80,6 +81,10 @@ export function ProposalBuilder({ projectId, onComplete }: ProposalBuilderProps)
 
       const res = await axios.post("/api/proposals", payload);
       if (res.data.success) {
+        posthog.capture("proposal_saved", {
+          currency,
+          line_item_count: lineItems.length,
+        });
         toast.success("Draft proposal created!");
         resetBuilder();
         if (onComplete) onComplete();

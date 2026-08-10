@@ -8,6 +8,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Trash2, Send, CornerDownRight } from "lucide-react";
+import posthog from "posthog-js";
 
 type CommentType = {
   comment: {
@@ -64,6 +65,9 @@ export function CommentThread({
     try {
       const res = await axios.post('/api/comments', { projectId, body: newComment.trim(), deliverableId });
       if (res.data.success) {
+        posthog.capture("comment_created", {
+          is_deliverable_comment: Boolean(deliverableId),
+        });
         setNewComment("");
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";

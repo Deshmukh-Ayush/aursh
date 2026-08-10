@@ -6,6 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 
 export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsLogin: boolean, token?: string, overrideText?: string }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +16,7 @@ export function AcceptInviteButton({ needsLogin, token, overrideText }: { needsL
     setIsLoading(true);
 
     if (needsLogin) {
-      // If they are logged in with the wrong account, sign them out first before the new sign-in flow
+      posthog.reset();
       await authClient.signOut();
       
       // Sign in with Google and redirect back here
