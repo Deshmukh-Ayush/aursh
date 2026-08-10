@@ -81,14 +81,21 @@ export function ProjectSidebar({
       >
         <div className="flex h-full w-full flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex h-14 shrink-0 cursor-pointer items-center justify-between gap-4 px-4">
+          <Link
+            href="/dashboard"
+            title="Go to Dashboard"
+            className={cn(
+              "flex h-14 shrink-0 cursor-pointer items-center justify-between gap-2 px-4 hover:bg-muted/50 transition-colors rounded-md mx-1 my-1",
+              isCollapsed && "justify-center px-0"
+            )}
+          >
             <SidebarBrand
               projectName={projectName}
               org={org}
               canWhitelabel={canWhitelabel}
             />
-            <CaretUpDownIcon size={18} />
-          </div>
+            {!isCollapsed && <CaretUpDownIcon size={18} className="shrink-0 text-muted-foreground" />}
+          </Link>
 
           {/* Navigation Sections */}
           <nav

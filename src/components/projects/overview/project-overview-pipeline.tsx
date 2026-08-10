@@ -7,10 +7,10 @@ type ProjectOverviewPipelineProps = {
 };
 
 const COLUMNS = [
-  { id: "pending" as const, label: "Pending", dotClass: "bg-purple-500", bgClass: "bg-purple-500/5 dark:bg-purple-400/5 border-purple-500/10" },
-  { id: "in_review" as const, label: "In Review", dotClass: "bg-sky-500", bgClass: "bg-sky-500/5 dark:bg-sky-400/5 border-sky-500/10" },
-  { id: "revision_requested" as const, label: "Revision", dotClass: "bg-rose-500", bgClass: "bg-rose-500/5 dark:bg-rose-400/5 border-rose-500/10" },
-  { id: "approved" as const, label: "Approved", dotClass: "bg-emerald-500", bgClass: "bg-emerald-500/5 dark:bg-emerald-400/5 border-emerald-500/10" },
+  { id: "pending" as const, label: "Pending", dotClass: "bg-muted-foreground", bgClass: "bg-muted/30 border-border/30" },
+  { id: "in_review" as const, label: "In Review", dotClass: "bg-sky-500", bgClass: "bg-muted/30 border-border/30" },
+  { id: "revision_requested" as const, label: "Revision", dotClass: "bg-rose-500", bgClass: "bg-muted/30 border-border/30" },
+  { id: "approved" as const, label: "Approved", dotClass: "bg-emerald-500", bgClass: "bg-muted/30 border-border/30" },
 ] as const;
 
 const MAX_VISIBLE = 3;

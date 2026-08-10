@@ -113,15 +113,15 @@ export function ProjectOverviewHero({
       {/* 2 Hero KPI Cards with Integrated Micro Charts & Visual Hierarchy */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* KPI Card 1: Financial & Contract Volume */}
-        <div className="bg-neutral-gray-50 rounded-md p-1 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.06),0px_2px_4px_0px_rgba(0,0,0,0.04)] dark:bg-neutral-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-          <div className="flex h-full flex-col justify-between space-y-4 rounded-sm bg-white p-5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.06),0px_2px_4px_0px_rgba(0,0,0,0.04)] dark:bg-neutral-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+        <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
+          <div className="flex h-full flex-col justify-between space-y-4 rounded-md bg-white p-5 dark:bg-neutral-950">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 <CurrencyInrIcon className="h-4 w-4 text-emerald-500" /> Total
                 Project Value
               </span>
               <span
-                className={`rounded-full px-2 py-1 text-xs font-semibold tracking-wider uppercase ${isAccepted ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-purple-500/10 text-purple-600 dark:text-purple-400"}`}
+                className={`rounded-full px-2 py-1 text-xs font-semibold tracking-wider uppercase ${isAccepted ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
               >
                 {isAccepted ? "Accepted SOW" : "Draft / Pending"}
               </span>
@@ -153,7 +153,7 @@ export function ProjectOverviewHero({
                 aria-label="Contract compliance"
               >
                 <div
-                  className="h-full rounded-full bg-brand transition-all duration-500"
+                  className="h-full rounded-full bg-primary transition-all duration-500"
                   style={{ width: isAccepted ? "100%" : "50%" }}
                 />
               </div>
@@ -162,8 +162,8 @@ export function ProjectOverviewHero({
         </div>
 
         {/* KPI Card 2: Delivery Progress & Velocity */}
-        <div className="rounded-md bg-gray-50 p-1 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.06),0px_2px_4px_0px_rgba(0,0,0,0.04)] dark:bg-neutral-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-          <div className="flex h-full flex-col justify-between space-y-4 rounded-sm bg-white p-5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.06),0px_2px_4px_0px_rgba(0,0,0,0.04)] dark:bg-neutral-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+        <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
+          <div className="flex h-full flex-col justify-between space-y-4 rounded-md bg-white p-5 dark:bg-neutral-950">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 <TrendUpIcon className="h-4 w-4 text-emerald-500" /> Milestone
