@@ -17,6 +17,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 
+import { Plus } from "lucide-react";
+
 export function CreateProjectDialog() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +49,10 @@ export function CreateProjectDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Create Project</Button>
+        <Button className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-brand text-white font-medium text-sm flex items-center gap-1.5 shadow-xs hover:bg-brand-hover border-none">
+          <Plus className="h-4 w-4" />
+          <span>Create Project</span>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

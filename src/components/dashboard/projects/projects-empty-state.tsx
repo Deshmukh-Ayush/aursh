@@ -6,8 +6,8 @@ import { CreateProjectDialog } from "@/components/create-project-dialog"
 export function WorkspaceEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center p-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
-        <FolderKanban className="h-6 w-6 text-muted-foreground" />
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand mb-4">
+        <FolderKanban className="h-6 w-6" />
       </div>
       <h3 className="text-base font-semibold text-foreground">No projects yet</h3>
       <p className="mt-1 text-xs text-muted-foreground max-w-sm">
@@ -34,7 +34,7 @@ export function FilterEmptyState({ searchQuery, onClear }: FilterEmptyStateProps
       </p>
       <button
         onClick={onClear}
-        className="mt-4 text-xs font-medium text-primary hover:underline"
+        className="mt-4 text-xs font-semibold text-brand hover:text-brand-hover hover:underline active:scale-[0.96] transition-transform"
       >
         Clear filters
       </button>

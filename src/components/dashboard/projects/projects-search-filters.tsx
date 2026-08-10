@@ -32,18 +32,18 @@ export function ProjectsSearchFilters({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search projects..."
-          className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 transition-shadow"
         />
       </div>
 
       {/* Filter Pills */}
-      <div className="flex items-center gap-1 rounded-md border border-border/40 bg-muted/40 p-1">
+      <div className="flex items-center gap-1 rounded-full border border-border/40 bg-muted/50 p-1">
         <button
           onClick={() => setStatusFilter("all")}
           className={cn(
-            "rounded-sm px-3 py-1 text-xs font-medium transition-colors",
+            "rounded-full px-3.5 py-1 text-xs font-medium transition-all active:scale-[0.96]",
             statusFilter === "all"
-              ? "bg-background text-foreground shadow-xs"
+              ? "bg-brand text-white font-semibold shadow-xs"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -52,9 +52,9 @@ export function ProjectsSearchFilters({
         <button
           onClick={() => setStatusFilter("active")}
           className={cn(
-            "rounded-sm px-3 py-1 text-xs font-medium transition-colors",
+            "rounded-full px-3.5 py-1 text-xs font-medium transition-all active:scale-[0.96]",
             statusFilter === "active"
-              ? "bg-background text-foreground shadow-xs"
+              ? "bg-brand text-white font-semibold shadow-xs"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -63,9 +63,9 @@ export function ProjectsSearchFilters({
         <button
           onClick={() => setStatusFilter("completed")}
           className={cn(
-            "rounded-sm px-3 py-1 text-xs font-medium transition-colors",
+            "rounded-full px-3.5 py-1 text-xs font-medium transition-all active:scale-[0.96]",
             statusFilter === "completed"
-              ? "bg-background text-foreground shadow-xs"
+              ? "bg-brand text-white font-semibold shadow-xs"
               : "text-muted-foreground hover:text-foreground"
           )}
         >

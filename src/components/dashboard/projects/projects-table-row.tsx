@@ -24,7 +24,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
         <div className="flex flex-col min-w-0">
           <Link
             href={`/projects/${project.id}`}
-            className="font-semibold text-foreground hover:underline truncate text-sm"
+            className="font-semibold text-foreground hover:text-brand hover:underline truncate text-sm transition-colors"
           >
             {project.name}
           </Link>
@@ -66,7 +66,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
               {m.image ? (
                 <Image src={m.image} alt={m.name || "User"} fill className="object-cover" unoptimized />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-primary">
+                <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-brand bg-brand/10">
                   {(m.name || m.email).charAt(0).toUpperCase()}
                 </div>
               )}
@@ -89,7 +89,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
       <td className="px-4 py-3.5 text-right whitespace-nowrap">
         <Link
           href={`/projects/${project.id}`}
-          className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors active:scale-[0.96] origin-center"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-hover transition-colors active:scale-[0.96] origin-center"
         >
           <span>Open project</span>
           <ArrowRight className="h-3.5 w-3.5" />
