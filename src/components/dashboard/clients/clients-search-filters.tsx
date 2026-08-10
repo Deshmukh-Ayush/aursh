@@ -1,8 +1,7 @@
 "use client"
 
 import { Search } from "lucide-react"
-import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { SlidingPillTabs } from "@/components/dashboard/shared/sliding-pill-tabs"
 
 type FilterType = "all" | "active" | "invited"
 
@@ -16,12 +15,6 @@ interface ClientsSearchFiltersProps {
   invitedCount: number
 }
 
-const filters: { id: FilterType; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "active", label: "Active" },
-  { id: "invited", label: "Invited" },
-]
-
 export function ClientsSearchFilters({
   searchQuery,
   setSearchQuery,
@@ -31,11 +24,11 @@ export function ClientsSearchFilters({
   activeCount,
   invitedCount,
 }: ClientsSearchFiltersProps) {
-  const getCount = (id: FilterType) => {
-    if (id === "all") return totalCount
-    if (id === "active") return activeCount
-    return invitedCount
-  }
+  const tabs = [
+    { id: "all" as const, label: "All", count: totalCount },
+    { id: "active" as const, label: "Active", count: activeCount },
+    { id: "invited" as const, label: "Invited", count: invitedCount },
+  ]
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -52,34 +45,12 @@ export function ClientsSearchFilters({
       </div>
 
       {/* Sliding Pill Filter Tabs */}
-      <div className="relative flex items-center gap-1 rounded-full border border-border/40 bg-muted/50 p-1">
-        {filters.map((tab) => {
-          const isActive = statusFilter === tab.id
-          const count = getCount(tab.id)
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={cn(
-                "relative z-10 rounded-full px-3.5 py-1 text-xs font-medium transition-colors active:scale-[0.96]",
-                isActive ? "text-white font-semibold" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="activeClientsFilterPill"
-                  className="absolute inset-0 -z-10 rounded-full bg-brand shadow-xs"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span>
-                {tab.label} ({count})
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <SlidingPillTabs
+        layoutId="activeClientsFilterPill"
+        tabs={tabs}
+        activeTab={statusFilter}
+        onChange={setStatusFilter}
+      />
     </div>
   )
 }

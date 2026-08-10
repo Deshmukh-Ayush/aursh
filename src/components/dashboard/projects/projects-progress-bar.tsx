@@ -1,29 +1,3 @@
 "use client"
 
-interface ProjectsProgressBarProps {
-  total: number
-  approved: number
-}
-
-export function ProjectsProgressBar({ total, approved }: ProjectsProgressBarProps) {
-  const progressPct = total > 0 ? Math.round((approved / total) * 100) : 0
-
-  return (
-    <div className="flex flex-col gap-1 w-32">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="tabular-nums">
-          {approved}/{total} done
-        </span>
-        <span className="tabular-nums font-semibold text-foreground">
-          {progressPct}%
-        </span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-brand transition-all duration-300"
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
-    </div>
-  )
-}
+export { DeliverableProgressBar as ProjectsProgressBar } from "@/components/dashboard/shared/deliverable-progress-bar"

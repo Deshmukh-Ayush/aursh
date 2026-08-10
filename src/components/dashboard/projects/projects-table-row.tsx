@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { ArrowRight } from "lucide-react"
 import { format } from "date-fns"
 import { ProjectTableItem } from "./projects-table-types"
 import { ProjectsStatusBadge } from "./projects-status-badge"
 import { ProjectsProgressBar } from "./projects-progress-bar"
+import { AvatarStack } from "@/components/dashboard/shared/avatar-stack"
 
 interface ProjectsTableRowProps {
   project: ProjectTableItem
@@ -49,35 +49,14 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
       {/* Deliverables Progress */}
       <td className="px-4 py-3.5 whitespace-nowrap">
         <ProjectsProgressBar
-          total={project.deliverableStats.total}
           approved={project.deliverableStats.approved}
+          total={project.deliverableStats.total}
         />
       </td>
 
       {/* Team Avatars */}
       <td className="px-4 py-3.5 whitespace-nowrap">
-        <div className="flex -space-x-1.5 overflow-hidden">
-          {project.members.slice(0, 3).map((m) => (
-            <div
-              key={m.id}
-              className="relative h-6 w-6 rounded-full border-2 border-background bg-muted overflow-hidden"
-              title={m.name || m.email}
-            >
-              {m.image ? (
-                <Image src={m.image} alt={m.name || "User"} fill className="object-cover" unoptimized />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-brand bg-brand/10">
-                  {(m.name || m.email).charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-          ))}
-          {project.members.length > 3 && (
-            <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-medium text-muted-foreground">
-              +{project.members.length - 3}
-            </div>
-          )}
-        </div>
+        <AvatarStack members={project.members} max={3} />
       </td>
 
       {/* Date Updated */}

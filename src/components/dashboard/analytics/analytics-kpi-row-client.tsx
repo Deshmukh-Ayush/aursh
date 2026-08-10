@@ -1,6 +1,7 @@
 "use client"
 
 import { DollarSign, Send, CheckCircle2, Award } from "lucide-react"
+import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
 
 export interface AnalyticsKpiData {
   wonRevenue: number
@@ -21,9 +22,9 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* KPI 1: Won Revenue */}
-      <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
-        <div className="flex h-full flex-col justify-between space-y-3 rounded-md bg-white p-4 dark:bg-neutral-950">
-          <div className="flex items-center justify-between">
+      <ConcentricCard
+        headerExtra={
+          <div className="flex items-center justify-between w-full">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               <DollarSign className="h-3.5 w-3.5 text-emerald-500" /> Won Revenue
             </span>
@@ -31,21 +32,23 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
               Signed
             </span>
           </div>
-          <div>
-            <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-              {formatCurrency(data.wonRevenue)}
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              From {data.acceptedProposalsCount} accepted proposals
-            </p>
+        }
+        innerClassName="p-4 space-y-3"
+      >
+        <div>
+          <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+            {formatCurrency(data.wonRevenue)}
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            From {data.acceptedProposalsCount} accepted proposals
+          </p>
         </div>
-      </div>
+      </ConcentricCard>
 
       {/* KPI 2: Active Pipeline */}
-      <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
-        <div className="flex h-full flex-col justify-between space-y-3 rounded-md bg-white p-4 dark:bg-neutral-950">
-          <div className="flex items-center justify-between">
+      <ConcentricCard
+        headerExtra={
+          <div className="flex items-center justify-between w-full">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               <Send className="h-3.5 w-3.5 text-brand" /> Active Pipeline
             </span>
@@ -53,21 +56,23 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
               Pending
             </span>
           </div>
-          <div>
-            <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-              {formatCurrency(data.pipelineValue)}
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Proposals sent awaiting sign-off
-            </p>
+        }
+        innerClassName="p-4 space-y-3"
+      >
+        <div>
+          <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+            {formatCurrency(data.pipelineValue)}
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Proposals sent awaiting sign-off
+          </p>
         </div>
-      </div>
+      </ConcentricCard>
 
       {/* KPI 3: Proposal Win Rate */}
-      <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
-        <div className="flex h-full flex-col justify-between space-y-3 rounded-md bg-white p-4 dark:bg-neutral-950">
-          <div className="flex items-center justify-between">
+      <ConcentricCard
+        headerExtra={
+          <div className="flex items-center justify-between w-full">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               <Award className="h-3.5 w-3.5 text-amber-500" /> Proposal Win Rate
             </span>
@@ -75,21 +80,23 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
               {data.winRate}%
             </span>
           </div>
-          <div>
-            <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-              {data.winRate}%
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-              {data.acceptedProposalsCount} of {data.totalClosedProposalsCount} closed deals won
-            </p>
+        }
+        innerClassName="p-4 space-y-3"
+      >
+        <div>
+          <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+            {data.winRate}%
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+            {data.acceptedProposalsCount} of {data.totalClosedProposalsCount} closed deals won
+          </p>
         </div>
-      </div>
+      </ConcentricCard>
 
       {/* KPI 4: Deliverable Approval Rate */}
-      <div className="flex flex-col h-full rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
-        <div className="flex h-full flex-col justify-between space-y-3 rounded-md bg-white p-4 dark:bg-neutral-950">
-          <div className="flex items-center justify-between">
+      <ConcentricCard
+        headerExtra={
+          <div className="flex items-center justify-between w-full">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               <CheckCircle2 className="h-3.5 w-3.5 text-sky-500" /> Approval Velocity
             </span>
@@ -97,16 +104,18 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
               {data.deliverableApprovalRate}%
             </span>
           </div>
-          <div>
-            <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-              {data.deliverableApprovalRate}%
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-              {data.approvedDeliverablesCount} of {data.totalDeliverablesCount} deliverables approved
-            </p>
+        }
+        innerClassName="p-4 space-y-3"
+      >
+        <div>
+          <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+            {data.deliverableApprovalRate}%
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+            {data.approvedDeliverablesCount} of {data.totalDeliverablesCount} deliverables approved
+          </p>
         </div>
-      </div>
+      </ConcentricCard>
     </div>
   )
 }

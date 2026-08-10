@@ -5,6 +5,7 @@ import { ClientTableItem } from "./clients-table-types"
 import { ClientsSearchFilters } from "./clients-search-filters"
 import { WorkspaceClientEmptyState, FilterClientEmptyState } from "./clients-empty-state"
 import { ClientsTableRow } from "./clients-table-row"
+import { DataTableShell } from "@/components/dashboard/shared/data-table-shell"
 
 export type { ClientTableItem }
 
@@ -12,11 +13,12 @@ interface ClientsTableClientProps {
   clients: ClientTableItem[]
 }
 
+const TABLE_HEADERS = ["Client", "Status", "Projects", "Total Value", "Joined / Invited", "Action"]
+
 export function ClientsTableClient({ clients }: ClientsTableClientProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "invited">("all")
 
-  // Filter clients based on search query and status tab
   const filteredClients = React.useMemo(() => {
     return clients.filter((c) => {
       const name = c.name || ""
@@ -47,12 +49,16 @@ export function ClientsTableClient({ clients }: ClientsTableClientProps) {
         invitedCount={invitedCount}
       />
 
-      {/* Concentric Radii Outer Container */}
-      <div className="flex flex-col rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
-        <div className="overflow-hidden rounded-md bg-white dark:bg-neutral-950">
-          {clients.length === 0 ? (
+      {/* Table Shell */}
+      {clients.length === 0 ? (
+        <div className="rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
+          <div className="rounded-md bg-white dark:bg-neutral-950">
             <WorkspaceClientEmptyState />
-          ) : filteredClients.length === 0 ? (
+          </div>
+        </div>
+      ) : filteredClients.length === 0 ? (
+        <div className="rounded-md border border-border/40 bg-neutral-100 p-1 shadow-xs dark:bg-neutral-900">
+          <div className="rounded-md bg-white dark:bg-neutral-950">
             <FilterClientEmptyState
               searchQuery={searchQuery}
               onClear={() => {
@@ -60,30 +66,15 @@ export function ClientsTableClient({ clients }: ClientsTableClientProps) {
                 setStatusFilter("all")
               }}
             />
-          ) : (
-            /* Minimalist Table */
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-neutral-50/50 dark:bg-neutral-900/50">
-                    <th className="px-5 py-3">Client</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Projects</th>
-                    <th className="px-4 py-3">Total Value</th>
-                    <th className="px-4 py-3">Joined / Invited</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/20">
-                  {filteredClients.map((client) => (
-                    <ClientsTableRow key={client.id} client={client} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <DataTableShell headers={TABLE_HEADERS}>
+          {filteredClients.map((client) => (
+            <ClientsTableRow key={client.id} client={client} />
+          ))}
+        </DataTableShell>
+      )}
     </div>
   )
 }
