@@ -94,12 +94,13 @@ export default async function ExecutionDocsPage() {
 
           <CodeBlock>{`[User Sign In / Up]
        │
-       ▼  (Google OAuth via Better Auth)
-[POST /api/auth/sign-in]
+       ▼  (Google OAuth via Better Auth catch-all: /api/auth/[...all]/route.ts)
+[POST /api/auth/sign-in/social  ->  GET /api/auth/callback/google]
        │
-       ├─► (Checks Database: user & member tables)
+       ├─► (Better Auth sets session token cookie)
+       ├─► (Checks Database: user, member, & organization tables)
        │
-       ├─► IF Agency Owner (member.role === "owner"):
+       ├─► IF Agency Owner (member.role === "owner" or "agency"):
        │     └─► Redirects to /dashboard (Overview, Projects, Analytics, Team, AI)
        │
        └─► IF Client Stakeholder (member.role === "client"):
@@ -109,7 +110,7 @@ export default async function ExecutionDocsPage() {
           <H3>Step-by-Step Execution Sequence</H3>
           <ol className="my-3 pl-5 text-xs text-muted-foreground leading-relaxed space-y-2 list-decimal font-mono">
             <li>
-              <strong className="text-foreground font-semibold">Google OAuth Sign In:</strong> User clicks &quot;Sign in with Google&quot; on <Code>/sign-in</Code> → calls Better Auth API → returns session token cookie.
+              <strong className="text-foreground font-semibold">Google OAuth Sign In:</strong> User clicks &quot;Sign in with Google&quot; on <Code>/sign-in</Code> → calls Better Auth catch-all route <Code>/api/auth/[...all]/route.ts</Code> (<Code>POST /api/auth/sign-in/social</Code> &amp; <Code>GET /api/auth/callback/google</Code>) → sets session token cookie.
             </li>
             <li>
               <strong className="text-foreground font-semibold">Tenant Context Resolution:</strong> Server component calls <Code>getTenantContext(reqHeaders)</Code> (wrapped in <Code>React.cache()</Code>) → fetches active organization &amp; user role.
