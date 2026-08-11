@@ -4,6 +4,7 @@ import { project, proposal, deliverable } from "@/db/schema"
 import { eq, inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { AnalyticsKpiRowClient, AnalyticsKpiData } from "./analytics-kpi-row-client"
+import { convertToINR } from "@/lib/currency"
 
 export async function AnalyticsKpiRow() {
   const reqHeaders = await headers()
@@ -40,6 +41,7 @@ export async function AnalyticsKpiRow() {
     db
       .select({
         price: proposal.price,
+        currency: proposal.currency,
         status: proposal.status,
       })
       .from(proposal)
@@ -52,19 +54,21 @@ export async function AnalyticsKpiRow() {
       .where(inArray(deliverable.projectId, projectIds)),
   ])
 
-  // Single-pass calculation for proposals
+  // Single-pass calculation for proposals with USD -> INR conversion (95.43 rate)
   let wonRevenue = 0
   let pipelineValue = 0
   let acceptedProposalsCount = 0
   let closedProposalsCount = 0
 
   proposalsList.forEach((p) => {
+    const inrValue = convertToINR(p.price, p.currency)
+
     if (p.status === "accepted") {
-      wonRevenue += p.price
+      wonRevenue += inrValue
       acceptedProposalsCount++
       closedProposalsCount++
     } else if (p.status === "sent") {
-      pipelineValue += p.price
+      pipelineValue += inrValue
     } else if (p.status === "declined") {
       closedProposalsCount++
     }

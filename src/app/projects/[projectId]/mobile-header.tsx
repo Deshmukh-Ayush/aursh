@@ -4,6 +4,7 @@ import * as React from "react";
 import { Menu } from "lucide-react";
 import { ProjectSidebar } from "@/components/sidebar/index";
 import { TopbarNotifications } from "@/components/projects/topbar-notifications";
+import { ProjectNavbarInviteButton } from "@/components/projects/project-navbar-invite-button";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { CollapseToggle } from "@/components/sidebar/collapse-toggle"; 
@@ -25,7 +26,6 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
   const [open, setOpen] = React.useState(false);
   const canWhitelabel = org?.plan === "agency";
 
-  // Better Interface: Lock body scrolling when the mobile drawer is active
   React.useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -39,7 +39,7 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
 
   return (
     <>
-      {/* 1. Native lightweight backdrop (replaces Sheet overlay) */}
+      {/* 1. Native lightweight backdrop */}
       {open && (
         <div 
           className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm animate-in fade-in duration-300 md:hidden"
@@ -48,7 +48,7 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
         />
       )}
 
-      {/* 2. Native sliding drawer (replaces SheetContent) */}
+      {/* 2. Native sliding drawer */}
       <div 
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-65 flex-col bg-background shadow-2xl transition-transform duration-300 ease-out md:hidden",
@@ -59,7 +59,6 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
         aria-label="Navigation Menu"
       >
         <div onClick={() => setOpen(false)} className="h-full w-full">
-          {/* TypeScript Fix: Removed 'role={role}' as it does not exist on ProjectSidebarProps */}
           <ProjectSidebar 
             projectId={projectId} 
             projectName={projectName} 
@@ -69,12 +68,11 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
         </div>
       </div>
 
-      {/* 3. Refined Header with glassmorphism */}
+      {/* 3. Header with glassmorphism */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border/40 bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/60 md:px-4">
         
         {/* Left Side: Navigation Triggers */}
         <div className="flex items-center">
-          {/* Mobile: Hamburger Button */}
           <button 
             onClick={() => setOpen(true)}
             aria-expanded={open}
@@ -84,13 +82,12 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Desktop: Collapse Toggle (Hidden on mobile) */}
           <div className="hidden md:flex">
             <CollapseToggle />
           </div>
         </div>
 
-        {/* Center: Branding (Visible only on mobile; desktop branding is handled in the sidebar) */}
+        {/* Center: Branding */}
         <div className="ml-1 flex min-w-0 flex-1 items-center md:hidden">
           {canWhitelabel && org?.logoUrl ? (
             <Image 
@@ -116,11 +113,13 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
           )}
         </div>
 
-        {/* Spacer to push notifications to the right on desktop */}
         <div className="hidden flex-1 md:flex" />
 
-        {/* Right Side: Notifications */}
-        <div className="flex shrink-0 items-center">
+        {/* Right Side: Copy Invite Button beside Notification Bell */}
+        <div className="flex shrink-0 items-center gap-2">
+          {role !== "client" && (
+            <ProjectNavbarInviteButton projectId={projectId} projectName={projectName} />
+          )}
           <TopbarNotifications projectId={projectId} />
         </div>
       </header>

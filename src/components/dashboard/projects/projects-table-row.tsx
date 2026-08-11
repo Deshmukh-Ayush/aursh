@@ -7,13 +7,10 @@ import { ProjectTableItem } from "./projects-table-types"
 import { ProjectsStatusBadge } from "./projects-status-badge"
 import { ProjectsProgressBar } from "./projects-progress-bar"
 import { AvatarStack } from "@/components/dashboard/shared/avatar-stack"
+import { formatCurrency } from "@/lib/currency"
 
 interface ProjectsTableRowProps {
   project: ProjectTableItem
-}
-
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString("en-IN")}`
 }
 
 export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
