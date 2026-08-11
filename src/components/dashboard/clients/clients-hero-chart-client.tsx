@@ -1,35 +1,36 @@
 "use client"
 
 import { EChartsBarChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-bar-chart"
-import { Users, TrendingUp } from "lucide-react"
 import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
 import { MonospaceMetricStat } from "@/components/dashboard/shared/monospace-metric-stat"
+import { UsersThree } from "@phosphor-icons/react"
 
-export interface MonthlyClientConversionPoint extends Record<string, unknown> {
+export interface MonthlyClientConversionPoint {
   month: string
-  sent: number
-  closed: number
+  proposalsSent: number
+  clientsClosed: number
+  [key: string]: unknown
 }
 
 interface ClientsHeroChartUIProps {
-  chartData: MonthlyClientConversionPoint[]
-  totalSent: number
-  totalClosed: number
-  conversionRate: number
+  conversionData: MonthlyClientConversionPoint[]
+  totalProposalsSent: number
+  totalClientsClosed: number
+  avgConversionRate: number
 }
 
 export function ClientsHeroChartUI({
-  chartData,
-  totalSent,
-  totalClosed,
-  conversionRate,
+  conversionData,
+  totalProposalsSent,
+  totalClientsClosed,
+  avgConversionRate,
 }: ClientsHeroChartUIProps) {
   const chartConfig = {
-    sent: {
+    proposalsSent: {
       label: "Proposals Sent",
       colors: { light: ["#00AAF7"], dark: ["#00AAF7"] },
     },
-    closed: {
+    clientsClosed: {
       label: "Clients Closed",
       colors: { light: ["#10B981"], dark: ["#10B981"] },
     },
@@ -37,48 +38,51 @@ export function ClientsHeroChartUI({
 
   return (
     <ConcentricCard
-      label="Client Conversion Velocity (Proposals Sent vs Contracts Executed)"
-      icon={Users}
+      headerExtra={
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <UsersThree className="h-4 w-4 text-sky-500" /> Client Acquisition Velocity (6 Months)
+        </span>
+      }
     >
-      {/* Header Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 pb-4 border-b border-border/20">
+      {/* Header Metric Stats */}
+      <div className="flex flex-col gap-4 pb-4 border-b border-border/20 sm:flex-row sm:items-baseline justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[22px] font-bold tracking-tight text-foreground tabular-nums leading-none">
-              {totalClosed} Clients Closed
+            <span className="text-[32px] leading-none font-bold tracking-tight text-foreground tabular-nums">
+              {totalClientsClosed} Clients Won
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Trailing 6 Months
+            <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+              {avgConversionRate}% Win Rate
             </span>
           </div>
-          <span className="text-xs text-muted-foreground font-medium text-pretty mt-1 block">
-            Comparison of proposals issued vs accepted client contracts
+          <span className="mt-1 block text-xs font-medium text-pretty text-muted-foreground">
+            Comparison between total proposals sent vs contracts signed by clients
           </span>
         </div>
 
         <div className="flex items-center gap-6 shrink-0 text-right sm:text-right">
           <MonospaceMetricStat
-            tag="[⬆] Conversion Rate"
-            value={`${conversionRate}%`}
-            subtext={`(${totalClosed}/${totalSent})`}
+            tag="[⬆] Proposals Sent"
+            value={totalProposalsSent}
+            subtext="total proposals"
           />
           <MonospaceMetricStat
-            tag="[★] Proposals Issued"
-            value={totalSent}
-            subtext="total"
+            tag="[~] Avg Conversion"
+            value={`${avgConversionRate}%`}
+            subtext="proposal-to-client"
           />
         </div>
       </div>
 
       {/* ECharts Bar Chart */}
-      <div className="h-[250px] w-full min-h-[250px] min-w-0">
+      <div className="h-[280px] w-full min-h-[280px] min-w-0">
         <EChartsBarChart
-          data={chartData}
+          data={conversionData}
           config={chartConfig}
-          className="h-full w-full min-h-[250px] min-w-0"
+          className="h-full w-full min-h-[280px] min-w-0"
         >
-          <EChartsBarChart.Bar dataKey="sent" />
-          <EChartsBarChart.Bar dataKey="closed" />
+          <EChartsBarChart.Bar dataKey="proposalsSent" />
+          <EChartsBarChart.Bar dataKey="clientsClosed" />
           <EChartsBarChart.XAxis dataKey="month" />
           <EChartsBarChart.YAxis />
           <EChartsBarChart.Tooltip />

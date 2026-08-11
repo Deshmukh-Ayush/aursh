@@ -4,7 +4,15 @@ import { eq, and, gte } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { headers } from "next/headers"
 import { format, subDays, isSameDay } from "date-fns"
-import { DashboardHeroChartUI } from "./hero-chart-client"
+import dynamic from "next/dynamic"
+import { Skeleton } from "@/components/ui/skeleton"
+
+const DynamicDashboardHeroChartUI = dynamic(
+  () => import("./hero-chart-client").then((mod) => mod.DashboardHeroChartUI),
+  {
+    loading: () => <Skeleton className="h-[340px] w-full rounded-2xl" />,
+  }
+)
 
 export async function DashboardHeroChart() {
   const reqHeaders = await headers()
@@ -52,7 +60,7 @@ export async function DashboardHeroChart() {
   const avgDaily = parseFloat((totalEvents / 7).toFixed(1))
 
   return (
-    <DashboardHeroChartUI
+    <DynamicDashboardHeroChartUI
       chartData={chartData}
       totalEvents={totalEvents}
       topDayLabel={maxDayLabel}

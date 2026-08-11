@@ -4,7 +4,16 @@ import { project, proposal, contract } from "@/db/schema"
 import { eq, inArray, gte, and } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { format, subMonths, startOfMonth, isSameMonth } from "date-fns"
-import { ClientsHeroChartUI, MonthlyClientConversionPoint } from "./clients-hero-chart-client"
+import dynamic from "next/dynamic"
+import { Skeleton } from "@/components/ui/skeleton"
+import type { MonthlyClientConversionPoint } from "./clients-hero-chart-client"
+
+const DynamicClientsHeroChartUI = dynamic(
+  () => import("./clients-hero-chart-client").then((mod) => mod.ClientsHeroChartUI),
+  {
+    loading: () => <Skeleton className="h-[380px] w-full rounded-2xl" />,
+  }
+)
 
 export async function ClientsHeroChart() {
   const reqHeaders = await headers()
@@ -17,7 +26,6 @@ export async function ClientsHeroChart() {
   const today = new Date()
   const sixMonthsAgo = startOfMonth(subMonths(today, 5))
 
-  // Fetch projects
   const orgProjects = await db
     .select({ id: project.id })
     .from(project)
@@ -26,22 +34,21 @@ export async function ClientsHeroChart() {
   const projectIds = orgProjects.map((p) => p.id)
 
   if (projectIds.length === 0) {
-    const emptyChart = Array.from({ length: 6 }, (_, i) => ({
+    const emptyChart: MonthlyClientConversionPoint[] = Array.from({ length: 6 }, (_, i) => ({
       month: format(subMonths(today, 5 - i), "MMM yyyy"),
-      sent: 0,
-      closed: 0,
+      proposalsSent: 0,
+      clientsClosed: 0,
     }))
     return (
-      <ClientsHeroChartUI
-        chartData={emptyChart}
-        totalSent={0}
-        totalClosed={0}
-        conversionRate={0}
+      <DynamicClientsHeroChartUI
+        conversionData={emptyChart}
+        totalProposalsSent={0}
+        totalClientsClosed={0}
+        avgConversionRate={0}
       />
     )
   }
 
-  // Execute concurrent queries (Vercel async-parallel rule)
   const [proposalsList, contractsList] = await Promise.all([
     db
       .select({
@@ -59,22 +66,21 @@ export async function ClientsHeroChart() {
       .where(and(inArray(contract.projectId, projectIds), gte(contract.createdAt, sixMonthsAgo))),
   ])
 
-  // Generate 6 monthly buckets
   const months = Array.from({ length: 6 }, (_, i) => subMonths(today, 5 - i))
 
-  let totalSent = 0
-  let totalClosed = 0
+  let totalProposalsSent = 0
+  let totalClientsClosed = 0
 
-  const chartData: MonthlyClientConversionPoint[] = months.map((m) => {
+  const conversionData: MonthlyClientConversionPoint[] = months.map((m) => {
     const monthLabel = format(m, "MMM yyyy")
-    let sent = 0
-    let closed = 0
+    let proposalsSent = 0
+    let clientsClosed = 0
 
     proposalsList.forEach((p) => {
       if (isSameMonth(new Date(p.createdAt), m)) {
-        sent++
+        proposalsSent++
         if (p.status === "accepted") {
-          closed++
+          clientsClosed++
         }
       }
     })
@@ -82,29 +88,29 @@ export async function ClientsHeroChart() {
     contractsList.forEach((c) => {
       if (isSameMonth(new Date(c.createdAt), m)) {
         if (c.status === "signed" || c.status === "fully_signed") {
-          closed++
+          clientsClosed++
         }
       }
     })
 
-    totalSent += sent
-    totalClosed += closed
+    totalProposalsSent += proposalsSent
+    totalClientsClosed += clientsClosed
 
     return {
       month: monthLabel,
-      sent,
-      closed,
+      proposalsSent,
+      clientsClosed,
     }
   })
 
-  const conversionRate = totalSent > 0 ? Math.round((totalClosed / totalSent) * 100) : 0
+  const avgConversionRate = totalProposalsSent > 0 ? Math.round((totalClientsClosed / totalProposalsSent) * 100) : 0
 
   return (
-    <ClientsHeroChartUI
-      chartData={chartData}
-      totalSent={totalSent}
-      totalClosed={totalClosed}
-      conversionRate={conversionRate}
+    <DynamicClientsHeroChartUI
+      conversionData={conversionData}
+      totalProposalsSent={totalProposalsSent}
+      totalClientsClosed={totalClientsClosed}
+      avgConversionRate={avgConversionRate}
     />
   )
 }

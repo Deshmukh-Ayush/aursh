@@ -18,17 +18,23 @@ export const metadata: Metadata = {
   description: "Scrunity is a B2B client workspace for agencies and freelancers to manage projects, contracts, deliverables, and client collaboration in one place.",
 }
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: 'swap',
 })
 
 const fontSerif = Instrument_Serif({
   weight: ["400"],
   subsets: ["latin"],
   variable: "--font-serif",
+  display: 'swap',
 })
 
 export default function RootLayout({

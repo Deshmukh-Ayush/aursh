@@ -4,7 +4,16 @@ import { project, proposal } from "@/db/schema"
 import { eq, inArray, gte, and } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { format, subMonths, startOfMonth, isSameMonth } from "date-fns"
-import { AnalyticsHeroChartUI, MonthlyVelocityPoint } from "./analytics-hero-chart-client"
+import dynamic from "next/dynamic"
+import { Skeleton } from "@/components/ui/skeleton"
+import type { MonthlyVelocityPoint } from "./analytics-hero-chart-client"
+
+const DynamicAnalyticsHeroChartUI = dynamic(
+  () => import("./analytics-hero-chart-client").then((mod) => mod.AnalyticsHeroChartUI),
+  {
+    loading: () => <Skeleton className="h-[380px] w-full rounded-2xl" />,
+  }
+)
 
 export async function AnalyticsHeroChart() {
   const reqHeaders = await headers()
@@ -17,7 +26,6 @@ export async function AnalyticsHeroChart() {
   const today = new Date()
   const sixMonthsAgo = startOfMonth(subMonths(today, 5))
 
-  // Fetch projects
   const orgProjects = await db
     .select({ id: project.id })
     .from(project)
@@ -26,23 +34,21 @@ export async function AnalyticsHeroChart() {
   const projectIds = orgProjects.map((p) => p.id)
 
   if (projectIds.length === 0) {
-    const emptyChart = Array.from({ length: 6 }, (_, i) => ({
+    const emptyChart: MonthlyVelocityPoint[] = Array.from({ length: 6 }, (_, i) => ({
       month: format(subMonths(today, 5 - i), "MMM yyyy"),
       revenue: 0,
       pipeline: 0,
     }))
     return (
-      <AnalyticsHeroChartUI
-        chartData={emptyChart}
-        totalWon={0}
+      <DynamicAnalyticsHeroChartUI
+        velocityData={emptyChart}
         peakMonthLabel="--"
-        peakMonthValue={0}
-        monthlyAvg={0}
+        peakMonthRevenue={0}
+        monthlyAvgRevenue={0}
       />
     )
   }
 
-  // Fetch proposals over last 6 months
   const proposalsList = await db
     .select({
       price: proposal.price,
@@ -52,14 +58,13 @@ export async function AnalyticsHeroChart() {
     .from(proposal)
     .where(and(inArray(proposal.projectId, projectIds), gte(proposal.createdAt, sixMonthsAgo)))
 
-  // Generate 6 monthly buckets
   const months = Array.from({ length: 6 }, (_, i) => subMonths(today, 5 - i))
 
   let totalWon = 0
   let maxRevenue = 0
   let peakMonthLabel = format(today, "MMM yyyy")
 
-  const chartData: MonthlyVelocityPoint[] = months.map((m) => {
+  const velocityData: MonthlyVelocityPoint[] = months.map((m) => {
     const monthLabel = format(m, "MMM yyyy")
     let revenue = 0
     let pipeline = 0
@@ -87,15 +92,14 @@ export async function AnalyticsHeroChart() {
     }
   })
 
-  const monthlyAvg = Math.round(totalWon / 6)
+  const monthlyAvgRevenue = Math.round(totalWon / 6)
 
   return (
-    <AnalyticsHeroChartUI
-      chartData={chartData}
-      totalWon={totalWon}
+    <DynamicAnalyticsHeroChartUI
+      velocityData={velocityData}
       peakMonthLabel={peakMonthLabel}
-      peakMonthValue={maxRevenue}
-      monthlyAvg={monthlyAvg}
+      peakMonthRevenue={maxRevenue}
+      monthlyAvgRevenue={monthlyAvgRevenue}
     />
   )
 }

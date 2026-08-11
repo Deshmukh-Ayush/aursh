@@ -1,6 +1,17 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: [
+      "@phosphor-icons/react",
+      "lucide-react",
+      "date-fns",
+      "drizzle-orm",
+      "@lexical/react",
+      "recharts",
+      "framer-motion",
+    ],
+  },
   images: {
     remotePatterns: [
       {

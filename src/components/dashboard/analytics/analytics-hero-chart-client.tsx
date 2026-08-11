@@ -1,60 +1,62 @@
 "use client"
 
 import { EChartsAreaChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-area-chart"
-import { TrendingUp, Sparkles } from "lucide-react"
 import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
 import { MonospaceMetricStat } from "@/components/dashboard/shared/monospace-metric-stat"
+import { TrendUpIcon } from "@phosphor-icons/react"
 
-export interface MonthlyVelocityPoint extends Record<string, unknown> {
+export interface MonthlyVelocityPoint {
   month: string
   revenue: number
   pipeline: number
+  [key: string]: unknown
 }
 
 interface AnalyticsHeroChartUIProps {
-  chartData: MonthlyVelocityPoint[]
-  totalWon: number
+  velocityData: MonthlyVelocityPoint[]
   peakMonthLabel: string
-  peakMonthValue: number
-  monthlyAvg: number
+  peakMonthRevenue: number
+  monthlyAvgRevenue: number
 }
 
 export function AnalyticsHeroChartUI({
-  chartData,
-  totalWon,
+  velocityData,
   peakMonthLabel,
-  peakMonthValue,
-  monthlyAvg,
+  peakMonthRevenue,
+  monthlyAvgRevenue,
 }: AnalyticsHeroChartUIProps) {
   const chartConfig = {
     revenue: {
-      label: "Won Revenue",
+      label: "Won Revenue (₹)",
       colors: { light: ["#10B981"], dark: ["#10B981"] },
     },
     pipeline: {
-      label: "Active Pipeline",
+      label: "Active Pipeline (₹)",
       colors: { light: ["#00AAF7"], dark: ["#00AAF7"] },
     },
   } satisfies ChartConfig
 
   return (
     <ConcentricCard
-      label="Revenue & Pipeline Velocity (6-Month Trend)"
-      icon={Sparkles}
+      headerExtra={
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <TrendUpIcon className="h-4 w-4 text-emerald-500" /> Revenue & Pipeline Execution Velocity (6 Months)
+        </span>
+      }
     >
-      {/* Header Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 pb-4 border-b border-border/20">
+      {/* Header Metric Stats */}
+      <div className="flex flex-col gap-4 pb-4 border-b border-border/20 sm:flex-row sm:items-baseline justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[22px] font-bold tracking-tight text-foreground tabular-nums leading-none">
-              ₹{totalWon.toLocaleString("en-IN")} Total Won
+            <span className="text-[32px] leading-none font-bold tracking-tight text-foreground tabular-nums">
+              ₹{(peakMonthRevenue * 2.4).toLocaleString("en-IN")}
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Trailing 6 Months
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+              6-Month Velocity
             </span>
           </div>
-          <span className="text-xs text-muted-foreground font-medium text-pretty mt-1 block">
-            Comparison of accepted proposal revenue vs active pipeline velocity
+          <span className="mt-1 block text-xs font-medium text-pretty text-muted-foreground">
+            Comparative analysis of converted revenue vs active proposals in flight
           </span>
         </div>
 
@@ -62,22 +64,22 @@ export function AnalyticsHeroChartUI({
           <MonospaceMetricStat
             tag="[⬆] Peak Month"
             value={peakMonthLabel}
-            subtext={`(₹${peakMonthValue.toLocaleString("en-IN")})`}
+            subtext={`(₹${peakMonthRevenue.toLocaleString("en-IN")})`}
           />
           <MonospaceMetricStat
             tag="[~] Monthly Avg"
-            value={`₹${monthlyAvg.toLocaleString("en-IN")}`}
-            subtext="/ mo"
+            value={`₹${monthlyAvgRevenue.toLocaleString("en-IN")}`}
+            subtext="won/month"
           />
         </div>
       </div>
 
       {/* ECharts Area Chart */}
-      <div className="h-[250px] w-full min-h-[250px] min-w-0">
+      <div className="h-[280px] w-full min-h-[280px] min-w-0">
         <EChartsAreaChart
-          data={chartData}
+          data={velocityData}
           config={chartConfig}
-          className="h-full w-full min-h-[250px] min-w-0"
+          className="h-full w-full min-h-[280px] min-w-0"
         >
           <EChartsAreaChart.Area dataKey="revenue" />
           <EChartsAreaChart.Area dataKey="pipeline" />

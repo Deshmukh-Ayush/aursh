@@ -3,6 +3,7 @@ import { db } from "@/utils/db";
 import { member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
+import { cache } from "react";
 
 type SessionType = Awaited<ReturnType<typeof auth.api.getSession>>;
 type UserType = NonNullable<SessionType>["user"];
@@ -18,9 +19,9 @@ export interface TenantContextResult {
 
 /**
  * Deep module that resolves session, active organization, and member role in one unified call.
- * Eliminates duplicate session/org fallback boilerplate across API routes and Server Components.
+ * Wrapped in React.cache() for per-request deduplication across layouts and server components.
  */
-export async function getTenantContext(
+export const getTenantContext = cache(async function getTenantContext(
   reqHeaders?: Headers
 ): Promise<TenantContextResult> {
   const reqH = reqHeaders || (await headers());
@@ -62,4 +63,4 @@ export async function getTenantContext(
     organizationId,
     memberRole: orgMember?.role,
   };
-}
+});
