@@ -19,6 +19,7 @@ import {
   ChartLineUp, 
   Users, 
   UserList,
+  Sparkle,
   Gear 
 } from "@phosphor-icons/react"
 
@@ -41,6 +42,7 @@ const dashboardNavItems = [
   { name: "Analytics", href: "/dashboard/analytics", icon: ChartLineUp },
   { name: "Clients", href: "/dashboard/clients", icon: Users },
   { name: "Team", href: "/dashboard/team", icon: UserList },
+  { name: "Scrunity AI", href: "/dashboard/ai", icon: Sparkle },
   { name: "Settings", href: "/dashboard/settings", icon: Gear },
 ]
 
