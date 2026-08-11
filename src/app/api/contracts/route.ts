@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server"; // Next 15+. If you're on 14.x, this is `unstable_after` from "next/server" instead.
 import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
@@ -58,15 +59,20 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
     const { projectId, documentType } = uploadInput.data;
-    const { role, isAuthorized } = await getProjectAccess(projectId, userId);
+
+    // Authorization check and member lookup both only depend on projectId —
+    // no reason to make one wait on the other.
+    const [{ role, isAuthorized }, members] = await Promise.all([
+      getProjectAccess(projectId, userId),
+      db
+        .select({ userId: projectMember.userId })
+        .from(projectMember)
+        .where(eq(projectMember.projectId, projectId)),
+    ]);
+
     if (!isAuthorized || !canManageProject(role)) {
       return NextResponse.json({ error: "Only the project owner or agency can upload contracts" }, { status: 403 });
     }
-
-    const members = await db
-      .select({ userId: projectMember.userId })
-      .from(projectMember)
-      .where(eq(projectMember.projectId, projectId));
 
     const signerIds = new Set(members.map((member) => member.userId));
     signerIds.add(userId);
@@ -74,13 +80,17 @@ export async function POST(req: NextRequest) {
     const newContractId = crypto.randomUUID();
     const storageFileName = toStorageFileName(file.name);
 
-    const blob = await put(`contracts/${projectId}/${newContractId}/${storageFileName}`, file, {
-      access: 'private',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
-
-    const fileBuffer = await file.arrayBuffer();
+    // The blob upload (network I/O) and reading the file into a buffer for
+    // hashing (CPU-bound, cheap) are independent — File supports multiple
+    // independent reads, so overlap them instead of running sequentially.
+    const [blob, fileBuffer] = await Promise.all([
+      put(`contracts/${projectId}/${newContractId}/${storageFileName}`, file, {
+        access: 'private',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+      }),
+      file.arrayBuffer(),
+    ]);
     const docHash = hashDocument(fileBuffer);
 
     const signatureInserts: Array<typeof signature.$inferInsert> = Array.from(signerIds, (signerId) => ({
@@ -109,16 +119,20 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    await logActivity({
-      projectId,
-      userId,
-      type: "contract_uploaded",
-      metadata: { fileName: file.name, documentType, uploadedByRole: "agency" }
+    // Activity logging + cache revalidation don't need to block the response —
+    // the client already has everything it needs once the DB write succeeds.
+    after(async () => {
+      await logActivity({
+        projectId,
+        userId,
+        type: "contract_uploaded",
+        metadata: { fileName: file.name, documentType, uploadedByRole: "agency" },
+      });
+      revalidatePath("/dashboard");
+      revalidatePath(`/projects/${projectId}`);
+      revalidatePath(`/projects/${projectId}/contract`);
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath(`/projects/${projectId}`);
-    revalidatePath(`/projects/${projectId}/contract`);
     return NextResponse.json({
       success: true,
       contractId: newContractId,
@@ -164,9 +178,12 @@ export async function PATCH(req: NextRequest) {
 
     await db.update(contract).set({ status: "pending_signature" }).where(eq(contract.id, contractId));
 
-    revalidatePath("/dashboard");
-    revalidatePath(`/projects/${existing.projectId}`);
-    revalidatePath(`/projects/${existing.projectId}/contract`);
+    after(() => {
+      revalidatePath("/dashboard");
+      revalidatePath(`/projects/${existing.projectId}`);
+      revalidatePath(`/projects/${existing.projectId}/contract`);
+    });
+
     return NextResponse.json({ success: true });
 
   } catch (error) {
@@ -202,13 +219,17 @@ export async function DELETE(req: NextRequest) {
     }
 
     await db.delete(contract).where(eq(contract.id, contractId));
-    await del(existing.fileUrl).catch((error: unknown) => {
-      console.error("Failed to remove contract blob:", error);
+
+    // Blob cleanup and cache revalidation don't need to block the response.
+    after(async () => {
+      await del(existing.fileUrl).catch((error: unknown) => {
+        console.error("Failed to remove contract blob:", error);
+      });
+      revalidatePath("/dashboard");
+      revalidatePath(`/projects/${existing.projectId}`);
+      revalidatePath(`/projects/${existing.projectId}/contract`);
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath(`/projects/${existing.projectId}`);
-    revalidatePath(`/projects/${existing.projectId}/contract`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete contract error:", error);
