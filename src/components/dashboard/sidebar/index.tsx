@@ -11,7 +11,6 @@ import {
   SidebarContext,
   NavItem,
   NavItemLabel,
-  NavItemBadge,
 } from "@/components/sidebar/nav-items"
 import { 
   CaretUpDownIcon, 
@@ -19,6 +18,7 @@ import {
   Folder, 
   ChartLineUp, 
   Users, 
+  UserList,
   Gear 
 } from "@phosphor-icons/react"
 
@@ -40,6 +40,7 @@ const dashboardNavItems = [
   { name: "Projects", href: "/dashboard/projects", icon: Folder },
   { name: "Analytics", href: "/dashboard/analytics", icon: ChartLineUp },
   { name: "Clients", href: "/dashboard/clients", icon: Users },
+  { name: "Team", href: "/dashboard/team", icon: UserList },
   { name: "Settings", href: "/dashboard/settings", icon: Gear },
 ]
 
@@ -53,7 +54,7 @@ export function DashboardSidebar({
   const orgName = org?.name || "Workspace"
 
   return (
-      <SidebarContext.Provider value={{ isCollapsed }}>
+    <SidebarContext.Provider value={{ isCollapsed }}>
       <aside
         aria-label="Dashboard Sidebar"
         className={cn(
