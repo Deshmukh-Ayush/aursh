@@ -42,7 +42,6 @@ export function DashboardTopbar({
 
   return (
     <>
-      {/* Mobile Drawer Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm animate-in fade-in duration-300 md:hidden"
@@ -51,7 +50,6 @@ export function DashboardTopbar({
         />
       )}
 
-      {/* Mobile Drawer */}
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-65 flex-col bg-background shadow-2xl transition-transform duration-300 ease-out md:hidden",
@@ -66,9 +64,7 @@ export function DashboardTopbar({
         </div>
       </div>
 
-      {/* Top Bar Header */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-border/40 bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/60 md:px-4">
-        {/* Left Side: Collapse Toggle & Mobile Hamburger */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setOpen(true)}
@@ -78,13 +74,11 @@ export function DashboardTopbar({
           >
             <Menu className="h-5 w-5" />
           </button>
-
           <div className="hidden md:flex">
             <CollapseToggle />
           </div>
         </div>
 
-        {/* Center: Branding for Mobile */}
         <div className="ml-1 flex min-w-0 flex-1 items-center md:hidden">
           {canWhitelabel && org?.logoUrl ? (
             <Image
@@ -112,7 +106,6 @@ export function DashboardTopbar({
 
         <div className="hidden flex-1 md:flex" />
 
-        {/* Dual-Role Persona Switcher Link */}
         {hasClientProjects && firstClientProjectId && (
           <Link
             href={`/projects/${firstClientProjectId}`}

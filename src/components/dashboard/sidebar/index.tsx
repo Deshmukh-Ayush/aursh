@@ -1,5 +1,7 @@
+// components/dashboard/sidebar.tsx
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -72,7 +74,6 @@ export function DashboardSidebar({
         style={!isMobile ? { transitionTimingFunction: EASE_OUT } : undefined}
       >
         <div className="flex h-full w-full flex-col overflow-hidden">
-          {/* Header */}
           <Link
             href="/dashboard"
             title="Go to Dashboard"
@@ -89,12 +90,10 @@ export function DashboardSidebar({
             {!isCollapsed && <CaretUpDownIcon size={18} className="shrink-0 text-muted-foreground" />}
           </Link>
 
-          {/* Navigation Sections */}
           <nav
             aria-label="Main Navigation"
             className="custom-scrollbar flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-3 py-6"
           >
-            {/* Workspace Group */}
             <div>
               <ul role="list" className="space-y-0.5">
                 {dashboardNavItems.map((item) => {
@@ -105,10 +104,7 @@ export function DashboardSidebar({
                     <li key={item.name}>
                       <NavItem asChild isActive={isActive} title={item.name} className="active:scale-[0.96] transition-transform origin-center">
                         <Link href={item.href}>
-                          <Icon
-                            aria-hidden="true"
-                            className="h-5 w-5 shrink-0"
-                          />
+                          <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
                           <NavItemLabel>{item.name}</NavItemLabel>
                         </Link>
                       </NavItem>
@@ -118,13 +114,11 @@ export function DashboardSidebar({
               </ul>
             </div>
 
-            {/* Logout Action */}
             <div className="mt-auto pt-4">
               <ProfileMenu />
             </div>
           </nav>
 
-          {/* Footer Branding */}
           {!canWhitelabel && (
             <div
               className={cn(
