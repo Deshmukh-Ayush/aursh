@@ -24,22 +24,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const organizations = await auth.api.listOrganizations({
-      headers: request.headers,
-    });
-    const hasOrganization = Array.isArray(organizations) && organizations.length > 0;
-
     if (isSignIn) {
-      return NextResponse.redirect(
-        new URL(hasOrganization ? "/dashboard" : "/onboarding", request.url),
-      );
-    }
-
-    if (pathname.startsWith("/dashboard") && !hasOrganization) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
-
-    if (pathname.startsWith("/onboarding") && hasOrganization) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 

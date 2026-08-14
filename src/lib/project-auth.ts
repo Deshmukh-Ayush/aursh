@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "@/utils/db";
 import { project, projectMember, member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -8,26 +9,19 @@ export interface ProjectAccessResult {
   isAuthorized: boolean;
 }
 
-/**
- * Root Authorization Resolver for Projects.
- * Solves cookie vs session activeOrganizationId mismatches by querying database
- * membership directly (explicit projectMember OR org member table).
- */
-export async function getProjectAccess(
+export const getProjectAccess = cache(async (
   projectId: string,
   userId: string
-): Promise<ProjectAccessResult> {
+): Promise<ProjectAccessResult> => {
   if (!projectId || !userId) {
     return { proj: null, role: null, isAuthorized: false };
   }
 
-  // 1. Fetch project by ID
   const [proj] = await db.select().from(project).where(eq(project.id, projectId));
   if (!proj) {
     return { proj: null, role: null, isAuthorized: false };
   }
 
-  // 2. Check explicit projectMember table assignment
   const [pm] = await db
     .select()
     .from(projectMember)
@@ -41,7 +35,6 @@ export async function getProjectAccess(
     };
   }
 
-  // 3. Check organization database membership (solves missing activeOrganizationId cookie session)
   if (proj.organizationId) {
     const [orgMem] = await db
       .select()
@@ -58,7 +51,7 @@ export async function getProjectAccess(
   }
 
   return { proj, role: null, isAuthorized: false };
-}
+});
 
 export function canManageProject(role: ProjectAccessResult["role"]): boolean {
   return role === "owner" || role === "agency";
