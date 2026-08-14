@@ -1,22 +1,13 @@
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
 import { db } from "@/utils/db"
 import { eq, and } from "drizzle-orm"
 import { organization, member, user } from "@/db/schema"
-import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedTenant } from "@/utils/cached-tenant"
 import { SettingsClientContainer } from "@/components/dashboard/settings/settings-client-container"
 
 export default async function SettingsPage() {
-  const reqHeaders = await headers()
-  const ctx = await getTenantContext(reqHeaders)
+  const { user: currentUser, organizationId } = await getCachedTenant()
 
-  if (ctx.error || !ctx.user) {
-    redirect("/sign-in")
-  }
-
-  const activeOrgId = ctx.organizationId
-
-  if (!activeOrgId) {
+  if (!organizationId) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center max-w-2xl mx-auto mt-12 border rounded-xl bg-muted/20">
         <h2 className="text-xl font-semibold text-foreground">No Active Organization</h2>
@@ -27,13 +18,14 @@ export default async function SettingsPage() {
     )
   }
 
-  // Execute database queries concurrently (Vercel async-parallel rule)
-  const [[org], [orgMember], orgMembers] = await Promise.all([
-    db.select().from(organization).where(eq(organization.id, activeOrgId)),
-    db
-      .select()
-      .from(member)
-      .where(and(eq(member.organizationId, activeOrgId), eq(member.userId, ctx.user.id))),
+  // Execute database queries concurrently using findFirst for single records
+  const [org, orgMember, orgMembers] = await Promise.all([
+    db.query.organization.findFirst({
+      where: eq(organization.id, organizationId)
+    }),
+    db.query.member.findFirst({
+      where: and(eq(member.organizationId, organizationId), eq(member.userId, currentUser.id))
+    }),
     db
       .select({
         id: member.id,
@@ -47,7 +39,7 @@ export default async function SettingsPage() {
       })
       .from(member)
       .innerJoin(user, eq(member.userId, user.id))
-      .where(eq(member.organizationId, activeOrgId)),
+      .where(eq(member.organizationId, organizationId)),
   ])
 
   if (!org) {
@@ -67,7 +59,6 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings & Hub</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -77,10 +68,10 @@ export default async function SettingsPage() {
 
       <SettingsClientContainer
         user={{
-          id: ctx.user.id,
-          name: ctx.user.name,
-          email: ctx.user.email,
-          image: ctx.user.image ?? null,
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          image: currentUser.image ?? null,
         }}
         org={{
           id: org.id,
