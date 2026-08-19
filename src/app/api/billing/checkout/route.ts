@@ -48,7 +48,7 @@ export async function POST(req: Request) {
           quantity: 1,
         }
       ],
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/billing?success=true`,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/billing?success=true`,
       // Attach org ID to metadata so the webhook knows who paid
       metadata: {
         organizationId: organizationId,
