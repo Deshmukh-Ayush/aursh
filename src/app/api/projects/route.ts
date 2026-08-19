@@ -43,15 +43,17 @@ export async function POST(req: NextRequest) {
     const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
     if (!org) return NextResponse.json({ error: "Organization not found." }, { status: 404 });
 
-    // Feature Gate: Free tier limit (1 active project)
-    if (org.plan === "free") {
+    const { getPlanLimits } = await import("@/config/billing");
+    const limits = getPlanLimits(org.plan as any);
+
+    if (limits.maxProjects !== "unlimited") {
       const activeProjects = await db
         .select({ id: project.id })
         .from(project)
-        .where(and(eq(project.organizationId, orgId), eq(project.status, "active")));
+        .where(eq(project.organizationId, orgId));
       
-      if (activeProjects.length >= 1) {
-        return NextResponse.json({ error: "Free plan is limited to 1 active project. Please upgrade to Freelancer or Agency to create more." }, { status: 403 });
+      if (activeProjects.length >= limits.maxProjects) {
+        return NextResponse.json({ error: `Your ${limits.name} plan is limited to ${limits.maxProjects} project(s). Please upgrade to create more.` }, { status: 403 });
       }
     }
 
