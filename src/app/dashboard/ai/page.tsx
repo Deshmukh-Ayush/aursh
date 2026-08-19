@@ -1,20 +1,22 @@
+import { Suspense } from "react"
 import { db } from "@/utils/db"
 import { organization, project, proposal, deliverable } from "@/db/schema"
 import { eq, inArray } from "drizzle-orm"
 import { getCachedTenant } from "@/utils/cached-tenant"
 import { ScrunityAIView } from "@/components/dashboard/ai/scrunity-ai-view"
+import { Brain } from "lucide-react"
 
-export default async function DashboardAIPage() {
+// 1. The Async Data Fetcher (Server Component)
+// This runs the DB queries but doesn't block the main page navigation
+async function AIDataFetcher() {
   const { organizationId } = await getCachedTenant()
-
   if (!organizationId) return null
 
   const [org, orgProjects] = await Promise.all([
     db.query.organization.findFirst({
       where: eq(organization.id, organizationId)
     }),
-    db
-      .select({ id: project.id, name: project.name, status: project.status })
+    db.select({ id: project.id, name: project.name, status: project.status })
       .from(project)
       .where(eq(project.organizationId, organizationId)),
   ])
@@ -29,11 +31,9 @@ export default async function DashboardAIPage() {
     : [[], []]
 
   const orgName = org?.name || "Workspace"
-  const plan = org?.plan || "free"
-
   const workspaceSummary = {
     orgName,
-    plan,
+    plan: org?.plan || "free",
     activeProjectsCount: orgProjects.filter((p) => p.status === "active").length,
     totalProjectsCount: orgProjects.length,
     inReviewDeliverablesCount: deliverablesList.filter((d) => d.status === "in_review" || d.status === "pending").length,
@@ -47,5 +47,32 @@ export default async function DashboardAIPage() {
       projects={workspaceSummary.projects}
       workspaceSummary={workspaceSummary}
     />
+  )
+}
+
+// 2. The Skeleton (Shows instantly inside the shell)
+function AISkeleton() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center text-center p-6 space-y-3 h-full w-full">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand animate-pulse">
+        <Brain className="h-5 w-5" />
+      </div>
+      <div className="space-y-3 flex flex-col items-center mt-2">
+        <div className="h-5 w-64 bg-muted rounded-md animate-pulse"></div>
+        <div className="h-3 w-80 bg-muted rounded-md animate-pulse"></div>
+      </div>
+    </div>
+  )
+}
+
+// 3. The Main Page (Sync, instant navigation)
+export default function DashboardAIPage() {
+  return (
+    // We moved the non-client layout shell here!
+    <div className="flex flex-col h-[calc(100vh-140px)] w-full max-w-4xl mx-auto space-y-4">
+      <Suspense fallback={<AISkeleton />}>
+        <AIDataFetcher />
+      </Suspense>
+    </div>
   )
 }

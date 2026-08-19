@@ -39,7 +39,6 @@ const QUICK_SUGGESTIONS = [
 ]
 
 export function ScrunityAIView({ orgName, projects, workspaceSummary }: ScrunityAIViewProps) {
-  // Start with empty messages array - no ugly initial chat bubble
   const [messages, setMessages] = React.useState<MessageItem[]>([])
   const [loading, setLoading] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
@@ -61,21 +60,6 @@ export function ScrunityAIView({ orgName, projects, workspaceSummary }: Scrunity
     }
   }, [messages, loading])
 
-  // System Prompt constructing workspace context
-  const getSystemPrompt = (userQuery: string) => {
-    return `
-SYSTEM CONTEXT: You are Scrunity AI, an intelligent executive assistant for the agency "${orgName}".
-WORKSPACE DATA:
-- Active Projects (${workspaceSummary?.activeProjectsCount || projects.length}): ${projects.map((p) => p.name).join(", ")}
-- Deliverables Pending Review: ${workspaceSummary?.inReviewDeliverablesCount || 0}
-- Accepted Proposals Total: ₹${(workspaceSummary?.totalProposalValue || 0).toLocaleString("en-IN")}
-- Plan Tier: ${workspaceSummary?.plan || "free"}
-
-USER QUERY: "${userQuery}"
-INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown formatting. Keep answers concise, factual, and actionable.
-`
-  }
-
   const handleSend = async (promptText: string) => {
     if (!promptText.trim() || loading) return
 
@@ -89,7 +73,6 @@ INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown for
     setMessages((prev) => [...prev, userMessage])
     setLoading(true)
 
-    // Execute Chain of Thought reasoning
     const sampleSteps: ReasoningStep[] = [
       {
         id: "step-1",
@@ -117,7 +100,7 @@ INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown for
       if (promptText.includes("/summarize")) {
         aiResponseContent = `Executive Summary for **${orgName}**:\n\n- Active Projects: ${projects.length} workspace projects operating on schedule.\n- Deliverable Health: All milestones are progressing on schedule.\n- Immediate Action: ${workspaceSummary?.inReviewDeliverablesCount || 2} deliverables currently in review awaiting client sign-off.`
       } else if (promptText.includes("/analyze-revenue")) {
-        aiResponseContent = `Revenue & Pipeline Velocity Analysis:\n\n- Won Revenue: ₹${(workspaceSummary?.totalProposalValue || 850000).toLocaleString("en-IN")} accepted SOW value.\n- Active Pipeline: ₹3,40,000 pending client approval.\n- Recommendation: Follow up on pending proposals for peak conversion rate.`
+        aiResponseContent = `Revenue & Pipeline Velocity Analysis:\n\n- Won Revenue: ₹${(workspaceSummary?.totalProposalValue || 850000).toLocaleString("en-IN")}\n- Active Pipeline: ₹3,40,000 pending client approval.\n- Recommendation: Follow up on pending proposals for peak conversion rate.`
       } else if (promptText.includes("/review-deliverables")) {
         aiResponseContent = `Deliverable Review Audit:\n\n- In Review: ${workspaceSummary?.inReviewDeliverablesCount || 3} deliverables awaiting client inspection.\n- Revisions: 0 blocked revision requests.\n- Status: All milestone deadlines are on schedule.`
       } else {
@@ -149,10 +132,7 @@ INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown for
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] w-full max-w-4xl mx-auto space-y-4">
-      
-
-      {/* Message Thread or Clean Initial State */}
+    <div className="flex flex-col flex-1 h-full w-full space-y-4">
       {messages.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center text-center p-6 space-y-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -187,7 +167,6 @@ INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown for
                     : "bg-muted/40 border border-border/40 text-foreground"
                 }`}
               >
-                {/* Chain of Thought Reasoning */}
                 {msg.reasoningSteps && msg.reasoningSteps.length > 0 && (
                   <ScrunityAIChainOfThought steps={msg.reasoningSteps} />
                 )}
@@ -232,7 +211,6 @@ INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown for
         </div>
       )}
 
-      {/* Suggestion Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
         {QUICK_SUGGESTIONS.map((sug, i) => (
           <Suggestion
@@ -246,7 +224,6 @@ INSTRUCTIONS: Provide a direct, executive-level summary using clean markdown for
         ))}
       </div>
 
-      {/* Redesigned Lexical Prompt Input */}
       <LexicalAIInput onSend={handleSend} disabled={loading} projects={projects} />
     </div>
   )
