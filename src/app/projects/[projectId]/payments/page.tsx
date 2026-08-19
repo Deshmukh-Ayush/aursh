@@ -1,39 +1,28 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/utils/db";
+import { paymentMilestone, payment, deliverable } from "@/db/schema";
+import { eq, asc, desc } from "drizzle-orm";
+import { PaymentsViewClient, MilestoneWithDetails } from "@/components/projects/payments";
+import { getProjectAccess } from "@/lib/project-auth";
+import { getCachedSession } from "@/utils/cached-session";
 
 export const metadata: Metadata = {
   title: "Payments & Milestones",
   description: "Track project financials, payment milestones, and client checkout statuses.",
 };
 
-import { db } from "@/utils/db";
-import { paymentMilestone, payment, projectMember, project, deliverable } from "@/db/schema";
-import { eq, and, asc, desc } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { PaymentsViewClient, MilestoneWithDetails } from "@/components/projects/payments";
-import { getProjectAccess } from "@/lib/project-auth";
+async function PaymentsData({ projectId }: { projectId: string }) {
+  const session = await getCachedSession();
+  const { role } = await getProjectAccess(projectId, session.user.id);
 
-export default async function PaymentsPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return redirect("/sign-in");
-
-  const resolvedParams = await params;
-  const projectId = resolvedParams.projectId;
-  const userId = session.user.id;
-
-  const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
-  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
-
-  // `async-parallel`: fetch milestones, payments, and deliverables concurrently
   const [milestonesData, paymentsData, deliverablesData] = await Promise.all([
     db.select().from(paymentMilestone).where(eq(paymentMilestone.projectId, projectId)).orderBy(asc(paymentMilestone.sortOrder), asc(paymentMilestone.createdAt)),
     db.select().from(payment).where(eq(payment.projectId, projectId)).orderBy(desc(payment.createdAt)),
     db.select().from(deliverable).where(eq(deliverable.projectId, projectId)).orderBy(asc(deliverable.createdAt)),
   ]);
 
-  // Join deliverable titles to milestones
   const deliverablesMap = new Map(deliverablesData.map((d) => [d.id, d.title]));
 
   const serializedMilestones: MilestoneWithDetails[] = milestonesData.map((m) => ({
@@ -68,13 +57,23 @@ export default async function PaymentsPage({ params }: { params: Promise<{ proje
   }));
 
   return (
-     <PaymentsViewClient
+    <PaymentsViewClient
       projectId={projectId}
       milestones={serializedMilestones}
       payments={serializedPayments}
-      currentUserId={userId}
-      userRole={role}
+      currentUserId={session.user.id}
+      userRole={role!}
       deliverablesList={deliverablesList}
     />
+  );
+}
+
+export default async function PaymentsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
+  return (
+    <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
+      <PaymentsData projectId={projectId} />
+    </Suspense>
   );
 }
