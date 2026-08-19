@@ -1,15 +1,50 @@
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/utils/db";
-import { projectMember, project, user, projectInvitation } from "@/db/schema";
+import { projectMember, user, projectInvitation } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DeleteProjectButton } from "@/components/projects/settings/delete-project-button";
 import { GeneralSettings } from "@/components/projects/settings/general-settings";
 import { MembersManager } from "@/components/projects/settings/members-manager";
 import { SettingsTabs } from "@/components/projects/settings/settings-tabs";
-import { redirect } from "next/navigation";
 import { getProjectAccess } from "@/lib/project-auth";
+import { getCachedSession } from "@/utils/cached-session";
+
+async function MembersData({ projectId, userId, role }: { projectId: string, userId: string, role: string }) {
+  const [membersData, invitesData] = await Promise.all([
+    db
+      .select({
+        id: projectMember.id,
+        userId: projectMember.userId,
+        role: projectMember.role,
+        createdAt: projectMember.createdAt,
+        user: {
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        }
+      })
+      .from(projectMember)
+      .leftJoin(user, eq(projectMember.userId, user.id))
+      .where(eq(projectMember.projectId, projectId))
+      .orderBy(desc(projectMember.role)),
+    db
+      .select()
+      .from(projectInvitation)
+      .where(and(eq(projectInvitation.projectId, projectId), eq(projectInvitation.status, "pending")))
+  ]);
+
+  return (
+    <MembersManager 
+      projectId={projectId}
+      members={membersData}
+      invites={invitesData}
+      role={role as any}
+      currentUserId={userId}
+    />
+  );
+}
 
 export default async function SettingsPage({
   params,
@@ -17,36 +52,8 @@ export default async function SettingsPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return redirect("/sign-in");
-
-  const { proj, role, isAuthorized } = await getProjectAccess(projectId, session.user.id);
-  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
-
-  // Fetch all members for this project
-  const membersData = await db
-    .select({
-      id: projectMember.id,
-      userId: projectMember.userId,
-      role: projectMember.role,
-      createdAt: projectMember.createdAt,
-      user: {
-        name: user.name,
-        email: user.email,
-        image: user.image,
-      }
-    })
-    .from(projectMember)
-    .leftJoin(user, eq(projectMember.userId, user.id))
-    .where(eq(projectMember.projectId, projectId))
-    .orderBy(desc(projectMember.role)); // naive order, owner usually first
-
-  // Fetch pending invites
-  const invitesData = await db
-    .select()
-    .from(projectInvitation)
-    .where(and(eq(projectInvitation.projectId, projectId), eq(projectInvitation.status, "pending")));
+  const session = await getCachedSession();
+  const { proj, role } = await getProjectAccess(projectId, session.user.id);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 px-4 md:px-8">
@@ -66,10 +73,10 @@ export default async function SettingsPage({
           </div>
           <GeneralSettings 
             projectId={projectId} 
-            initialName={proj.name} 
-            initialDescription={proj.description || ""}
-            initialStatus={proj.status} 
-            role={role} 
+            initialName={proj!.name} 
+            initialDescription={proj!.description || ""}
+            initialStatus={proj!.status} 
+            role={role!} 
           />
         </div>
 
@@ -79,13 +86,9 @@ export default async function SettingsPage({
             <h2 className="text-[16px] font-semibold text-foreground tracking-tight">Access & Members</h2>
             <p className="text-[13px] text-muted-foreground mt-1">Manage who has access to this project.</p>
           </div>
-          <MembersManager 
-            projectId={projectId}
-            members={membersData}
-            invites={invitesData}
-            role={role}
-            currentUserId={session.user.id}
-          />
+          <Suspense fallback={<Skeleton className="h-[200px] w-full rounded-xl" />}>
+            <MembersData projectId={projectId} userId={session.user.id} role={role!} />
+          </Suspense>
         </div>
 
         {/* Advanced Tab */}
@@ -106,7 +109,7 @@ export default async function SettingsPage({
                     <br/><strong className="font-semibold text-destructive/90">This action cannot be undone.</strong>
                   </p>
                 </div>
-                <DeleteProjectButton projectId={projectId} role={role} />
+                <DeleteProjectButton projectId={projectId} role={role!} />
               </div>
             </CardContent>
           </Card>
