@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/utils/db";
+import { contract, signature, user } from "@/db/schema";
+import { eq, desc, inArray } from "drizzle-orm";
+import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
+import { getProjectAccess } from "@/lib/project-auth";
+import { getCachedSession } from "@/utils/cached-session";
+import crypto from "crypto";
 
 export const metadata: Metadata = {
   title: "Contracts & Agreements",
   description: "Review, upload, and e-sign statements of work, NDAs, and project agreements.",
 };
-
-import { db } from "@/utils/db";
-import { contract, signature, user } from "@/db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { ContractVaultClient, ContractWithSignatures } from "@/components/projects/contracts/contract-vault-client";
-import { getProjectAccess } from "@/lib/project-auth";
-import crypto from "crypto";
 
 const documentTypes = ["sow", "nda", "noc", "msa", "addendum", "other"] as const;
 const contractStatuses = ["draft", "sent", "pending_signature", "partially_signed", "fully_signed", "signed"] as const;
@@ -30,18 +29,7 @@ function isContractStatus(
   return contractStatuses.includes(value as (typeof contractStatuses)[number]);
 }
 
-export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session) return redirect("/sign-in");
-
-  const resolvedParams = await params;
-  const projectId = resolvedParams.projectId;
-  const userId = session.user.id;
-
-  const { proj, role, isAuthorized } = await getProjectAccess(projectId, userId);
-  if (!isAuthorized || !proj || !role) return redirect("/dashboard");
-
+async function ContractData({ projectId, userId, role }: { projectId: string, userId: string, role: string }) {
   // Fetch all contracts for this project
   const allContracts = await db
     .select({
@@ -148,7 +136,19 @@ export default async function ContractPage({ params }: { params: Promise<{ proje
       projectId={projectId}
       contracts={serializedContracts}
       currentUserId={userId}
-      userRole={role}
+      userRole={role as any}
     />
+  );
+}
+
+export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const session = await getCachedSession();
+  const { role } = await getProjectAccess(projectId, session.user.id);
+
+  return (
+    <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
+      <ContractData projectId={projectId} userId={session.user.id} role={role!} />
+    </Suspense>
   );
 }
