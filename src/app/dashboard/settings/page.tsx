@@ -1,10 +1,12 @@
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { db } from "@/utils/db"
 import { eq, and } from "drizzle-orm"
 import { organization, member, user } from "@/db/schema"
 import { getCachedTenant } from "@/utils/cached-tenant"
 import { SettingsClientContainer } from "@/components/dashboard/settings/settings-client-container"
 
-export default async function SettingsPage() {
+async function SettingsData() {
   const { user: currentUser, organizationId } = await getCachedTenant()
 
   if (!organizationId) {
@@ -19,12 +21,9 @@ export default async function SettingsPage() {
   }
 
   // Execute database queries concurrently using findFirst for single records
-  const [org, orgMember, orgMembers] = await Promise.all([
+  const [org, orgMembers] = await Promise.all([
     db.query.organization.findFirst({
       where: eq(organization.id, organizationId)
-    }),
-    db.query.member.findFirst({
-      where: and(eq(member.organizationId, organizationId), eq(member.userId, currentUser.id))
     }),
     db
       .select({
@@ -46,7 +45,9 @@ export default async function SettingsPage() {
     return <div className="p-6 text-xs text-muted-foreground">Organization not found</div>
   }
 
-  if (!orgMember || orgMember.role !== "owner") {
+  const currentUserMember = orgMembers.find(m => m.user.id === currentUser.id);
+
+  if (!currentUserMember || currentUserMember.role !== "owner") {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center max-w-2xl mx-auto mt-12 border rounded-xl bg-muted/20">
         <h2 className="text-xl font-semibold text-foreground">Access Denied</h2>
@@ -58,6 +59,26 @@ export default async function SettingsPage() {
   }
 
   return (
+    <SettingsClientContainer
+      user={{
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        image: currentUser.image ?? null,
+      }}
+      org={{
+        id: org.id,
+        name: org.name,
+        logoUrl: org.logoUrl,
+        plan: org.plan,
+      }}
+      orgMembers={orgMembers}
+    />
+  )
+}
+
+export default function SettingsPage() {
+  return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings & Hub</h1>
@@ -66,21 +87,9 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsClientContainer
-        user={{
-          id: currentUser.id,
-          name: currentUser.name,
-          email: currentUser.email,
-          image: currentUser.image ?? null,
-        }}
-        org={{
-          id: org.id,
-          name: org.name,
-          logoUrl: org.logoUrl,
-          plan: org.plan,
-        }}
-        orgMembers={orgMembers}
-      />
+      <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
+        <SettingsData />
+      </Suspense>
     </div>
   )
 }
