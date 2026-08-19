@@ -100,8 +100,15 @@ export const organization = pgTable("organization", {
   slug: text("slug").notNull().unique(),
   logo: text("logo"),
 
-  plan: text("plan", { enum: ["free", "freelancer", "agency"] }).default("free").notNull(),
+  plan: text("plan", { enum: ["free", "freelancer", "agency", "enterprise"] }).default("free").notNull(),
   logoUrl: text("logo_url"),
+
+  // Billing & Subscription Fields
+  dodoCustomerId: text("dodo_customer_id"),
+  dodoSubscriptionId: text("dodo_subscription_id"),
+  subscriptionStatus: text("subscription_status"), // e.g., 'active', 'canceled', 'past_due', 'trialing'
+  trialEndsAt: timestamp("trial_ends_at"),
+  currentPeriodEnd: timestamp("current_period_end"),
 
   metadata: text("metadata"),
 
