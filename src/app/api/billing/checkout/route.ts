@@ -38,6 +38,9 @@ export async function POST(req: Request) {
 
     // Create Dodo Checkout Session
     const payment = await dodo.payments.create({
+      billing: {
+        country: "US"
+      },
       customer: {
         email: user.email,
         name: user.name || "",
