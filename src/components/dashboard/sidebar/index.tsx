@@ -22,7 +22,8 @@ import {
   Users, 
   UserList,
   Sparkle,
-  Gear 
+  Gear,
+  CreditCard
 } from "@phosphor-icons/react"
 
 type OrgLike = {
@@ -46,6 +47,7 @@ const dashboardNavItems = [
   { name: "Team", href: "/dashboard/team", icon: UserList },
   { name: "Scrunity AI", href: "/dashboard/ai", icon: Sparkle },
   { name: "Settings", href: "/dashboard/settings", icon: Gear },
+  { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
 ]
 
 export function DashboardSidebar({
