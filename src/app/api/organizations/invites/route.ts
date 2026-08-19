@@ -52,16 +52,19 @@ export async function POST(req: NextRequest) {
     const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
     if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
-    // Feature Gate: Agency Tier Only
-    if (org.plan !== "agency") {
-      return NextResponse.json({ error: "Organization teammates are only available on the Agency plan. Please upgrade." }, { status: 403 });
+    // Use our new billing configuration helper
+    const { getPlanLimits, PlanTier } = await import("@/config/billing");
+    const limits = getPlanLimits(org.plan as any);
+
+    if (limits.maxSeats <= 1) {
+      return NextResponse.json({ error: `Your current plan (${limits.name}) does not support additional teammates. Please upgrade.` }, { status: 403 });
     }
 
     const existingMembers = await db.select({ id: member.id }).from(member).where(eq(member.organizationId, orgId));
     const pendingInvites = await db.select({ id: invitation.id }).from(invitation).where(and(eq(invitation.organizationId, orgId), eq(invitation.status, "pending")));
     
-    if (existingMembers.length + pendingInvites.length >= 6) {
-      return NextResponse.json({ error: "Agency plan is limited to 5 teammates. You have reached the limit." }, { status: 403 });
+    if (existingMembers.length + pendingInvites.length >= limits.maxSeats) {
+      return NextResponse.json({ error: `Your plan is limited to ${limits.maxSeats} seats. You have reached the limit.` }, { status: 403 });
     }
 
     const [existingMember] = await db
