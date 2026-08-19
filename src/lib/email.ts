@@ -26,7 +26,7 @@ export async function sendProjectInvitationEmail(
   email: string,
   projectName: string,
   inviteLink: string,
-  orgPlan: "free" | "freelancer" | "agency" | undefined = "free",
+  orgPlan: "free" | "freelancer" | "agency" | "enterprise" | undefined = "free",
   orgLogo?: string | null
 ) {
   try {
@@ -76,7 +76,7 @@ export async function sendActivityNotificationEmail(
   projectName: string,
   activityMessage: string,
   projectId: string,
-  orgPlan: "free" | "freelancer" | "agency" | undefined = "free",
+  orgPlan: "free" | "freelancer" | "agency" | "enterprise" | undefined = "free",
   orgLogo?: string | null
 ) {
   const primaryColor = "#111111";

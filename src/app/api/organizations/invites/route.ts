@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
     // Use our new billing configuration helper
-    const { getPlanLimits, PlanTier } = await import("@/config/billing");
+    const { getPlanLimits } = await import("@/config/billing");
     const limits = getPlanLimits(org.plan as any);
 
     if (limits.maxSeats <= 1) {
