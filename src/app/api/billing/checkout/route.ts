@@ -42,9 +42,9 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name || "",
       },
-      productCart: [
+      product_cart: [
         {
-          productId: planConfig.priceId,
+          product_id: planConfig.priceId,
           quantity: 1,
         }
       ],
