@@ -1,3 +1,5 @@
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { db } from "@/utils/db"
 import { project } from "@/db/schema"
 import { eq } from "drizzle-orm"
@@ -5,9 +7,8 @@ import { getCachedTenant } from "@/utils/cached-tenant"
 import { ProjectsTableClient, ProjectTableItem } from "@/components/dashboard/projects/projects-table-client"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
 
-export default async function DashboardProjectsPage() {
+async function ProjectsData() {
   const { organizationId } = await getCachedTenant()
-
   if (!organizationId) return null
 
   const rawProjects = await db.query.project.findMany({
@@ -23,7 +24,6 @@ export default async function DashboardProjectsPage() {
     orderBy: (p, { desc }) => [desc(p.updatedAt)],
   })
 
-  // Format data into clean serializable props for the client table
   const projectsData: ProjectTableItem[] = rawProjects.map((p) => {
     const acceptedProposal = p.proposals.find((prop) => prop.status === "accepted")
     const latestContract = p.contracts[0]
@@ -50,6 +50,10 @@ export default async function DashboardProjectsPage() {
     }
   })
 
+  return <ProjectsTableClient projects={projectsData} />
+}
+
+export default function DashboardProjectsPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -63,7 +67,9 @@ export default async function DashboardProjectsPage() {
           <CreateProjectDialog />
         </div>
       </div>
-      <ProjectsTableClient projects={projectsData} />
+      <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
+        <ProjectsData />
+      </Suspense>
     </div>
   )
 }
