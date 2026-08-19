@@ -1,33 +1,17 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/utils/db";
+import { files, user } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+import { FilesVaultClient } from "@/components/projects/files/files-vault-client";
 
 export const metadata: Metadata = {
   title: "Files",
   description: "Upload and manage project files and deliverable attachments.",
 };
 
-import { db } from "@/utils/db";
-import { files, user } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { FilesVaultClient } from "@/components/projects/files/files-vault-client";
-import { getProjectAccess } from "@/lib/project-auth";
-
-export default async function FilesPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
-  if (!session || !session.user) return redirect("/sign-in");
-
-  const { projectId } = await params;
-
-  const { proj, isAuthorized } = await getProjectAccess(projectId, session.user.id);
-  if (!isAuthorized || !proj) return redirect("/dashboard");
-
+async function FilesData({ projectId }: { projectId: string }) {
   const projectFiles = await db
     .select({
       file: files,
@@ -42,5 +26,20 @@ export default async function FilesPage({
     file: { ...file, url: `/api/files/download?fileId=${encodeURIComponent(file.id)}` },
     uploader,
   }));
+  
   return <FilesVaultClient projectId={projectId} files={filesForClient} />;
+}
+
+export default async function FilesPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+
+  return (
+    <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
+      <FilesData projectId={projectId} />
+    </Suspense>
+  );
 }
