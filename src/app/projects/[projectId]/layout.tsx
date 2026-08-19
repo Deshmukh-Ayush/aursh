@@ -1,12 +1,11 @@
 import { db } from "@/utils/db";
-import { organization, contract } from "@/db/schema";
+import { organization } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ProjectSidebar } from "@/components/sidebar/index";
 import { MobileHeader } from "./mobile-header";
 import { getProjectAccess } from "@/lib/project-auth";
+import { getCachedSession } from "@/utils/cached-session";
 
 export default async function ProjectLayout({
   children,
@@ -16,14 +15,8 @@ export default async function ProjectLayout({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
+  const session = await getCachedSession();
 
-  if (!session || !session.user) {
-    redirect("/sign-in");
-  }
-
-  // Use unified Project Authorization resolver (solves activeOrganizationId session cookie mismatch)
   const { proj, role, isAuthorized } = await getProjectAccess(projectId, session.user.id);
 
   if (!isAuthorized || !proj || !role) {
@@ -35,17 +28,12 @@ export default async function ProjectLayout({
     .from(organization)
     .where(eq(organization.id, proj.organizationId as string));
 
-  // Get contract status
-  const [cont] = await db.select().from(contract).where(eq(contract.projectId, projectId));
-  const isSigned = cont?.status === "signed";
-
   const orgSafe = org
     ? ({ ...org, logoUrl: org.logoUrl ?? undefined, plan: org.plan } as typeof org & { logoUrl?: string, plan: string })
     : undefined;
 
   return (
     <div className="flex min-h-svh w-full flex-col md:flex-row dark:bg-neutral-950 bg-gray-50">
-      {/* Custom Sidebar Navigation */}
       <ProjectSidebar projectId={projectId} projectName={proj.name} org={orgSafe} />
       <main className="flex-1 flex flex-col min-w-0">
         <MobileHeader projectId={projectId} projectName={proj.name} role={role} org={orgSafe} />
