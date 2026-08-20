@@ -7,7 +7,6 @@ import {
   proposal,
   contract,
   paymentMilestone,
-  payment,
   activityLog,
   user as userTable,
 } from "@/db/schema";
@@ -27,7 +26,7 @@ export function createTorchTools(organizationId: string) {
     queryWorkspaceOverview: tool({
       description:
         "Fetches a high-level summary of active projects, deliverables in review, proposals, and contracts in the workspace.",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         const orgProjects = await db
           .select({
@@ -116,7 +115,7 @@ export function createTorchTools(organizationId: string) {
     auditProjectScope: tool({
       description:
         "Audits a project's revision history against signed contract scope terms, checking for scope creep, revision limits, and exclusions.",
-      parameters: z.object({
+      inputSchema: z.object({
         projectId: z.string().describe("The ID of the project to audit"),
         projectName: z
           .string()
@@ -173,7 +172,7 @@ export function createTorchTools(organizationId: string) {
     generateAddendumDraft: tool({
       description:
         "Generates a formal Change Order Addendum with itemized pricing when scope creep is detected or extra work is requested.",
-      parameters: z.object({
+      inputSchema: z.object({
         projectId: z.string().describe("The ID of the project"),
         reason: z.string().describe("The reason for the change order or extra revisions"),
       }),
@@ -206,7 +205,7 @@ export function createTorchTools(organizationId: string) {
     analyzeFinancials: tool({
       description:
         "Analyzes payment milestones, outstanding cashflow, and collected revenue across projects.",
-      parameters: z.object({
+      inputSchema: z.object({
         projectId: z.string().optional().describe("Optional project ID to filter financials"),
       }),
       execute: async ({ projectId }) => {
@@ -260,7 +259,7 @@ export function createTorchTools(organizationId: string) {
     generateClientDigest: tool({
       description:
         "Inspects project deliverables and activity history to synthesize a professional weekly client progress update.",
-      parameters: z.object({
+      inputSchema: z.object({
         projectId: z.string().describe("The ID of the project to generate a digest for"),
       }),
       execute: async ({ projectId }) => {
@@ -308,7 +307,7 @@ export function createTorchTools(organizationId: string) {
     createDeliverableDraft: tool({
       description:
         "Drafts a new project deliverable with title, description, and due date. Returns a confirmation artifact before writing to DB.",
-      parameters: z.object({
+      inputSchema: z.object({
         projectId: z.string().describe("The project to add the deliverable to"),
         title: z.string().describe("Title of the deliverable"),
         description: z.string().optional().describe("Description of scope"),

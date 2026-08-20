@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, isStepCount } from "ai";
 import { primaryModel } from "@/lib/ai/client";
 import { createTorchTools } from "@/lib/ai/torch-tools";
 import { getTenantContext } from "@/lib/tenant-context";
@@ -34,15 +34,15 @@ export async function POST(req: Request) {
       model: primaryModel,
       system: TORCH_SYSTEM_PROMPT,
       messages,
-      maxSteps: 5,
+      stopWhen: isStepCount(5),
       tools,
     });
 
-    return result.toDataStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("[Torch API Error]:", error);
     return NextResponse.json(
-      { error: "Torch agent encounter an execution error." },
+      { error: "Torch agent encountered an execution error." },
       { status: 500 },
     );
   }

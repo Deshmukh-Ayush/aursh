@@ -22,7 +22,7 @@ export function TorchReasoning({ toolCalls }: TorchReasoningProps) {
       detail: tc.result
         ? JSON.stringify(tc.result).slice(0, 160) + (JSON.stringify(tc.result).length > 160 ? "..." : "")
         : "Running workspace agent tool...",
-      status: tc.status === "complete" ? "complete" : "running",
+      status: tc.status === "complete" ? ("complete" as const) : ("active" as const),
     };
   });
 
