@@ -113,7 +113,7 @@ export default async function DocsPage() {
               ['Framework', 'Next.js 16 (App Router)', 'RSC by default, Turbopack, async params, React.cache() deduplication'],
               ['Language', 'TypeScript 5', 'Strict type safety (tsc --noEmit)'],
               ['Rich AI Input', 'Meta Lexical (@lexical/react)', 'Slash commands / and mention @ popover triggers in LexicalAIInput'],
-              ['AI Engine', 'Vercel AI SDK + Groq', 'Primary: openai/gpt-oss-120b | Fallback: llama-3.3-70b-versatile'],
+              ['AI Engine', 'Vercel AI SDK + Groq', 'Primary: openai/gpt-oss-120b | Fallback: openai/gpt-oss-20b'],
               ['Charts & Analytics', 'EvilCharts Component Suite', 'EChartsRadialChart, EChartsAreaChart, EChartsBarChart with next/dynamic lazy loading'],
               ['Database', 'Neon (Serverless Postgres)', 'Stateless HTTP driver @neondatabase/serverless'],
               ['ORM', 'Drizzle ORM', 'Schema defined in src/db/schema.ts'],
@@ -263,7 +263,7 @@ export default async function DocsPage() {
             Scrunity protects agency profit margins by automatically analyzing uploaded PDF contracts, extracting scope boundaries, evaluating revision counts, and generating Change Order SOW addendums:
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
-            <li><strong className="text-foreground font-medium">Model Fallback Architecture:</strong> Uses <Code>openai/gpt-oss-120b</Code> as the primary LLM engine on Groq with automated fallback to <Code>llama-3.3-70b-versatile</Code> if rate limits occur.</li>
+            <li><strong className="text-foreground font-medium">Model Fallback Architecture:</strong> Uses <Code>openai/gpt-oss-120b</Code> as the primary LLM engine on Groq with automated fallback to <Code>openai/gpt-oss-20b</Code> if rate limits occur.</li>
             <li><strong className="text-foreground font-medium">Universal Preprocessors & Type Safety:</strong> Zero <Code>any</Code> types. Uses Zod v4 preprocessors to coerce LLM JSON variations cleanly into typed objects.</li>
             <li><strong className="text-foreground font-medium">AI Clause Inspector Drawer:</strong> Slide-over panel (<Code>ContractAIDrawer</Code>) displaying extracted scope items, exclusions, revision limits, and payment terms.</li>
             <li><strong className="text-foreground font-medium">Scope Creep Alert & Addendum Generator:</strong> <Code>ScopeGuardianPill</Code> evaluates deliverable revision counts against contract terms (<Code>within_scope</Code> | <Code>limit_reached</Code> | <Code>scope_creep_alert</Code>) and launches the AI Addendum Drafter (<Code>AddendumModal</Code>).</li>
@@ -354,7 +354,7 @@ export default async function DocsPage() {
             headers={['Variable', 'Required', 'Description']}
             rows={[
               ['DATABASE_URL', 'Yes', 'Neon Serverless Postgres connection string'],
-              ['GROQ_API_KEY', 'Yes', 'Groq API Key for LLM model processing (gpt-oss-120b & llama-3.3-70b)'],
+              ['GROQ_API_KEY', 'Yes', 'Groq API Key for LLM model processing (gpt-oss-120b & gpt-oss-20b)'],
               ['GOOGLE_CLIENT_ID', 'Yes', 'Google OAuth client ID'],
               ['GOOGLE_CLIENT_SECRET', 'Yes', 'Google OAuth client secret'],
               ['BETTER_AUTH_SECRET', 'Yes', 'Session encryption secret'],

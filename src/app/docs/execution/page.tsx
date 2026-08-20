@@ -108,7 +108,7 @@ export default async function ExecutionDocsPage() {
 ┌───────────────────────────┐ ┌───────────────────┐ ┌─────────────────────────┐
 │     SECURITY & AUTH       │ │   SERVERLESS DB   │ │    GROQ AI ENGINE       │
 │  Better Auth (Google)     │ │  Neon Postgres    │ │  openai/gpt-oss-120b    │
-│  getProjectAccess Policy  │ │  Drizzle ORM      │ │  llama-3.3-70b-versatile│
+│  getProjectAccess Policy  │ │  Drizzle ORM      │ │  openai/gpt-oss-20b     │
 └───────────────────────────┘ └───────────────────┘ └─────────────────────────┘
                │                       │                       │
                └───────────────────────┼───────────────────────┘
