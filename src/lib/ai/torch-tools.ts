@@ -116,17 +116,43 @@ export function createTorchTools(organizationId: string) {
       description:
         "Audits a project's revision history against signed contract scope terms, checking for scope creep, revision limits, and exclusions.",
       inputSchema: z.object({
-        projectId: z.string().describe("The ID of the project to audit"),
+        projectId: z.string().nullish().describe("The ID of the project to audit"),
         projectName: z
           .string()
-          .optional()
+          .nullish()
           .describe("Optional project name for fuzzy matching"),
       }),
-      execute: async ({ projectId }) => {
+      execute: async ({ projectId, projectName }) => {
+        let targetId = projectId;
+
+        if (!targetId && projectName) {
+          const orgProjects = await db
+            .select({ id: project.id, name: project.name })
+            .from(project)
+            .where(eq(project.organizationId, organizationId));
+          const match = orgProjects.find((p) =>
+            p.name.toLowerCase().includes(projectName.toLowerCase()),
+          );
+          targetId = match?.id;
+        }
+
+        if (!targetId) {
+          const [firstProj] = await db
+            .select({ id: project.id })
+            .from(project)
+            .where(eq(project.organizationId, organizationId))
+            .limit(1);
+          targetId = firstProj?.id;
+        }
+
+        if (!targetId) {
+          return { error: `No projects found in current workspace.` };
+        }
+
         const [proj] = await db
           .select()
           .from(project)
-          .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
+          .where(and(eq(project.id, targetId), eq(project.organizationId, organizationId)));
 
         if (!proj) {
           return { error: `Project not found in current organization.` };
@@ -135,12 +161,12 @@ export function createTorchTools(organizationId: string) {
         const [activeContract] = await db
           .select()
           .from(contract)
-          .where(and(eq(contract.projectId, projectId), eq(contract.status, "signed")))
+          .where(and(eq(contract.projectId, targetId), eq(contract.status, "signed")))
           .orderBy(desc(contract.createdAt))
           .limit(1);
 
-        const revisionCount = await getProjectRevisionCount(projectId);
-        const scopeEvaluation = await evaluateScopeStatus(projectId, revisionCount + 1);
+        const revisionCount = await getProjectRevisionCount(targetId);
+        const scopeEvaluation = await evaluateScopeStatus(targetId, revisionCount + 1);
         const contractTerms = activeContract
           ? await getContractScopeFromDb(activeContract.id)
           : null;
@@ -152,10 +178,10 @@ export function createTorchTools(organizationId: string) {
             status: deliverable.status,
           })
           .from(deliverable)
-          .where(eq(deliverable.projectId, projectId));
+          .where(eq(deliverable.projectId, targetId));
 
         return {
-          projectId,
+          projectId: targetId,
           projectName: proj.name,
           hasSignedContract: !!activeContract,
           contractFileName: activeContract?.fileName || null,
@@ -206,7 +232,7 @@ export function createTorchTools(organizationId: string) {
       description:
         "Analyzes payment milestones, outstanding cashflow, and collected revenue across projects.",
       inputSchema: z.object({
-        projectId: z.string().optional().describe("Optional project ID to filter financials"),
+        projectId: z.string().nullish().describe("Optional project ID to filter financials"),
       }),
       execute: async ({ projectId }) => {
         const orgProjects = await db
@@ -214,7 +240,7 @@ export function createTorchTools(organizationId: string) {
           .from(project)
           .where(eq(project.organizationId, organizationId));
 
-        const projectIds = projectId
+        const projectIds = projectId && projectId.trim().length > 0
           ? [projectId]
           : orgProjects.map((p) => p.id);
 
@@ -260,23 +286,48 @@ export function createTorchTools(organizationId: string) {
       description:
         "Inspects project deliverables and activity history to synthesize a professional weekly client progress update.",
       inputSchema: z.object({
-        projectId: z.string().describe("The ID of the project to generate a digest for"),
+        projectId: z.string().nullish().describe("The ID of the project to generate a digest for"),
+        projectName: z.string().nullish().describe("Optional project name"),
       }),
-      execute: async ({ projectId }) => {
+      execute: async ({ projectId, projectName }) => {
+        let targetId = projectId;
+
+        if (!targetId && projectName) {
+          const orgProjects = await db
+            .select({ id: project.id, name: project.name })
+            .from(project)
+            .where(eq(project.organizationId, organizationId));
+          const match = orgProjects.find((p) =>
+            p.name.toLowerCase().includes(projectName.toLowerCase()),
+          );
+          targetId = match?.id;
+        }
+
+        if (!targetId) {
+          const [firstProj] = await db
+            .select({ id: project.id })
+            .from(project)
+            .where(eq(project.organizationId, organizationId))
+            .limit(1);
+          targetId = firstProj?.id;
+        }
+
+        if (!targetId) return { error: "No projects found in current workspace." };
+
         const [proj] = await db
           .select()
           .from(project)
-          .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
+          .where(and(eq(project.id, targetId), eq(project.organizationId, organizationId)));
 
         if (!proj) return { error: "Project not found." };
 
         const [deliverablesList, recentLogs] = await Promise.all([
-          db.select().from(deliverable).where(eq(deliverable.projectId, projectId)),
+          db.select().from(deliverable).where(eq(deliverable.projectId, targetId)),
           db
             .select({ log: activityLog, user: userTable })
             .from(activityLog)
             .leftJoin(userTable, eq(activityLog.userId, userTable.id))
-            .where(eq(activityLog.projectId, projectId))
+            .where(eq(activityLog.projectId, targetId))
             .orderBy(desc(activityLog.createdAt))
             .limit(10),
         ]);
@@ -310,8 +361,8 @@ export function createTorchTools(organizationId: string) {
       inputSchema: z.object({
         projectId: z.string().describe("The project to add the deliverable to"),
         title: z.string().describe("Title of the deliverable"),
-        description: z.string().optional().describe("Description of scope"),
-        dueDate: z.string().optional().describe("ISO date string for due date"),
+        description: z.string().nullish().describe("Description of scope"),
+        dueDate: z.string().nullish().describe("ISO date string for due date"),
       }),
       execute: async ({ projectId, title, description, dueDate }) => {
         const [proj] = await db
