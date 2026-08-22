@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { LexicalProjectOption } from "./lexical-ai-input";
 import { Torch, WorkspaceSummary } from "./torch";
@@ -12,10 +10,6 @@ interface ScrunityAIViewProps {
   workspaceSummary?: WorkspaceSummary;
 }
 
-/**
- * ScrunityAIView — Composed using Torch Compound Components.
- * Follows Vercel Composition Patterns: decoupled presentation, zero boolean props.
- */
 export function ScrunityAIView({
   orgName,
   projects,
@@ -27,7 +21,6 @@ export function ScrunityAIView({
       projects={projects}
       workspaceSummary={workspaceSummary}
     >
-      <Torch.Header />
       <Torch.Messages />
       <Torch.Input />
     </Torch.Root>

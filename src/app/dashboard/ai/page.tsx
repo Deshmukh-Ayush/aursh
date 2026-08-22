@@ -6,8 +6,6 @@ import { getCachedTenant } from "@/utils/cached-tenant"
 import { ScrunityAIView } from "@/components/dashboard/ai/scrunity-ai-view"
 import { Brain } from "lucide-react"
 
-// 1. The Async Data Fetcher (Server Component)
-// This runs the DB queries but doesn't block the main page navigation
 async function AIDataFetcher() {
   const { organizationId } = await getCachedTenant()
   if (!organizationId) return null
@@ -65,10 +63,8 @@ function AISkeleton() {
   )
 }
 
-// 3. The Main Page (Sync, instant navigation)
 export default function DashboardAIPage() {
   return (
-    // We moved the non-client layout shell here!
     <div className="flex flex-col h-[calc(100vh-140px)] w-full max-w-4xl mx-auto space-y-4">
       <Suspense fallback={<AISkeleton />}>
         <AIDataFetcher />

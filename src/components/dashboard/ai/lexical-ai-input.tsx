@@ -1,21 +1,28 @@
 "use client"
 
-import * as React from "react"
+import React, { useRef, useState, useEffect } from "react"
+import { Plus, ArrowUp } from "lucide-react"
+import { motion } from "motion/react"
+
 import { LexicalComposer } from "@lexical/react/LexicalComposer"
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin"
 import { ContentEditable } from "@lexical/react/LexicalContentEditable"
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin"
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin"
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
-import { $getRoot, $createParagraphNode, EditorState } from "lexical"
-import { ArrowUp, Folder, FileText, CheckSquare, BarChart3, Sparkles } from "lucide-react"
+import {
+  $getRoot,
+  $createParagraphNode,
+  $createTextNode,
+  EditorState,
+  LexicalEditor,
+} from "lexical"
 
 export interface LexicalCommandOption {
   key: string
   label: string
   description: string
-  icon: React.ReactNode
-  commandText: string
+  command: string
 }
 
 export interface LexicalProjectOption {
@@ -23,47 +30,62 @@ export interface LexicalProjectOption {
   name: string
 }
 
-interface LexicalAIInputProps {
-  onSend: (text: string) => void
+interface ScrunityAiInputProps {
+  onSend?: (text: string) => void
   disabled?: boolean
   projects?: LexicalProjectOption[]
+  commands?: LexicalCommandOption[]
 }
 
-const COMMAND_OPTIONS: LexicalCommandOption[] = [
+const DEFAULT_COMMAND_OPTIONS: LexicalCommandOption[] = [
   {
     key: "summarize",
     label: "/summarize",
-    description: "Generate executive summary of active projects",
-    icon: <Sparkles className="h-3.5 w-3.5 text-brand" />,
-    commandText: "/summarize workspace project status",
+    description: "Generate executive summary",
+    command: "/summarize workspace project status",
   },
   {
     key: "analyze-revenue",
     label: "/analyze-revenue",
-    description: "Analyze won revenue, pipeline, and payout risks",
-    icon: <BarChart3 className="h-3.5 w-3.5 text-emerald-500" />,
-    commandText: "/analyze-revenue & pipeline health",
+    description: "Analyze won revenue & risks",
+    command: "/analyze-revenue & pipeline health",
   },
   {
     key: "review-deliverables",
     label: "/review-deliverables",
-    description: "Audit pending deliverables & revision requests",
-    icon: <CheckSquare className="h-3.5 w-3.5 text-sky-500" />,
-    commandText: "/review-deliverables in review",
+    description: "Audit pending deliverables",
+    command: "/review-deliverables in review",
   },
   {
     key: "draft-contract",
     label: "/draft-contract",
-    description: "Draft SOW scope & terms for a project",
-    icon: <FileText className="h-3.5 w-3.5 text-amber-500" />,
-    commandText: "/draft-contract scope terms",
+    description: "Draft SOW scope & terms",
+    command: "/draft-contract scope terms",
   },
 ]
+
+const DEFAULT_PROJECT_OPTIONS: LexicalProjectOption[] = [
+  { id: "1", name: "Acme Client Portal" },
+  { id: "2", name: "Scrunity Engine" },
+  { id: "3", name: "Design System V2" },
+]
+
+function EditorBridgePlugin({
+  editorRef,
+}: {
+  editorRef: React.MutableRefObject<LexicalEditor | null>
+}) {
+  const [editor] = useLexicalComposerContext()
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor, editorRef])
+  return null
+}
 
 function KeyboardSubmitPlugin({ onSend }: { onSend: (text: string) => void }) {
   const [editor] = useLexicalComposerContext()
 
-  React.useEffect(() => {
+  useEffect(() => {
     return editor.registerRootListener((rootElement) => {
       if (!rootElement) return
 
@@ -72,9 +94,9 @@ function KeyboardSubmitPlugin({ onSend }: { onSend: (text: string) => void }) {
           event.preventDefault()
           editor.update(() => {
             const root = $getRoot()
-            const text = root.getTextContent().trim()
-            if (text) {
-              onSend(text)
+            const textContent = root.getTextContent().trim()
+            if (textContent) {
+              onSend(textContent)
               root.clear()
               root.append($createParagraphNode())
             }
@@ -90,10 +112,16 @@ function KeyboardSubmitPlugin({ onSend }: { onSend: (text: string) => void }) {
   return null
 }
 
-export function LexicalAIInput({ onSend, disabled, projects = [] }: LexicalAIInputProps) {
-  const [currentText, setCurrentText] = React.useState("")
-  const [showSlashMenu, setShowSlashMenu] = React.useState(false)
-  const [showMentionMenu, setShowMentionMenu] = React.useState(false)
+export const LexicalAIInput  = ({
+  onSend,
+  disabled = false,
+  projects = DEFAULT_PROJECT_OPTIONS,
+  commands = DEFAULT_COMMAND_OPTIONS,
+}: ScrunityAiInputProps) => {
+  const editorRef = useRef<LexicalEditor | null>(null)
+  const [currentText, setCurrentText] = useState("")
+  const [showSlashMenu, setShowSlashMenu] = useState(false)
+  const [showMentionMenu, setShowMentionMenu] = useState(false)
 
   const initialConfig = {
     namespace: "ScrunityAIEditor",
@@ -101,7 +129,7 @@ export function LexicalAIInput({ onSend, disabled, projects = [] }: LexicalAIInp
       console.error("Lexical error:", error)
     },
     theme: {
-      paragraph: "text-sm text-foreground leading-relaxed",
+      paragraph: "text-[16px] sm:text-sm text-gray-900 leading-relaxed",
     },
   }
 
@@ -117,121 +145,211 @@ export function LexicalAIInput({ onSend, disabled, projects = [] }: LexicalAIInp
       } else if (text.endsWith("@")) {
         setShowMentionMenu(true)
         setShowSlashMenu(false)
-      } else if (!text.includes("/") && !text.includes("@")) {
+      } else {
         setShowSlashMenu(false)
         setShowMentionMenu(false)
       }
     })
   }
 
+  const handleSend = () => {
+    if (!currentText.trim() || disabled) return
+    const textToSend = currentText.trim()
+    onSend?.(textToSend)
+
+    editorRef.current?.update(() => {
+      const root = $getRoot()
+      root.clear()
+      root.append($createParagraphNode())
+    })
+    setCurrentText("")
+    setShowSlashMenu(false)
+    setShowMentionMenu(false)
+  }
+
+  const selectCommand = (commandText: string) => {
+    editorRef.current?.update(() => {
+      const root = $getRoot()
+      root.clear()
+      const paragraph = $createParagraphNode()
+      paragraph.append($createTextNode(commandText))
+      root.append(paragraph)
+    })
+    setShowSlashMenu(false)
+    editorRef.current?.focus()
+  }
+
+  const selectProject = (projectName: string) => {
+    editorRef.current?.update(() => {
+      const root = $getRoot()
+      const current = root.getTextContent()
+      // Replace trailing @ with full mention text
+      const updated = current.endsWith("@")
+        ? `${current.slice(0, -1)}@${projectName} `
+        : `${current}@${projectName} `
+      
+      root.clear()
+      const paragraph = $createParagraphNode()
+      paragraph.append($createTextNode(updated))
+      root.append(paragraph)
+    })
+    setShowMentionMenu(false)
+    editorRef.current?.focus()
+  }
+
   return (
-    <div className="relative w-full rounded-2xl border border-border/50 bg-background/90 p-3.5 shadow-md backdrop-blur-sm transition-all focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/10">
-      <LexicalComposer initialConfig={initialConfig}>
-        <div className="relative min-h-[48px] w-full px-1.5 py-0.5">
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable className="min-h-[40px] w-full resize-none text-sm text-foreground focus:outline-none" />
-            }
-            placeholder={
-              <div className="pointer-events-none absolute top-0.5 left-1.5 text-sm text-muted-foreground/50 select-none">
-                Ask Scrunity AI... Type <span className="font-mono text-foreground/80 font-medium">/</span> for commands or <span className="font-mono text-foreground/80 font-medium">@</span> for project context
-              </div>
-            }
-            ErrorBoundary={({ children }) => <div>{children}</div>}
-          />
-          <HistoryPlugin />
-          <OnChangePlugin onChange={handleTextChange} />
-          <KeyboardSubmitPlugin onSend={onSend} />
-        </div>
-      </LexicalComposer>
-
-      {/* Sleek Floating Slash Command Menu */}
+    <div className="relative w-3xl">
+      {/* 1. FLOATING SLASH MENU */}
       {showSlashMenu && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 overflow-hidden rounded-xl border border-border/60 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 z-50">
-          <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
-            Commands
-          </div>
-          <div className="space-y-0.5">
-            {COMMAND_OPTIONS.map((cmd) => (
-              <button
-                key={cmd.key}
-                onClick={() => {
-                  onSend(cmd.commandText)
-                  setShowSlashMenu(false)
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted/80 active:scale-[0.98]"
-              >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
-                  {cmd.icon}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-medium text-foreground">{cmd.label}</span>
-                  <span className="text-[10px] text-muted-foreground truncate">{cmd.description}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <SlashMenu commands={commands} selectCommand={selectCommand} />
       )}
 
-      {/* Sleek Floating Mention Tag Menu */}
+      {/* 2. FLOATING MENTION MENU */}
       {showMentionMenu && projects.length > 0 && (
-        <div className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-xl border border-border/60 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 z-50">
-          <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
-            Attach Project Context
-          </div>
-          <div className="space-y-0.5 max-h-48 overflow-y-auto">
-            {projects.map((proj) => (
-              <button
-                key={proj.id}
-                onClick={() => {
-                  onSend(`Analyze status & deliverables for project @${proj.name}`)
-                  setShowMentionMenu(false)
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/80 active:scale-[0.98]"
-              >
-                <Folder className="h-3.5 w-3.5 text-brand" />
-                <span className="font-medium text-foreground truncate">{proj.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <MentionMenu projects={projects} selectProject={selectProject} />
       )}
 
-      {/* Action Toolbar */}
-      <div className="flex items-center justify-between pt-2 border-t border-border/20 mt-1">
-        <div className="flex items-center gap-1.5">
+      {/* 3. INPUT CONTAINER */}
+      <div className="flex min-h-[100px] w-full flex-col justify-between rounded-[14px] border border-[#E8E8E8] bg-white shadow-[1px_0px_4px_0px_rgba(0,0,0,0.06),0px_1px_4px_0px_rgba(0,0,0,0.06)] transition-all focus-within:border-gray-300 focus-within:shadow-sm">
+        <LexicalComposer initialConfig={initialConfig}>
+          <div className="relative flex-1 p-3">
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable className="max-h-[160px] min-h-[32px] w-full overflow-y-auto outline-none" />
+              }
+              placeholder={
+                <div className="pointer-events-none absolute top-3 left-3 select-none text-[16px] text-gray-400 sm:text-sm">
+                  Ask anything or @ to add context
+                </div>
+              }
+              ErrorBoundary={({ children }) => <div>{children}</div>}
+            />
+            <HistoryPlugin />
+            <OnChangePlugin onChange={handleTextChange} />
+            <KeyboardSubmitPlugin onSend={handleSend} />
+            <EditorBridgePlugin editorRef={editorRef} />
+          </div>
+        </LexicalComposer>
+
+        {/* 4. ACTIONS TOOLBAR */}
+        <div className="flex items-center justify-between px-3 pb-3">
           <button
             type="button"
-            onClick={() => setShowSlashMenu(!showSlashMenu)}
-            className="inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.96]"
+            onClick={() => {
+              setShowSlashMenu((prev) => !prev)
+              setShowMentionMenu(false)
+            }}
+            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#E8E8E8] bg-white text-neutral-500 transition-colors hover:bg-gray-100 hover:text-gray-900 active:scale-[0.97]"
           >
-            <span className="font-mono text-foreground font-semibold">/</span>
-            <span>Commands</span>
+            <Plus className="h-5 w-5" />
           </button>
+
           <button
             type="button"
-            onClick={() => setShowMentionMenu(!showMentionMenu)}
-            className="inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.96]"
+            disabled={disabled || !currentText.trim()}
+            onClick={handleSend}
+            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-[8px] bg-[#0088C4] text-white transition-opacity active:scale-[0.97] disabled:opacity-40"
           >
-            <span className="font-mono text-foreground font-semibold">@</span>
-            <span>Project</span>
+            <ArrowUp className="h-4 w-4" />
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
 
-        <button
-          type="button"
-          disabled={disabled || !currentText.trim()}
-          onClick={() => {
-            if (currentText.trim()) {
-              onSend(currentText.trim())
-              setCurrentText("")
-            }
-          }}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand text-white shadow-xs transition-transform hover:bg-brand-hover active:scale-[0.94] disabled:opacity-40"
-        >
-          <ArrowUp className="h-4 w-4" />
-        </button>
+const SlashMenu = ({
+  commands,
+  selectCommand,
+}: {
+  commands: LexicalCommandOption[]
+  selectCommand: (command: string) => void
+}) => {
+  const [hovered, setHovered] = useState<number | null>(null)
+
+  return (
+    <div className="absolute bottom-full left-0 mb-2 w-72 rounded-[12px] border border-[#E8E8E8] bg-white p-1.5 shadow-lg">
+      <div className="px-2 py-1 text-[11px] font-medium text-neutral-400">
+        Commands
+      </div>
+
+      <div className="flex flex-col gap-0.5">
+        {commands.map((cmd, idx) => (
+          <button
+            key={cmd.key}
+            type="button"
+            onClick={() => selectCommand(cmd.command)}
+            onMouseEnter={() => setHovered(idx)}
+            onMouseLeave={() => setHovered(null)}
+            className="group relative flex w-full flex-col rounded-md px-2.5 py-1.5 text-left"
+          >
+            {hovered === idx && (
+              <motion.span
+                layoutId="slash-menu-hover"
+                className="absolute inset-0 rounded-md bg-neutral-200"
+                transition={{
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 30,
+                }}
+              />
+            )}
+
+            <span className="relative z-10 text-xs font-medium text-neutral-900">
+              {cmd.label}
+            </span>
+
+            <span className="relative z-10 text-[11px] text-neutral-500">
+              {cmd.description}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const MentionMenu = ({
+  projects,
+  selectProject,
+}: {
+  projects: LexicalProjectOption[]
+  selectProject: (projectName: string) => void
+}) => {
+  const [hovered, setHovered] = useState<number | null>(null)
+
+  return (
+    <div className="absolute bottom-full left-0 mb-2 w-64 rounded-[12px] border border-[#E8E8E8] bg-white p-1.5 shadow-lg">
+      <div className="px-2 py-1 text-[11px] font-medium text-neutral-400">
+        Projects
+      </div>
+
+      <div className="flex flex-col gap-0.5">
+        {projects.map((proj, idx) => (
+          <button
+            key={proj.id}
+            type="button"
+            onClick={() => selectProject(proj.name)}
+            onMouseEnter={() => setHovered(idx)}
+            onMouseLeave={() => setHovered(null)}
+            className="group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-neutral-900"
+          >
+            {hovered === idx && (
+              <motion.span
+                layoutId="mention-menu-hover"
+                className="absolute inset-0 rounded-md bg-neutral-200"
+                transition={{
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 30,
+                }}
+              />
+            )}
+
+            <span className="relative z-10">📁</span>
+            <span className="relative z-10">{proj.name}</span>
+          </button>
+        ))}
       </div>
     </div>
   )
