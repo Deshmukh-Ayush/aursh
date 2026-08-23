@@ -1,4 +1,9 @@
-import { streamText, isStepCount } from "ai";
+import {
+  streamText,
+  isStepCount,
+  toUIMessageStream,
+  createUIMessageStreamResponse,
+} from "ai";
 import { primaryModel } from "@/lib/ai/client";
 import { createTorchTools } from "@/lib/ai/torch-tools";
 import { getTenantContext } from "@/lib/tenant-context";
@@ -38,7 +43,9 @@ export async function POST(req: Request) {
       tools,
     });
 
-    return result.toUIMessageStreamResponse();
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream({ stream: result.stream }),
+    });
   } catch (error) {
     console.error("[Torch API Error]:", error);
     return NextResponse.json(

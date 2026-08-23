@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { parseJsonEventStream, uiMessageChunkSchema } from "ai";
 import { LexicalProjectOption } from "../lexical-ai-input";
 import { toast } from "sonner";
 
@@ -72,6 +73,7 @@ interface ConfirmationResponse {
 
 export interface ToolCallStep {
   toolName: string;
+  toolCallId?: string;
   args?: JsonObject;
   result?: unknown;
   status: "calling" | "complete" | "error";
@@ -222,78 +224,140 @@ export function TorchProvider({
         throw new Error("Failed to connect to Torch agent.");
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      // AI SDK v7 UI message stream is SSE: each event is a `data:` JSON frame.
+      // The previous client parsed the removed `0:`/`9:`/`a:` line-prefix
+      // protocol and never matched any v7 part, so nothing streamed through.
+      // Use the SDK's own SSE parser so partial frames split across read
+      // boundaries are handled correctly.
+      const chunkStream = parseJsonEventStream({
+        stream: response.body,
+        schema: uiMessageChunkSchema,
+      });
+
+      const reader = chunkStream.getReader();
       let done = false;
       let accumulatedContent = "";
       const toolSteps: ToolCallStep[] = [];
       let detectedArtifact: TorchArtifact | undefined;
+      let streamError: string | undefined;
 
       while (!done) {
         const { value, done: streamDone } = await reader.read();
         done = streamDone;
-        if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+        if (!value) continue;
+        // parseJsonEventStream yields ParseResult<T>; a failed parse (e.g. an
+        // unmapped custom data part) is surfaced as { success: false }, which
+        // we skip rather than crashing the whole stream.
+        if (!value.success) continue;
+        const part = value.value;
+        if (!isRecord(part)) continue;
 
-          for (const line of lines) {
-            if (line.startsWith("0:")) {
-              const textContent: unknown = JSON.parse(line.slice(2));
-              if (typeof textContent === "string") accumulatedContent += textContent;
-            } else if (line.startsWith("9:")) {
-              const toolCall: unknown = JSON.parse(line.slice(2));
-              if (isRecord(toolCall) && typeof toolCall.toolName === "string") {
-                toolSteps.push({
-                  toolName: toolCall.toolName,
-                  args: isRecord(toolCall.args) ? toolCall.args : undefined,
-                  status: "calling",
-                });
-              }
-            } else if (line.startsWith("a:")) {
-              const toolResult: unknown = JSON.parse(line.slice(2));
-              if (!isRecord(toolResult)) continue;
+        switch (part.type) {
+          case "text-delta": {
+            if (typeof part.delta === "string") accumulatedContent += part.delta;
+            break;
+          }
+          case "tool-input-available": {
+            if (typeof part.toolName === "string") {
+              toolSteps.push({
+                toolName: part.toolName,
+                toolCallId:
+                  typeof part.toolCallId === "string" ? part.toolCallId : undefined,
+                args: isRecord(part.input) ? part.input : undefined,
+                status: "calling",
+              });
+            }
+            break;
+          }
+          case "tool-input-error": {
+            if (typeof part.errorText === "string") streamError = part.errorText;
+            const idx = toolSteps.findIndex(
+              (t) =>
+                t.status === "calling" &&
+                typeof part.toolCallId === "string" &&
+                t.toolCallId === part.toolCallId,
+            );
+            if (idx >= 0) toolSteps[idx].status = "error";
+            break;
+          }
+          case "tool-output-available": {
+            const result = part.output;
+            // v7 keys tool results by toolCallId (the tool-output-available
+            // chunk carries no toolName). Match the registered step exactly.
+            const matchIndex =
+              typeof part.toolCallId === "string"
+                ? toolSteps.findIndex((t) => t.toolCallId === part.toolCallId)
+                : -1;
+            if (matchIndex >= 0) {
+              toolSteps[matchIndex].result = result;
+              toolSteps[matchIndex].status = "complete";
+            }
 
-              const match =
-                typeof toolResult.toolName === "string"
-                  ? toolSteps.find((t) => t.toolName === toolResult.toolName)
-                  : undefined;
-              if (match && "result" in toolResult) {
-                match.result = toolResult.result;
-                match.status = "complete";
-              }
-
-              if (isArtifactResult(toolResult.result)) {
-                if (toolResult.result.artifactType === "change_order_addendum") {
-                  detectedArtifact = {
-                    type: "change_order_addendum",
-                    data: toolResult.result,
-                    status: "pending",
-                  };
-                } else {
-                  detectedArtifact = {
-                    type: "create_deliverable_confirmation",
-                    data: toolResult.result,
-                    status: "pending",
-                  };
-                }
+            if (isArtifactResult(result)) {
+              if (result.artifactType === "change_order_addendum") {
+                detectedArtifact = {
+                  type: "change_order_addendum",
+                  data: result,
+                  status: "pending",
+                };
+              } else {
+                detectedArtifact = {
+                  type: "create_deliverable_confirmation",
+                  data: result,
+                  status: "pending",
+                };
               }
             }
+            break;
           }
-
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantId
-                ? {
-                    ...msg,
-                    content: accumulatedContent || "Executing workspace action...",
-                    toolCalls: [...toolSteps],
-                    artifact: detectedArtifact || msg.artifact,
-                  }
-                : msg,
-            ),
-          );
+          case "tool-output-error": {
+            if (typeof part.errorText === "string") streamError = part.errorText;
+            const idx =
+              typeof part.toolCallId === "string"
+                ? toolSteps.findIndex((t) => t.toolCallId === part.toolCallId)
+                : -1;
+            if (idx >= 0) toolSteps[idx].status = "error";
+            break;
+          }
+          case "error": {
+            if (typeof part.errorText === "string") streamError = part.errorText;
+            break;
+          }
+          default:
+            break;
         }
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantId
+              ? {
+                  ...msg,
+                  content: accumulatedContent,
+                  toolCalls: [...toolSteps],
+                  artifact: detectedArtifact || msg.artifact,
+                }
+              : msg,
+          ),
+        );
       }
+
+      // Guarantee the agent always leaves a visible message. If the model
+      // produced no text (e.g. a tool errored and the model went silent, or
+      // the stream ended early), surface what happened instead of a blank turn.
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== assistantId) return msg;
+          if (msg.content.trim()) return msg;
+
+          const erroredTool = toolSteps.find((t) => t.status !== "complete");
+          const fallback = streamError
+            ? `I ran into a problem: ${streamError}`
+            : erroredTool
+              ? `I tried to run \`${erroredTool.toolName}\` but didn't get a result back. Please try rephrasing or check the project details.`
+              : "I wasn't able to produce a response. Please try again.";
+          return { ...msg, content: fallback };
+        }),
+      );
     } catch (err) {
       console.error("[Torch Chat Error]:", err);
       toast.error("Torch execution failed. Please retry.");
