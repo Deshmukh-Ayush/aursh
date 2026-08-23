@@ -28,7 +28,7 @@ export function TorchRoot({
     >
       <div
         className={cn(
-          "flex flex-col flex-1 h-full w-full space-y-4 overflow-hidden bg-red-500",
+          "flex items-center flex-col flex-1 h-full w-full verflow-hidden",
           className,
         )}
         {...props}

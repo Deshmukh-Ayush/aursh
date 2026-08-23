@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import React, { useEffect } from "react";
 import { useTorch } from "./torch-context";
 import { Flame, User, Copy, Check, Brain } from "lucide-react";
 import { TorchReasoning } from "./torch-reasoning";
@@ -15,24 +15,18 @@ export function TorchMessages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
 
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center text-center p-6 space-y-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand border border-brand/20">
-          <Flame className="h-5 w-5" />
-        </div>
         <div>
-          <h2 className="text-sm font-semibold text-foreground">
-            Torch is ready to assist your workspace
+          <h2 className="text-2xl font-medium text-neutral-800">
+            Hi User
           </h2>
-          <p className="text-xs text-muted-foreground mt-1 max-w-md">
-            Ask about active projects in <strong>{orgName}</strong>, audit scope creep,
-            evaluate contract compliance, generate proposals, or forecast cashflow.
-          </p>
+          <p>Want me to list all the clients?</p>
         </div>
       </div>
     );
@@ -104,7 +98,6 @@ export function TorchMessages() {
           <span>Torch is reasoning workspace insights...</span>
         </div>
       )}
-
       <div ref={messagesEndRef} />
     </div>
   );

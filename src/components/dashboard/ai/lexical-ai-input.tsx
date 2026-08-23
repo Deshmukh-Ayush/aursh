@@ -183,7 +183,6 @@ export const LexicalAIInput  = ({
     editorRef.current?.update(() => {
       const root = $getRoot()
       const current = root.getTextContent()
-      // Replace trailing @ with full mention text
       const updated = current.endsWith("@")
         ? `${current.slice(0, -1)}@${projectName} `
         : `${current}@${projectName} `
@@ -199,18 +198,15 @@ export const LexicalAIInput  = ({
 
   return (
     <div className="relative w-3xl">
-      {/* 1. FLOATING SLASH MENU */}
       {showSlashMenu && (
         <SlashMenu commands={commands} selectCommand={selectCommand} />
       )}
 
-      {/* 2. FLOATING MENTION MENU */}
       {showMentionMenu && projects.length > 0 && (
         <MentionMenu projects={projects} selectProject={selectProject} />
       )}
 
-      {/* 3. INPUT CONTAINER */}
-      <div className="flex min-h-[100px] w-full flex-col justify-between rounded-[14px] border border-[#E8E8E8] bg-white shadow-[1px_0px_4px_0px_rgba(0,0,0,0.06),0px_1px_4px_0px_rgba(0,0,0,0.06)] transition-all focus-within:border-gray-300 focus-within:shadow-sm">
+      <div className="flex min-h-[100px] mx-auto w-full flex-col justify-between rounded-[14px] border border-[#E8E8E8] bg-white shadow-[1px_0px_4px_0px_rgba(0,0,0,0.06),0px_1px_4px_0px_rgba(0,0,0,0.06)] transition-all focus-within:border-gray-300 focus-within:shadow-sm">
         <LexicalComposer initialConfig={initialConfig}>
           <div className="relative flex-1 p-3">
             <RichTextPlugin
@@ -231,7 +227,6 @@ export const LexicalAIInput  = ({
           </div>
         </LexicalComposer>
 
-        {/* 4. ACTIONS TOOLBAR */}
         <div className="flex items-center justify-between px-3 pb-3">
           <button
             type="button"

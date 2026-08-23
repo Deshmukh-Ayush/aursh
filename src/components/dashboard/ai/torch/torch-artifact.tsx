@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useTorch, TorchMessage } from "./torch-context";
+import { AddendumLineItem, useTorch, TorchMessage } from "./torch-context";
 import { Button } from "@/components/ui/button";
-import { Check, X, FileText, PackagePlus, AlertTriangle } from "lucide-react";
+import { Check, X, FileText, PackagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface TorchArtifactProps {
@@ -42,7 +42,7 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
 
         {addendum.lineItems && addendum.lineItems.length > 0 && (
           <div className="space-y-1.5 border-t border-border/40 pt-2">
-            {addendum.lineItems.map((item: any, i: number) => (
+            {addendum.lineItems.map((item: AddendumLineItem, i: number) => (
               <div key={i} className="flex items-center justify-between text-[11px]">
                 <span className="text-muted-foreground">{item.description}</span>
                 <span className="font-mono text-foreground font-medium">

@@ -4,10 +4,76 @@ import * as React from "react";
 import { LexicalProjectOption } from "../lexical-ai-input";
 import { toast } from "sonner";
 
+export type JsonObject = Record<string, unknown>;
+
+export interface AddendumLineItem {
+  description: string;
+  amount: number;
+}
+
+export interface ChangeOrderAddendum {
+  title: string;
+  summary: string;
+  additionalPrice: number;
+  currency: string;
+  lineItems: AddendumLineItem[];
+}
+
+export interface DeliverableDraft {
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+}
+
+export interface ChangeOrderArtifactData {
+  projectId: string;
+  addendum: ChangeOrderAddendum;
+}
+
+export interface CreateDeliverableArtifactData {
+  projectId: string;
+  projectName: string;
+  draft: DeliverableDraft;
+}
+
+export type TorchArtifact =
+  | {
+      type: "change_order_addendum";
+      data: ChangeOrderArtifactData;
+      status: "pending" | "approved" | "rejected";
+    }
+  | {
+      type: "create_deliverable_confirmation";
+      data: CreateDeliverableArtifactData;
+      status: "pending" | "approved" | "rejected";
+    };
+
+export interface CreateDeliverablePayload {
+  projectId: string;
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+}
+
+export interface CreateAddendumProposalPayload {
+  projectId: string;
+  addendum: ChangeOrderAddendum;
+}
+
+export type ArtifactAction = "create_deliverable" | "create_addendum_proposal";
+export type ArtifactConfirmationPayload =
+  | CreateDeliverablePayload
+  | CreateAddendumProposalPayload;
+
+interface ConfirmationResponse {
+  success?: boolean;
+  error?: string;
+}
+
 export interface ToolCallStep {
   toolName: string;
-  args?: Record<string, any>;
-  result?: any;
+  args?: JsonObject;
+  result?: unknown;
   status: "calling" | "complete" | "error";
 }
 
@@ -16,11 +82,7 @@ export interface TorchMessage {
   role: "user" | "assistant" | "system";
   content: string;
   toolCalls?: ToolCallStep[];
-  artifact?: {
-    type: "change_order_addendum" | "create_deliverable_confirmation";
-    data: any;
-    status: "pending" | "approved" | "rejected";
-  };
+  artifact?: TorchArtifact;
   createdAt: string;
 }
 
@@ -41,7 +103,11 @@ export interface TorchContextValue {
   projects: LexicalProjectOption[];
   workspaceSummary?: WorkspaceSummary;
   sendMessage: (content: string) => Promise<void>;
-  confirmArtifact: (messageId: string, actionType: string, payload: any) => Promise<void>;
+  confirmArtifact: (
+    messageId: string,
+    actionType: ArtifactAction,
+    payload: ArtifactConfirmationPayload,
+  ) => Promise<void>;
   rejectArtifact: (messageId: string) => void;
   copiedId: string | null;
   copyMessage: (id: string, text: string) => Promise<void>;
@@ -73,6 +139,37 @@ export function TorchProvider({
   const [messages, setMessages] = React.useState<TorchMessage[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+
+  const isRecord = (value: unknown): value is JsonObject =>
+    typeof value === "object" && value !== null;
+
+  const isArtifactResult = (
+    value: unknown,
+  ): value is
+    | ({ artifactType: "change_order_addendum" } & ChangeOrderArtifactData)
+    | ({ artifactType: "create_deliverable_confirmation" } & CreateDeliverableArtifactData) => {
+    if (!isRecord(value) || value.requiresConfirmation !== true) return false;
+
+    if (value.artifactType === "change_order_addendum") {
+      return (
+        typeof value.projectId === "string" &&
+        isRecord(value.addendum) &&
+        typeof value.addendum.title === "string" &&
+        typeof value.addendum.summary === "string" &&
+        typeof value.addendum.additionalPrice === "number" &&
+        typeof value.addendum.currency === "string" &&
+        Array.isArray(value.addendum.lineItems)
+      );
+    }
+
+    return (
+      value.artifactType === "create_deliverable_confirmation" &&
+      typeof value.projectId === "string" &&
+      typeof value.projectName === "string" &&
+      isRecord(value.draft) &&
+      typeof value.draft.title === "string"
+    );
+  };
 
   const copyMessage = async (id: string, text: string) => {
     try {
@@ -129,8 +226,8 @@ export function TorchProvider({
       const decoder = new TextDecoder();
       let done = false;
       let accumulatedContent = "";
-      let toolSteps: ToolCallStep[] = [];
-      let detectedArtifact: any = null;
+      const toolSteps: ToolCallStep[] = [];
+      let detectedArtifact: TorchArtifact | undefined;
 
       while (!done) {
         const { value, done: streamDone } = await reader.read();
@@ -140,34 +237,45 @@ export function TorchProvider({
           const lines = chunk.split("\n");
 
           for (const line of lines) {
-            // Vercel AI SDK Data Stream Protocol:
-            // 0: text delta
-            // 9: tool call
-            // a: tool result
             if (line.startsWith("0:")) {
-              const textContent = JSON.parse(line.slice(2));
-              accumulatedContent += textContent;
+              const textContent: unknown = JSON.parse(line.slice(2));
+              if (typeof textContent === "string") accumulatedContent += textContent;
             } else if (line.startsWith("9:")) {
-              const toolCall = JSON.parse(line.slice(2));
-              toolSteps.push({
-                toolName: toolCall.toolName,
-                args: toolCall.args,
-                status: "calling",
-              });
+              const toolCall: unknown = JSON.parse(line.slice(2));
+              if (isRecord(toolCall) && typeof toolCall.toolName === "string") {
+                toolSteps.push({
+                  toolName: toolCall.toolName,
+                  args: isRecord(toolCall.args) ? toolCall.args : undefined,
+                  status: "calling",
+                });
+              }
             } else if (line.startsWith("a:")) {
-              const toolResult = JSON.parse(line.slice(2));
-              const match = toolSteps.find((t) => t.toolName === toolResult.toolName);
-              if (match) {
+              const toolResult: unknown = JSON.parse(line.slice(2));
+              if (!isRecord(toolResult)) continue;
+
+              const match =
+                typeof toolResult.toolName === "string"
+                  ? toolSteps.find((t) => t.toolName === toolResult.toolName)
+                  : undefined;
+              if (match && "result" in toolResult) {
                 match.result = toolResult.result;
                 match.status = "complete";
               }
 
-              if (toolResult.result?.requiresConfirmation) {
-                detectedArtifact = {
-                  type: toolResult.result.artifactType,
-                  data: toolResult.result,
-                  status: "pending" as const,
-                };
+              if (isArtifactResult(toolResult.result)) {
+                if (toolResult.result.artifactType === "change_order_addendum") {
+                  detectedArtifact = {
+                    type: "change_order_addendum",
+                    data: toolResult.result,
+                    status: "pending",
+                  };
+                } else {
+                  detectedArtifact = {
+                    type: "create_deliverable_confirmation",
+                    data: toolResult.result,
+                    status: "pending",
+                  };
+                }
               }
             }
           }
@@ -205,7 +313,11 @@ export function TorchProvider({
     }
   };
 
-  const confirmArtifact = async (messageId: string, actionType: string, payload: any) => {
+  const confirmArtifact = async (
+    messageId: string,
+    actionType: ArtifactAction,
+    payload: ArtifactConfirmationPayload,
+  ) => {
     try {
       const res = await fetch("/api/ai/torch/confirm", {
         method: "POST",
@@ -213,7 +325,7 @@ export function TorchProvider({
         body: JSON.stringify({ actionType, payload }),
       });
 
-      const data = await res.json();
+      const data: ConfirmationResponse = await res.json();
       if (data.success) {
         toast.success("Action applied to workspace successfully!");
         setMessages((prev) =>
