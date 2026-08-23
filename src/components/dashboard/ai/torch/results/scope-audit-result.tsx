@@ -29,11 +29,12 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
   const scopeEval = isRecord(result.scopeEvaluation) ? result.scopeEvaluation : null;
   const terms = isRecord(result.extractedTerms) ? result.extractedTerms : null;
 
-  const scopeStatus = scopeEval?.status;
+  const rawScopeStatus = scopeEval?.status;
+  const scopeStatus = typeof rawScopeStatus === "string" ? rawScopeStatus : null;
   const isCreep =
-    typeof scopeStatus === "string" && scopeStatus.toLowerCase().includes("creep");
+    scopeStatus !== null && scopeStatus.toLowerCase().includes("creep");
   const isWarning =
-    typeof scopeStatus === "string" &&
+    scopeStatus !== null &&
     (scopeStatus.toLowerCase().includes("limit") ||
       scopeStatus.toLowerCase().includes("warning") ||
       scopeStatus.toLowerCase().includes("exceed"));

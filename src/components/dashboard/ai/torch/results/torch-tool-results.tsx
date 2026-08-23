@@ -33,16 +33,16 @@ export interface TorchToolResultsProps {
 export function TorchToolResults({ toolCalls }: TorchToolResultsProps) {
   if (!toolCalls || toolCalls.length === 0) return null;
 
-  const rendered = toolCalls
-    .map((tc) => {
-      // Only render a structured result once the tool has returned data and
-      // wasn't an error; calling / errored steps have no payload to show.
-      if (tc.status !== "complete" || tc.result == null) return null;
-      const Renderer = RESULT_RENDERERS[tc.toolName];
-      if (!Renderer) return null;
-      return { key: tc.toolName + tc.toolCallId, Renderer, result: tc.result };
-    })
-    .filter((r): r is { key: string; Renderer: React.ComponentType<{ result: unknown }>; result: unknown } => r !== null);
+  const rendered: { key: string; Renderer: React.ComponentType<{ result: unknown }>; result: unknown }[] = [];
+
+  for (const tc of toolCalls) {
+    // Only render a structured result once the tool has returned data and
+    // wasn't an error; calling / errored steps have no payload to show.
+    if (tc.status !== "complete" || tc.result == null) continue;
+    const Renderer = RESULT_RENDERERS[tc.toolName];
+    if (!Renderer) continue;
+    rendered.push({ key: tc.toolName + (tc.toolCallId ?? ""), Renderer, result: tc.result });
+  }
 
   if (rendered.length === 0) return null;
 
