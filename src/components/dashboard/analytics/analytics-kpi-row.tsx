@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { project, proposal, deliverable } from "@/db/schema"
-import { eq, inArray } from "drizzle-orm"
+import { proposal, deliverable } from "@/db/schema"
+import { inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { AnalyticsKpiRowClient, AnalyticsKpiData } from "./analytics-kpi-row-client"
 import { convertToINR } from "@/lib/currency"
 
@@ -14,11 +15,8 @@ export async function AnalyticsKpiRow() {
     return null
   }
 
-  // Fetch workspace project IDs first
-  const orgProjects = await db
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.organizationId, ctx.organizationId))
+  // Fetch workspace project IDs first (cached across sibling components)
+  const orgProjects = await getCachedOrgProjects(ctx.organizationId)
 
   const projectIds = orgProjects.map((p) => p.id)
 

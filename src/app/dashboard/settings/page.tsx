@@ -1,9 +1,7 @@
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { db } from "@/utils/db"
-import { eq, and } from "drizzle-orm"
-import { organization, member, user } from "@/db/schema"
 import { getCachedTenant } from "@/utils/cached-tenant"
+import { getCachedOrg, getCachedOrgMembers } from "@/utils/cached-org-queries"
 import { SettingsClientContainer } from "@/components/dashboard/settings/settings-client-container"
 
 async function SettingsData() {
@@ -20,25 +18,10 @@ async function SettingsData() {
     )
   }
 
-  // Execute database queries concurrently using findFirst for single records
+  // Execute database queries concurrently (cached across sibling components)
   const [org, orgMembers] = await Promise.all([
-    db.query.organization.findFirst({
-      where: eq(organization.id, organizationId)
-    }),
-    db
-      .select({
-        id: member.id,
-        role: member.role,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        },
-      })
-      .from(member)
-      .innerJoin(user, eq(member.userId, user.id))
-      .where(eq(member.organizationId, organizationId)),
+    getCachedOrg(organizationId),
+    getCachedOrgMembers(organizationId),
   ])
 
   if (!org) {

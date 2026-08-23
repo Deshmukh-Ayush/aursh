@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { project, proposal, deliverable } from "@/db/schema"
-import { eq, inArray } from "drizzle-orm"
+import { proposal, deliverable } from "@/db/schema"
+import { inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import {
   AnalyticsBreakdownsUI,
   ProposalBreakdownItem,
@@ -17,11 +18,8 @@ export async function AnalyticsBreakdowns() {
     return null
   }
 
-  // Fetch workspace projects
-  const orgProjects = await db
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.organizationId, ctx.organizationId))
+  // Fetch workspace projects (cached across sibling components)
+  const orgProjects = await getCachedOrgProjects(ctx.organizationId)
 
   const projectIds = orgProjects.map((p) => p.id)
 
@@ -35,7 +33,7 @@ export async function AnalyticsBreakdowns() {
     const emptyDeliverables: DeliverableHealthItem[] = [
       { label: "Approved", count: 0, percentage: 0, color: "#10B981" },
       { label: "In Review", count: 0, percentage: 0, color: "#00AAF7" },
-      { label: "Revision Requested", count: 0, percentage: 0, color: "#F59E0B" },
+      { label: "Revision Requested", count: 0, percentage: 0, color: "#F59F0B" },
       { label: "Pending", count: 0, percentage: 0, color: "#64748B" },
     ]
     return (
@@ -97,7 +95,7 @@ export async function AnalyticsBreakdowns() {
   const deliverableHealth: DeliverableHealthItem[] = [
     { label: "Approved", count: dApproved, percentage: calcPct(dApproved), color: "#10B981" },
     { label: "In Review", count: dInReview, percentage: calcPct(dInReview), color: "#00AAF7" },
-    { label: "Revision Requested", count: dRevision, percentage: calcPct(dRevision), color: "#F59E0B" },
+    { label: "Revision Requested", count: dRevision, percentage: calcPct(dRevision), color: "#F59F0B" },
     { label: "Pending", count: dPending, percentage: calcPct(dPending), color: "#64748B" },
   ]
 

@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { project, proposal } from "@/db/schema"
-import { eq, inArray, gte, and } from "drizzle-orm"
+import { proposal } from "@/db/schema"
+import { inArray, gte, and } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { format, subMonths, startOfMonth, isSameMonth } from "date-fns"
 import dynamic from "next/dynamic"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -26,10 +27,7 @@ export async function AnalyticsHeroChart() {
   const today = new Date()
   const sixMonthsAgo = startOfMonth(subMonths(today, 5))
 
-  const orgProjects = await db
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.organizationId, ctx.organizationId))
+  const orgProjects = await getCachedOrgProjects(ctx.organizationId)
 
   const projectIds = orgProjects.map((p) => p.id)
 

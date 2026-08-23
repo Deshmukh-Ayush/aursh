@@ -1,8 +1,9 @@
 import { Suspense } from "react"
 import { db } from "@/utils/db"
-import { organization, project, proposal, deliverable } from "@/db/schema"
+import { project, proposal, deliverable } from "@/db/schema"
 import { eq, inArray } from "drizzle-orm"
 import { getCachedTenant } from "@/utils/cached-tenant"
+import { getCachedOrg } from "@/utils/cached-org-queries"
 import { ScrunityAIView } from "@/components/dashboard/ai/scrunity-ai-view"
 import { Brain } from "lucide-react"
 
@@ -11,9 +12,7 @@ async function AIDataFetcher() {
   if (!organizationId) return null
 
   const [org, orgProjects] = await Promise.all([
-    db.query.organization.findFirst({
-      where: eq(organization.id, organizationId)
-    }),
+    getCachedOrg(organizationId),
     db.select({ id: project.id, name: project.name, status: project.status })
       .from(project)
       .where(eq(project.organizationId, organizationId)),

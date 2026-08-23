@@ -1,11 +1,9 @@
-import { db } from "@/utils/db";
-import { organization } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ProjectSidebar } from "@/components/sidebar/index";
 import { MobileHeader } from "./mobile-header";
 import { getProjectAccess } from "@/lib/project-auth";
 import { getCachedSession } from "@/utils/cached-session";
+import { getCachedOrg } from "@/utils/cached-org-queries";
 
 export default async function ProjectLayout({
   children,
@@ -23,10 +21,7 @@ export default async function ProjectLayout({
     redirect("/dashboard");
   }
 
-  const [org] = await db
-    .select()
-    .from(organization)
-    .where(eq(organization.id, proj.organizationId as string));
+  const org = await getCachedOrg(proj.organizationId as string);
 
   const orgSafe = org
     ? ({ ...org, logoUrl: org.logoUrl ?? undefined, plan: org.plan } as typeof org & { logoUrl?: string, plan: string })

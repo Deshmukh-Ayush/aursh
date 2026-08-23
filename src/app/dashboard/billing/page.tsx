@@ -1,9 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/utils/db";
-import { organization } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { getCachedTenant } from "@/utils/cached-tenant";
+import { getCachedOrg } from "@/utils/cached-org-queries";
 import { BillingClientContainer } from "@/components/dashboard/billing/billing-client-container";
 import { BILLING_CONFIG } from "@/config/billing";
 
@@ -26,25 +24,22 @@ async function BillingData() {
     );
   }
 
-  const org = await db.query.organization.findFirst({
-    where: eq(organization.id, organizationId),
-    columns: {
-      id: true,
-      name: true,
-      plan: true,
-      subscriptionStatus: true,
-      currentPeriodEnd: true,
-      trialEndsAt: true,
-    }
-  });
+  const org = await getCachedOrg(organizationId);
 
   if (!org) {
     return <div className="p-6 text-xs text-muted-foreground">Organization not found</div>;
   }
 
   return (
-    <BillingClientContainer 
-      organization={org} 
+    <BillingClientContainer
+      organization={{
+        id: org.id,
+        name: org.name,
+        plan: org.plan,
+        subscriptionStatus: org.subscriptionStatus,
+        currentPeriodEnd: org.currentPeriodEnd,
+        trialEndsAt: org.trialEndsAt,
+      }}
       config={BILLING_CONFIG}
       userEmail={user.email}
     />

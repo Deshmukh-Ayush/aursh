@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { project, projectMember, user, invitation, proposal } from "@/db/schema"
+import { projectMember, user, invitation, proposal } from "@/db/schema"
 import { eq, and, inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { ClientsTableClient, ClientTableItem } from "./clients-table-client"
 
 export async function ClientsTable() {
@@ -13,11 +14,8 @@ export async function ClientsTable() {
     return null
   }
 
-  // Fetch workspace projects
-  const orgProjects = await db
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.organizationId, ctx.organizationId))
+  // Fetch workspace projects (cached across sibling components)
+  const orgProjects = await getCachedOrgProjects(ctx.organizationId)
 
   const projectIds = orgProjects.map((p) => p.id)
 

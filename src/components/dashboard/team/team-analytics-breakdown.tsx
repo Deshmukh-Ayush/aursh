@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { member, user, activityLog, project } from "@/db/schema"
-import { eq, inArray } from "drizzle-orm"
+import { activityLog } from "@/db/schema"
+import { inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedOrgMembers, getCachedOrgProjects } from "@/utils/cached-org-queries"
 import {
   TeamAnalyticsBreakdownUI,
   TopContributorItem,
@@ -38,26 +39,10 @@ export async function TeamAnalyticsBreakdown() {
     return null
   }
 
-  // Fetch workspace projects & members
+  // Fetch workspace projects & members (cached across sibling components)
   const [orgMembers, orgProjects] = await Promise.all([
-    db
-      .select({
-        id: member.id,
-        role: member.role,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        },
-      })
-      .from(member)
-      .innerJoin(user, eq(member.userId, user.id))
-      .where(eq(member.organizationId, ctx.organizationId)),
-    db
-      .select({ id: project.id })
-      .from(project)
-      .where(eq(project.organizationId, ctx.organizationId)),
+    getCachedOrgMembers(ctx.organizationId),
+    getCachedOrgProjects(ctx.organizationId),
   ])
 
   const projectIds = orgProjects.map((p) => p.id)

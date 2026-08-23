@@ -20,11 +20,37 @@ export interface TenantContextResult {
 /**
  * Deep module that resolves session, active organization, and member role in one unified call.
  * Wrapped in React.cache() for per-request deduplication across layouts and server components.
+ *
+ * Fast path: when the proxy (src/proxy.ts) has already resolved the session, active org,
+ * and membership role, it injects x-user-id / x-org-id / x-org-role request headers. This
+ * avoids a second auth.api.getSession() call and a duplicate member query in the render phase.
+ * Fallback: full resolution for routes not covered by the proxy matcher.
  */
 export const getTenantContext = cache(async function getTenantContext(
   reqHeaders?: Headers
 ): Promise<TenantContextResult> {
   const reqH = reqHeaders || (await headers());
+
+  // Fast path: proxy already resolved identity into request headers
+  const proxyUserId = reqH.get("x-user-id");
+  const proxyOrgId = reqH.get("x-org-id");
+  const proxyOrgRole = reqH.get("x-org-role");
+
+  if (proxyUserId && proxyOrgId) {
+    return {
+      session: null,
+      user: {
+        id: proxyUserId,
+        name: reqH.get("x-user-name") || "",
+        email: reqH.get("x-user-email") || "",
+        image: reqH.get("x-user-image") || null,
+      } as UserType,
+      organizationId: proxyOrgId,
+      memberRole: proxyOrgRole || undefined,
+    };
+  }
+
+  // Fallback: full resolution (routes outside the proxy matcher)
   const session = await auth.api.getSession({ headers: reqH });
 
   if (!session || !session.user) {

@@ -23,7 +23,7 @@ export default function TorchTimelineFeed() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
       
       {/* 1. TEXT NODE */}
-      <div className="text-[16px] font-normal text-neutral-800">
+      <div className="text-[16px] font-regular text-neutral-800">
         I&apos;ll draft all the 3 items as asked and ask Ayush for approval.
       </div>
 

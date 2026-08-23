@@ -1,8 +1,9 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { organization, member, activityLog, project } from "@/db/schema"
-import { eq, inArray, gte, and } from "drizzle-orm"
+import { activityLog } from "@/db/schema"
+import { inArray, gte, and } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getCachedOrg, getCachedOrgMembers, getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { subDays } from "date-fns"
 import { TeamKpiRowClient, TeamKpiData } from "./team-kpi-row-client"
 
@@ -18,11 +19,11 @@ export async function TeamKpiRow() {
   const sevenDaysAgo = subDays(today, 6)
   const thirtyDaysAgo = subDays(today, 29)
 
-  // Concurrent queries for org plan, members, and workspace projects (Promise.all)
-  const [[org], orgMembers, orgProjects] = await Promise.all([
-    db.select().from(organization).where(eq(organization.id, ctx.organizationId)),
-    db.select().from(member).where(eq(member.organizationId, ctx.organizationId)),
-    db.select({ id: project.id }).from(project).where(eq(project.organizationId, ctx.organizationId)),
+  // Concurrent queries for org plan, members, and workspace projects (cached across siblings)
+  const [org, orgMembers, orgProjects] = await Promise.all([
+    getCachedOrg(ctx.organizationId),
+    getCachedOrgMembers(ctx.organizationId),
+    getCachedOrgProjects(ctx.organizationId),
   ])
 
   const projectIds = orgProjects.map((p) => p.id)
