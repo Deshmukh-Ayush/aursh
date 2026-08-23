@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { motion } from "framer-motion"
 import {
   ChainOfThought,
   ChainOfThoughtHeader,
@@ -22,6 +23,13 @@ interface ScrunityAIChainOfThoughtProps {
   steps: ReasoningStep[]
 }
 
+/**
+ * Wraps the base ChainOfThought with real motion so steps feel like live
+ * progress rather than an instant snap: each step springs in with a small
+ * stagger as it arrives, and `layout` smooths reflow when new steps push
+ * existing ones down. No artificial delays — motion reflects real,
+ * already-arriving stream events.
+ */
 export function ScrunityAIChainOfThought({
   isStreaming = false,
   steps,
@@ -35,17 +43,24 @@ export function ScrunityAIChainOfThought({
         </span>
       </ChainOfThoughtHeader>
 
-      <ChainOfThoughtContent className="mt-2.5 space-y-2 pt-2 border-t border-border/20">
+      <ChainOfThoughtContent className="mt-2.5 space-y-0 pt-2 border-t border-border/20">
         {steps.map((step, idx) => {
           const StepIcon = step.icon ?? (idx === steps.length - 1 ? CheckCircle2 : Brain)
           return (
-            <ChainOfThoughtStep
+            <motion.div
               key={step.id || idx}
-              icon={StepIcon}
-              label={step.title}
-              description={step.detail}
-              status={step.status}
-            />
+              layout
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", duration: 0.35, bounce: 0, delay: Math.min(idx * 0.04, 0.16) }}
+            >
+              <ChainOfThoughtStep
+                icon={StepIcon}
+                label={step.title}
+                description={step.detail}
+                status={step.status}
+              />
+            </motion.div>
           )
         })}
       </ChainOfThoughtContent>

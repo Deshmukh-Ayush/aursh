@@ -5,6 +5,8 @@ import { useTorch, WorkspaceSummary } from "./torch-context";
 import { Flame, User, Copy, Check, Brain, Sparkles } from "lucide-react";
 import { TorchReasoning } from "./torch-reasoning";
 import { TorchArtifact } from "./torch-artifact";
+import { TorchToolResults } from "./results/torch-tool-results";
+import { MessageResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
 
 interface SuggestedPrompt {
@@ -155,10 +157,12 @@ export function TorchMessages() {
               )}
 
               {msg.content && (
-                <div className="whitespace-pre-wrap text-sm leading-7 text-foreground">
+                <MessageResponse className="text-sm leading-7 text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_table]:my-2 [&_th]:px-2 [&_td]:px-2 [&_pre]:my-2 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs">
                   {msg.content}
-                </div>
+                </MessageResponse>
               )}
+
+              <TorchToolResults toolCalls={msg.toolCalls} />
 
               {msg.artifact && (
                 <div className="max-w-lg">
