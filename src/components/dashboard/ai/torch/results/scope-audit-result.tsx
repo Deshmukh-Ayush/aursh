@@ -7,6 +7,23 @@ import { ShieldCheck, FileCheck2, FileX2, AlertTriangle } from "lucide-react";
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
 
+const SCOPE_STATUS_LABEL: Record<string, string> = {
+  within_scope: "Within scope",
+  limit_reached: "Limit reached",
+  scope_creep_alert: "Scope creep",
+};
+
+const DELIVERABLE_STATUS_LABEL: Record<string, string> = {
+  in_review: "In review",
+  revision_requested: "Revision requested",
+  approved: "Approved",
+  pending: "Pending",
+};
+
+function humanizeStatus(status: string, labelMap: Record<string, string>): string {
+  return labelMap[status] ?? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /**
  * Renders the `auditProjectScope` tool result as a structured scope audit card:
  * contract status, revision history, deliverable tally, and any extracted
@@ -46,14 +63,14 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
       transition={{ type: "spring", duration: 0.4, bounce: 0 }}
       className="overflow-hidden rounded-xl border border-border/60 bg-background"
     >
-      <div className="flex items-center gap-2 border-b border-border/60 px-3.5 py-2.5">
-        <ShieldCheck className="h-3.5 w-3.5 text-brand" />
-        <span className="text-xs font-semibold text-foreground">
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+        <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-sm font-semibold text-foreground">
           Scope audit{projectName ? ` · ${projectName}` : ""}
         </span>
         {scopeStatus && (
           <span
-            className={`ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+            className={`ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${
               isCreep
                 ? "bg-red-500/10 text-red-600 dark:text-red-400"
                 : isWarning
@@ -61,7 +78,7 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
                   : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
             }`}
           >
-            {scopeStatus}
+            {humanizeStatus(scopeStatus, SCOPE_STATUS_LABEL)}
           </span>
         )}
       </div>
@@ -83,23 +100,23 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
       </div>
 
       {hasContract && contractFile && (
-        <div className="border-t border-border/60 px-3.5 py-2 text-[11px] text-muted-foreground">
+        <div className="border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
           Signed contract: <span className="font-medium text-foreground">{contractFile}</span>
         </div>
       )}
 
       {deliverables.length > 0 && (
         <div className="overflow-x-auto border-t border-border/60">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-sm">
             <tbody className="divide-y divide-border/40">
               {deliverables.map((d, i) => {
                 const title = typeof d.title === "string" ? d.title : "Untitled";
                 const status = typeof d.status === "string" ? d.status : "pending";
                 return (
                   <tr key={typeof d.id === "string" ? d.id : i}>
-                    <td className="px-3.5 py-2 font-medium text-foreground">{title}</td>
-                    <td className="px-3.5 py-2 text-muted-foreground">
-                      {status.replace(/_/g, " ")}
+                    <td className="px-4 py-2 font-medium text-foreground">{title}</td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {humanizeStatus(status, DELIVERABLE_STATUS_LABEL)}
                     </td>
                   </tr>
                 );
@@ -110,13 +127,13 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
       )}
 
       {terms && Object.keys(terms).length > 0 && (
-        <div className="border-t border-border/60 px-3.5 py-2.5">
-          <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="border-t border-border/60 px-4 py-2.5">
+          <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Extracted contract terms
           </div>
           <dl className="space-y-1">
             {Object.entries(terms).slice(0, 6).map(([k, v]) => (
-              <div key={k} className="flex gap-2 text-[11px]">
+              <div key={k} className="flex gap-2 text-xs">
                 <dt className="shrink-0 text-muted-foreground">{humanizeKey(k)}:</dt>
                 <dd className="text-foreground">{formatTerm(v)}</dd>
               </div>
@@ -142,10 +159,10 @@ function ScopeStat({
   return (
     <div className="px-3 py-2.5 text-center">
       {Icon && <Icon className={`mx-auto h-3.5 w-3.5 ${tone ?? "text-muted-foreground"}`} />}
-      <div className={`mt-1 text-sm font-semibold tabular-nums ${tone ?? "text-foreground"}`}>
+      <div className={`mt-1 text-base font-semibold tabular-nums ${tone ?? "text-foreground"}`}>
         {value}
       </div>
-      <div className="text-[10px] text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }

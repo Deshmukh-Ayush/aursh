@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Torch logo: a stylized flame atop a handle. Designed to read at 20px+ -->
+  <path d="M32 4C32 4 18 14 18 28C18 36 24 42 32 42C40 42 46 36 46 28C46 14 32 4 32 4Z" fill="#00AAF7"/>
+  <path d="M32 14C32 14 25 21 25 28C25 33 28 36 32 36C36 36 39 33 39 28C39 21 32 14 32 14Z" fill="#0088C4"/>
+  <path d="M32 22C32 22 29 25 29 29C29 31.5 30.5 33 32 33C33.5 33 35 31.5 35 29C35 25 32 22 32 22Z" fill="#E5F7FE"/>
+  <rect x="28" y="40" width="8" height="18" rx="3" fill="#52525B"/>
+  <rect x="24" y="40" width="16" height="5" rx="2.5" fill="#52525B"/>
+</svg>

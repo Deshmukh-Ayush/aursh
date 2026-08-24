@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 export interface TorchRootProps extends React.HTMLAttributes<HTMLDivElement> {
   orgName: string;
+  userName?: string;
   projects: LexicalProjectOption[];
   workspaceSummary?: WorkspaceSummary;
   children: React.ReactNode;
@@ -14,6 +15,7 @@ export interface TorchRootProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function TorchRoot({
   orgName,
+  userName,
   projects,
   workspaceSummary,
   children,
@@ -23,14 +25,12 @@ export function TorchRoot({
   return (
     <TorchProvider
       orgName={orgName}
+      userName={userName}
       projects={projects}
       workspaceSummary={workspaceSummary}
     >
       <div
-        className={cn(
-          "flex items-center flex-col flex-1 h-full w-full verflow-hidden",
-          className,
-        )}
+        className={cn("flex flex-col flex-1 w-full min-h-0", className)}
         {...props}
       >
         {children}

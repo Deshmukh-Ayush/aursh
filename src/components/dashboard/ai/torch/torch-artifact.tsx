@@ -30,15 +30,15 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
     return (
       <motion.div {...appear} className="mt-3">
         <div className="overflow-hidden rounded-xl border border-border/60 bg-background shadow-xs">
-          {/* Hierarchy: the price delta is the dominant element. */}
+          {/* Hierarchy: the price delta is the dominant element via size/weight. */}
           <div className="flex items-baseline justify-between gap-3 px-4 pt-3.5 pb-2">
             <div className="flex min-w-0 items-center gap-2">
-              <FileText className="h-4 w-4 shrink-0 text-brand" />
-              <span className="truncate text-xs font-semibold text-foreground">
+              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate text-sm font-semibold text-foreground">
                 {addendum.title || "Change Order SOW Addendum"}
               </span>
             </div>
-            <span className="shrink-0 font-mono text-lg font-bold tabular-nums text-brand">
+            <span className="shrink-0 font-mono text-lg font-bold tabular-nums text-foreground">
               +{addendum.additionalPrice}{" "}
               <span className="text-xs font-semibold text-muted-foreground">
                 {addendum.currency || "USD"}
@@ -47,7 +47,7 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
           </div>
 
           <div className="px-4 pb-2">
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {addendum.summary}
             </p>
           </div>
@@ -55,7 +55,7 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
           {addendum.lineItems && addendum.lineItems.length > 0 && (
             <div className="space-y-1 px-4 pb-2.5">
               {addendum.lineItems.map((item: AddendumLineItem, i: number) => (
-                <div key={i} className="flex items-center justify-between text-[11px]">
+                <div key={i} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{item.description}</span>
                   <span className="font-mono tabular-nums text-foreground">
                     {item.amount} {addendum.currency}
@@ -97,12 +97,12 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
         <div className="overflow-hidden rounded-xl border border-border/60 bg-background shadow-xs">
           {/* Hierarchy: the deliverable title dominates; project is metadata. */}
           <div className="flex items-start gap-2 px-4 pt-3.5 pb-2">
-            <PackagePlus className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+            <PackagePlus className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-foreground">
                 {draft.title || "New deliverable"}
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {artifact.data.projectName}
               </div>
             </div>
@@ -110,7 +110,7 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
 
           {draft.description && (
             <div className="px-4 pb-2.5">
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 {draft.description}
               </p>
             </div>
@@ -181,16 +181,16 @@ function ArtifactFooter({
             <button
               type="button"
               onClick={onReject}
-              className="text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
             >
               {rejectLabel}
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="inline-flex h-7 items-center gap-1 rounded-lg bg-brand px-3 text-[11px] font-medium text-white transition-colors hover:bg-brand-hover"
+              className="inline-flex h-8 items-center gap-1 rounded-lg bg-brand px-3 text-xs font-medium text-white transition-colors hover:bg-brand-hover"
             >
-              <Check className="h-3 w-3" />
+              <Check className="h-3.5 w-3.5" />
               {confirmLabel}
             </button>
           </motion.div>
@@ -200,7 +200,7 @@ function ArtifactFooter({
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", duration: 0.35, bounce: 0 }}
-            className="flex items-center gap-1.5 text-[11px]"
+            className="flex items-center gap-1.5 text-xs"
           >
             <span
               className={cn(

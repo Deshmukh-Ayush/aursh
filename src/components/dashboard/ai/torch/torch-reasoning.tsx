@@ -12,7 +12,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ToolCallStep } from "./torch-context";
-import { ScrunityAIChainOfThought, ReasoningStep } from "../scrunity-ai-chain-of-thought";
+import {
+  ScrunityAIChainOfThought,
+  ReasoningStep,
+  StepKind,
+} from "../scrunity-ai-chain-of-thought";
+import type { ToolPart } from "@/components/ui/tool";
 
 export interface TorchReasoningProps {
   toolCalls?: ToolCallStep[];
@@ -173,19 +178,83 @@ function formatToolStep(toolName: string, result: unknown): FormattedStep {
   }
 }
 
+/** Drafting tools that produce confirmation artifacts requiring approval. */
+const ARTIFACT_TOOLS = new Set([
+  "generateAddendumDraft",
+  "createDeliverableDraft",
+]);
+
+/**
+ * Maps a ToolCallStep's status to a timeline step kind:
+ * - "calling" → tool-active (the tool is in progress)
+ * - "complete" + artifact result → artifact (awaiting approval)
+ * - "complete" → tool-complete (done, result rendered below)
+ * - "error" → error
+ */
+function stepKindFor(tc: ToolCallStep): StepKind {
+  if (tc.status === "error") return "error";
+  if (tc.status === "calling") return "tool-active";
+  if (tc.status === "complete") {
+    if (
+      ARTIFACT_TOOLS.has(tc.toolName) &&
+      isRecord(tc.result) &&
+      tc.result.requiresConfirmation === true
+    ) {
+      return "artifact";
+    }
+    return "tool-complete";
+  }
+  return "tool-complete";
+}
+
+/**
+ * Converts a ToolCallStep into a prompt-kit ToolPart for the Tool primitive,
+ * mapping our internal "calling"/"complete"/"error" statuses onto the
+ * ToolPart's "input-streaming"/"output-available"/"output-error" states.
+ */
+function toToolPart(tc: ToolCallStep): ToolPart {
+  if (tc.status === "error") {
+    return {
+      type: tc.toolName,
+      state: "output-error",
+      input: tc.args,
+      toolCallId: tc.toolCallId,
+    };
+  }
+  if (tc.status === "calling") {
+    return {
+      type: tc.toolName,
+      state: "input-streaming",
+      input: tc.args,
+      toolCallId: tc.toolCallId,
+    };
+  }
+  // complete
+  return {
+    type: tc.toolName,
+    state: "output-available",
+    input: tc.args,
+    output: isRecord(tc.result) ? tc.result : undefined,
+    toolCallId: tc.toolCallId,
+  };
+}
+
 export function TorchReasoning({ toolCalls }: TorchReasoningProps) {
   if (!toolCalls || toolCalls.length === 0) return null;
 
   const steps: ReasoningStep[] = toolCalls.map((tc, index) => {
     const formatted = formatToolStep(tc.toolName, tc.result);
     const isStepError = tc.status === "error";
+    const kind = stepKindFor(tc);
 
     return {
-      id: `step-${index}`,
+      id: `step-${index}-${tc.toolCallId ?? tc.toolName}`,
       title: formatted.title,
       detail: isStepError && !tc.result ? "Failed to complete" : formatted.detail,
       icon: formatted.icon,
       status: tc.status === "complete" ? ("complete" as const) : ("active" as const),
+      kind,
+      toolPart: toToolPart(tc),
     };
   });
 

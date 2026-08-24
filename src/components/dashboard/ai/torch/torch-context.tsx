@@ -102,6 +102,7 @@ export interface TorchContextValue {
   messages: TorchMessage[];
   loading: boolean;
   orgName: string;
+  userName?: string;
   projects: LexicalProjectOption[];
   workspaceSummary?: WorkspaceSummary;
   sendMessage: (content: string) => Promise<void>;
@@ -128,6 +129,7 @@ export function useTorch() {
 interface TorchProviderProps {
   children: React.ReactNode;
   orgName: string;
+  userName?: string;
   projects: LexicalProjectOption[];
   workspaceSummary?: WorkspaceSummary;
 }
@@ -135,6 +137,7 @@ interface TorchProviderProps {
 export function TorchProvider({
   children,
   orgName,
+  userName,
   projects,
   workspaceSummary,
 }: TorchProviderProps) {
@@ -425,6 +428,7 @@ export function TorchProvider({
         messages,
         loading,
         orgName,
+        userName,
         projects,
         workspaceSummary,
         sendMessage,

@@ -219,3 +219,9 @@
 @media (prefers-reduced-motion: reduce) {
   .t-shimmer::before { animation: none !important; }
 }
+
+/* prompt-kit Text Shimmer keyframe */
+@keyframes shimmer {
+  from { background-position: 0% 0; }
+  to { background-position: 200% 0; }
+}

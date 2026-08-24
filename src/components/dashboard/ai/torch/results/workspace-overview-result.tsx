@@ -9,20 +9,20 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 
 const DELIVERABLE_STATUS_LABEL: Record<string, string> = {
   in_review: "In review",
-  revision_requested: "Revision",
+  revision_requested: "Revision requested",
   approved: "Approved",
   pending: "Pending",
 };
 
 const STATUS_TONE: Record<string, string> = {
-  in_review: "text-brand bg-brand/10",
+  in_review: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
   revision_requested: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
   approved: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
   pending: "text-muted-foreground bg-muted",
 };
 
-function formatStatus(status: string): string {
-  return DELIVERABLE_STATUS_LABEL[status] ?? status;
+function humanizeStatus(status: string): string {
+  return DELIVERABLE_STATUS_LABEL[status] ?? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
@@ -57,30 +57,30 @@ export function WorkspaceOverviewResult({ result }: { result: unknown }) {
       transition={{ type: "spring", duration: 0.4, bounce: 0 }}
       className="overflow-hidden rounded-xl border border-border/60 bg-background"
     >
-      <div className="flex items-center gap-2 border-b border-border/60 px-3.5 py-2.5">
-        <LayoutDashboard className="h-3.5 w-3.5 text-brand" />
-        <span className="text-xs font-semibold text-foreground">
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+        <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-sm font-semibold text-foreground">
           Workspace overview
         </span>
-        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
           <CircleDot className="h-3 w-3" />
           {active} active · {total} total
         </span>
       </div>
 
       <div className="flex divide-x divide-border/60 text-center">
-        <CountCell label="In review" value={inReviewCount} tone="text-brand" />
+        <CountCell label="In review" value={inReviewCount} tone="text-amber-600 dark:text-amber-400" />
         <CountCell label="Projects" value={total} />
         <CountCell label="Pipeline" value={pipeline} mono />
       </div>
 
       {hasDeliverables ? (
         <div className="overflow-x-auto border-t border-border/60">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-sm">
             <thead className="bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="px-3.5 py-2 font-medium">Deliverable</th>
-                <th className="px-3.5 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">Deliverable</th>
+                <th className="px-4 py-2 font-medium text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
@@ -89,14 +89,14 @@ export function WorkspaceOverviewResult({ result }: { result: unknown }) {
                 const status = typeof d.status === "string" ? d.status : "pending";
                 return (
                   <tr key={typeof d.id === "string" ? d.id : i} className="text-foreground">
-                    <td className="px-3.5 py-2 font-medium">{title}</td>
-                    <td className="px-3.5 py-2">
+                    <td className="px-4 py-2 font-medium">{title}</td>
+                    <td className="px-4 py-2 text-right">
                       <span
-                        className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
                           STATUS_TONE[status] ?? STATUS_TONE.pending
                         }`}
                       >
-                        {formatStatus(status)}
+                        {humanizeStatus(status)}
                       </span>
                     </td>
                   </tr>
@@ -106,7 +106,7 @@ export function WorkspaceOverviewResult({ result }: { result: unknown }) {
           </table>
         </div>
       ) : (
-        <div className="border-t border-border/60 px-3.5 py-3 text-[11px] text-muted-foreground">
+        <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
           {projects.length === 0
             ? "No projects in this workspace yet."
             : "Nothing currently in review across your projects."}
@@ -128,15 +128,15 @@ function CountCell({
   mono?: boolean;
 }) {
   return (
-    <div className="flex-1 px-2 py-2.5">
+    <div className="flex-1 px-4 py-2.5">
       <div
-        className={`text-sm font-semibold tabular-nums ${tone ?? "text-foreground"} ${
+        className={`text-base font-semibold tabular-nums ${tone ?? "text-foreground"} ${
           mono ? "font-mono" : ""
         }`}
       >
         {value}
       </div>
-      <div className="text-[10px] text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }
