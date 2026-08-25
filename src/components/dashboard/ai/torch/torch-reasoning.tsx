@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion } from "motion/react";
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -12,12 +13,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ToolCallStep } from "./torch-context";
-import {
-  ScrunityAIChainOfThought,
-  ReasoningStep,
-  StepKind,
-} from "../scrunity-ai-chain-of-thought";
-import type { ToolPart } from "@/components/ui/tool";
+import { AgentDisclosure } from "@/components/agents/agent-disclosure";
+import { ThinkingShimmer } from "@/components/agents/loading-states/thinking-shimmer";
+import { cn } from "@/lib/utils";
 
 export interface TorchReasoningProps {
   toolCalls?: ToolCallStep[];
@@ -178,85 +176,192 @@ function formatToolStep(toolName: string, result: unknown): FormattedStep {
   }
 }
 
-/** Drafting tools that produce confirmation artifacts requiring approval. */
-const ARTIFACT_TOOLS = new Set([
-  "generateAddendumDraft",
-  "createDeliverableDraft",
-]);
-
-/**
- * Maps a ToolCallStep's status to a timeline step kind:
- * - "calling" → tool-active (the tool is in progress)
- * - "complete" + artifact result → artifact (awaiting approval)
- * - "complete" → tool-complete (done, result rendered below)
- * - "error" → error
- */
-function stepKindFor(tc: ToolCallStep): StepKind {
-  if (tc.status === "error") return "error";
-  if (tc.status === "calling") return "tool-active";
-  if (tc.status === "complete") {
-    if (
-      ARTIFACT_TOOLS.has(tc.toolName) &&
-      isRecord(tc.result) &&
-      tc.result.requiresConfirmation === true
-    ) {
-      return "artifact";
-    }
-    return "tool-complete";
-  }
-  return "tool-complete";
+interface TimelineStep {
+  id: string;
+  title: string;
+  detail: string;
+  icon: LucideIcon;
+  status: ToolCallStep["status"];
 }
 
 /**
- * Converts a ToolCallStep into a prompt-kit ToolPart for the Tool primitive,
- * mapping our internal "calling"/"complete"/"error" statuses onto the
- * ToolPart's "input-streaming"/"output-available"/"output-error" states.
+ * Minimum visible duration (ms) for each step before it may transition from
+ * active → complete. A tool that resolves in 50ms still lingers long enough to
+ * read, preventing a flash of unreadable content on fast local queries. This
+ * floor carries forward from prior sessions onto the new AgentActivity timeline.
  */
-function toToolPart(tc: ToolCallStep): ToolPart {
-  if (tc.status === "error") {
-    return {
-      type: tc.toolName,
-      state: "output-error",
-      input: tc.args,
-      toolCallId: tc.toolCallId,
-    };
-  }
-  if (tc.status === "calling") {
-    return {
-      type: tc.toolName,
-      state: "input-streaming",
-      input: tc.args,
-      toolCallId: tc.toolCallId,
-    };
-  }
-  // complete
-  return {
-    type: tc.toolName,
-    state: "output-available",
-    input: tc.args,
-    output: isRecord(tc.result) ? tc.result : undefined,
-    toolCallId: tc.toolCallId,
-  };
+const MIN_VISIBLE_MS = 400;
+
+/**
+ * Holds any "complete" step at "active" until it has been visible for at
+ * least `minMs`. Carries the prior-session 400ms floor onto the new timeline.
+ */
+function useMinVisibleSteps(
+  steps: TimelineStep[],
+  minMs: number,
+): TimelineStep[] {
+  const firstSeenRef = React.useRef<Map<string, number>>(new Map());
+  const [, forceUpdate] = React.useReducer((x: number) => x + 1, 0);
+
+  React.useEffect(() => {
+    const now = Date.now();
+    const ts = firstSeenRef.current;
+    let earliestRetry = Infinity;
+
+    for (const step of steps) {
+      if (!ts.has(step.id)) {
+        ts.set(step.id, now);
+      }
+      const firstSeen = ts.get(step.id)!;
+      const elapsed = now - firstSeen;
+      if (step.status === "complete" && elapsed < minMs) {
+        earliestRetry = Math.min(earliestRetry, minMs - elapsed);
+      }
+    }
+
+    if (earliestRetry !== Infinity && earliestRetry > 0) {
+      const timer = setTimeout(() => forceUpdate(), earliestRetry + 10);
+      return () => clearTimeout(timer);
+    }
+  }, [steps, minMs]);
+
+  const now = Date.now();
+  return steps.map((step) => {
+    const firstSeen = firstSeenRef.current.get(step.id) ?? now;
+    if (step.status === "complete" && now - firstSeen < minMs) {
+      return { ...step, status: "calling" as const };
+    }
+    return step;
+  });
 }
 
 export function TorchReasoning({ toolCalls }: TorchReasoningProps) {
-  if (!toolCalls || toolCalls.length === 0) return null;
+  const hasTools = toolCalls && toolCalls.length > 0;
+  const allComplete = hasTools
+    ? toolCalls.every((tc) => tc.status === "complete" || tc.status === "error")
+    : false;
 
-  const steps: ReasoningStep[] = toolCalls.map((tc, index) => {
-    const formatted = formatToolStep(tc.toolName, tc.result);
-    const isStepError = tc.status === "error";
-    const kind = stepKindFor(tc);
+  const steps: TimelineStep[] = React.useMemo(() => {
+    if (!hasTools) return [];
+    return toolCalls.map((tc, index) => {
+      const formatted = formatToolStep(tc.toolName, tc.result);
+      return {
+        id: `step-${index}-${tc.toolCallId ?? tc.toolName}`,
+        title: formatted.title,
+        detail: tc.status === "error" && !tc.result ? "Failed to complete" : formatted.detail,
+        icon: formatted.icon,
+        status: tc.status,
+      };
+    });
+  }, [toolCalls, hasTools]);
 
-    return {
-      id: `step-${index}-${tc.toolCallId ?? tc.toolName}`,
-      title: formatted.title,
-      detail: isStepError && !tc.result ? "Failed to complete" : formatted.detail,
-      icon: formatted.icon,
-      status: tc.status === "complete" ? ("complete" as const) : ("active" as const),
-      kind,
-      toolPart: toToolPart(tc),
-    };
-  });
+  // Apply the 400ms minimum-visible floor before rendering.
+  const visibleSteps = useMinVisibleSteps(steps, MIN_VISIBLE_MS);
+  const working = !allComplete && visibleSteps.some((s) => s.status === "calling");
 
-  return <ScrunityAIChainOfThought steps={steps} />;
+  if (!hasTools || visibleSteps.length === 0) return null;
+
+  return (
+    <div
+      data-state={working ? "working" : "complete"}
+      aria-busy={working}
+      className="w-full text-sm"
+    >
+      {working ? (
+        <div role="status" className="mb-2 flex h-7 min-w-0 items-center text-muted-foreground">
+          <ThinkingShimmer>Torch is working…</ThinkingShimmer>
+        </div>
+      ) : (
+        <div className="mb-1 flex h-7 min-w-0 items-center text-[13px] font-medium text-muted-foreground">
+          Ran {visibleSteps.length} {visibleSteps.length === 1 ? "tool" : "tools"}
+        </div>
+      )}
+
+      {/*
+        Always expanded — collapseOnComplete is intentionally false so the
+        step sequence stays visible instead of collapsing into a summary.
+        The AgentDisclosure below never closes (open={true}).
+      */}
+      <AgentDisclosure open className="text-foreground">
+        <div className="relative">
+          {/*
+            Dashed vertical connector running behind each row's icon. It sits
+            in the icon column (left), spanning between rows. Each row keeps its
+            own icon in a small rounded container to its left, matching the
+            reference image's visual language.
+          */}
+          <ol className="relative ml-0.5 space-y-1">
+            {visibleSteps.map((step, idx) => {
+              const isActive = step.status === "calling";
+              const isError = step.status === "error";
+              const isLast = idx === visibleSteps.length - 1;
+              const StepIcon = step.icon;
+
+              return (
+                <motion.li
+                  key={step.id}
+                  layout
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    type: "spring",
+                    duration: 0.35,
+                    bounce: 0,
+                    delay: Math.min(idx * 0.04, 0.16),
+                  }}
+                  className="relative flex gap-3"
+                >
+                  {/* Icon + vertical dashed connector column */}
+                  <div className="relative flex flex-col items-center">
+                    <div
+                      className={cn(
+                        "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border",
+                        isError
+                          ? "border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400"
+                          : isActive
+                            ? "border-brand/30 bg-brand/5 text-brand"
+                            : "border-border/50 bg-muted text-muted-foreground",
+                      )}
+                    >
+                      <StepIcon
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          isActive && "animate-spin",
+                        )}
+                      />
+                    </div>
+                    {/* Dashed connector to the next row — not rendered on last row */}
+                    {!isLast && (
+                      <div
+                        aria-hidden="true"
+                        className="absolute top-7 bottom-0 left-1/2 w-px -translate-x-1/2 border-l border-dashed border-border/50"
+                      />
+                    )}
+                  </div>
+
+                  {/* Step content */}
+                  <div className={cn("min-w-0 flex-1", isLast ? "pb-0" : "pb-3")}>
+                    {isActive ? (
+                      <ThinkingShimmer duration={1.5} className="text-sm">
+                        {step.title}…
+                      </ThinkingShimmer>
+                    ) : (
+                      <div className="text-sm font-medium leading-snug text-foreground">
+                        {step.title}
+                      </div>
+                    )}
+                    {step.detail && !isActive && (
+                      <div className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
+                        {step.detail}
+                      </div>
+                    )}
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ol>
+        </div>
+      </AgentDisclosure>
+    </div>
+  );
 }
