@@ -23,9 +23,12 @@ export function ScrunityAIView({
       userName={userName}
       projects={projects}
       workspaceSummary={workspaceSummary}
+      className="flex flex-col flex-1 w-full justify-between min-h-[calc(100svh-10rem)]"
     >
-      <Torch.Messages />
-      <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2">
+      <div className="flex-1 flex flex-col justify-center min-h-0 w-full">
+        <Torch.Messages />
+      </div>
+      <div className="sticky bottom-0 z-10 w-full bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2">
         <Torch.Input />
       </div>
     </Torch.Root>

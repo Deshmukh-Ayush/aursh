@@ -8,6 +8,13 @@ import { TorchReasoning } from "./torch-reasoning";
 import { TorchArtifact } from "./torch-artifact";
 import { TorchToolResults } from "./results/torch-tool-results";
 import { MessageResponse } from "@/components/ai-elements/message";
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageGroup,
+} from "@/components/agents/message";
+import { MessageBubble, MessageBubbleContent } from "@/components/agents/message-bubble";
 import { cn } from "@/lib/utils";
 
 interface SuggestedPrompt {
@@ -75,12 +82,12 @@ function TorchEmptyState({ summary }: { summary?: WorkspaceSummary }) {
   const displayName = userName || orgName || "there";
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 md:py-12">
       <div className="w-full max-w-2xl text-center space-y-6">
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted border border-border/40">
             <Image
-              src="/torch.svg"
+              src="/Torch.png"
               alt="Torch"
               width={28}
               height={28}
@@ -134,54 +141,59 @@ export function TorchMessages() {
   }
 
   return (
-    <div className="flex flex-col space-y-8 px-1 pb-4">
+    <MessageGroup spacing="default" className="px-1 pb-4">
       {messages.map((msg) => {
         const isUser = msg.role === "user";
 
         if (isUser) {
           return (
-            <div key={msg.id} className="flex items-start justify-end gap-3">
-              <div className="flex max-w-[80%] flex-col gap-1.5 rounded-2xl bg-brand px-4 py-2.5 text-base leading-relaxed text-white font-medium shadow-xs">
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-                <span className="text-xs tabular-nums opacity-70">{msg.createdAt}</span>
-              </div>
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted border border-border/40">
+            <Message key={msg.id} from="user" animateIn>
+              <MessageAvatar className="bg-muted border border-border/40">
                 <User className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
+              </MessageAvatar>
+              <MessageContent>
+                <MessageBubble variant="ghost" align="end" animateIn>
+                  <MessageBubbleContent className="max-w-[80%] rounded-2xl bg-brand px-4 py-2.5 text-base font-medium leading-relaxed text-white shadow-xs">
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  </MessageBubbleContent>
+                </MessageBubble>
+                <span className="px-1 text-[13px] tabular-nums text-muted-foreground opacity-70">
+                  {msg.createdAt}
+                </span>
+              </MessageContent>
+            </Message>
           );
         }
 
         return (
-          <div key={msg.id} className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted border border-border/40">
+          <Message key={msg.id} from="assistant" animateIn>
+            <MessageAvatar className="bg-muted border border-border/40">
               <Image
-                src="/torch.svg"
+                src="/Torch.png"
                 alt="Torch"
                 width={20}
                 height={20}
                 className="h-5 w-5 object-contain"
               />
-            </div>
-
-            <div className="flex flex-1 flex-col gap-3 min-w-0">
+            </MessageAvatar>
+            <MessageContent>
               {msg.toolCalls && msg.toolCalls.length > 0 && (
                 <TorchReasoning toolCalls={msg.toolCalls} />
               )}
 
               {msg.content && (
-                <MessageResponse className="text-base leading-7 text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_table]:my-2 [&_th]:px-2 [&_td]:px-2 [&_pre]:my-2 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm">
-                  {msg.content}
-                </MessageResponse>
+                <MessageBubble variant="ghost" align="start">
+                  <MessageBubbleContent className="text-base leading-7 text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_table]:my-2 [&_th]:px-2 [&_td]:px-2 [&_pre]:my-2 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm">
+                    <MessageResponse>{msg.content}</MessageResponse>
+                  </MessageBubbleContent>
+                </MessageBubble>
               )}
 
               <TorchToolResults toolCalls={msg.toolCalls} />
 
-              {msg.artifact && (
-                <TorchArtifact message={msg} />
-              )}
+              {msg.artifact && <TorchArtifact message={msg} />}
 
-              <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 px-1 pt-1 text-[13px] text-muted-foreground">
                 <span className="tabular-nums">{msg.createdAt}</span>
                 {msg.content && (
                   <button
@@ -197,24 +209,24 @@ export function TorchMessages() {
                   </button>
                 )}
               </div>
-            </div>
-          </div>
+            </MessageContent>
+          </Message>
         );
       })}
 
       {loading && (
-        <div className="flex items-center gap-2.5 text-base text-muted-foreground animate-pulse pl-11">
+        <div className="flex items-center gap-2.5 pl-9 text-base text-muted-foreground">
           <Image
-            src="/torch.svg"
+            src="/Torch.png"
             alt="Torch is working"
             width={20}
             height={20}
-            className="h-5 w-5 animate-spin"
+            className="h-5 w-5 object-contain"
           />
-          <span>Torch is reasoning workspace insights...</span>
+          <span>Torch is reasoning workspace insights…</span>
         </div>
       )}
       <div ref={messagesEndRef} />
-    </div>
+    </MessageGroup>
   );
 }

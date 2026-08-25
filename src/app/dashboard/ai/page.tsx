@@ -54,7 +54,7 @@ function AISkeleton() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center text-center p-6 space-y-3 h-full w-full">
       <Image
-        src="/torch.svg"
+        src="/Torch.png"
         alt="Torch"
         width={44}
         height={44}
@@ -70,7 +70,7 @@ function AISkeleton() {
 
 export default function DashboardAIPage() {
   return (
-    <div className="flex flex-col w-full max-w-5xl mx-auto space-y-4 pb-4">
+    <div className="flex flex-col flex-1 w-full max-w-5xl mx-auto pb-4">
       <Suspense fallback={<AISkeleton />}>
         <AIDataFetcher />
       </Suspense>
