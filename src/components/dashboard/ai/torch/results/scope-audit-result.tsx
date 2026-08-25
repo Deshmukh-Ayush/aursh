@@ -70,7 +70,7 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
         </span>
         {scopeStatus && (
           <span
-            className={`ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${
+            className={`ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[13px] font-medium ${
               isCreep
                 ? "bg-red-500/10 text-red-600 dark:text-red-400"
                 : isWarning
@@ -100,7 +100,7 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
       </div>
 
       {hasContract && contractFile && (
-        <div className="border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+        <div className="border-t border-border/60 px-4 py-2 text-[13px] text-muted-foreground">
           Signed contract: <span className="font-medium text-foreground">{contractFile}</span>
         </div>
       )}
@@ -128,12 +128,12 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
 
       {terms && Object.keys(terms).length > 0 && (
         <div className="border-t border-border/60 px-4 py-2.5">
-          <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="mb-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
             Extracted contract terms
           </div>
           <dl className="space-y-1">
             {Object.entries(terms).slice(0, 6).map(([k, v]) => (
-              <div key={k} className="flex gap-2 text-xs">
+              <div key={k} className="flex gap-2 text-[13px]">
                 <dt className="shrink-0 text-muted-foreground">{humanizeKey(k)}:</dt>
                 <dd className="text-foreground">{formatTerm(v)}</dd>
               </div>
@@ -162,7 +162,7 @@ function ScopeStat({
       <div className={`mt-1 text-base font-semibold tabular-nums ${tone ?? "text-foreground"}`}>
         {value}
       </div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-[13px] text-muted-foreground">{label}</div>
     </div>
   );
 }

@@ -62,7 +62,7 @@ export function WorkspaceOverviewResult({ result }: { result: unknown }) {
         <span className="text-sm font-semibold text-foreground">
           Workspace overview
         </span>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground">
           <CircleDot className="h-3 w-3" />
           {active} active · {total} total
         </span>
@@ -92,7 +92,7 @@ export function WorkspaceOverviewResult({ result }: { result: unknown }) {
                     <td className="px-4 py-2 font-medium">{title}</td>
                     <td className="px-4 py-2 text-right">
                       <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[13px] font-medium ${
                           STATUS_TONE[status] ?? STATUS_TONE.pending
                         }`}
                       >
@@ -106,7 +106,7 @@ export function WorkspaceOverviewResult({ result }: { result: unknown }) {
           </table>
         </div>
       ) : (
-        <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
+        <div className="border-t border-border/60 px-4 py-3 text-[13px] text-muted-foreground">
           {projects.length === 0
             ? "No projects in this workspace yet."
             : "Nothing currently in review across your projects."}
@@ -136,7 +136,7 @@ function CountCell({
       >
         {value}
       </div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-[13px] text-muted-foreground">{label}</div>
     </div>
   );
 }

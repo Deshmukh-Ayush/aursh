@@ -51,7 +51,7 @@ export function FinancialsResult({ result }: { result: unknown }) {
       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
         <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-sm font-semibold text-foreground">Financial summary</span>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-[13px] text-muted-foreground">
           {milestonesCount} milestone{milestonesCount === 1 ? "" : "s"}
         </span>
       </div>
@@ -66,7 +66,7 @@ export function FinancialsResult({ result }: { result: unknown }) {
           const Icon = meta.icon;
           return (
             <div key={key} className="px-4 py-2.5">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
                 <Icon className="h-3 w-3" />
                 {meta.label}
               </div>
