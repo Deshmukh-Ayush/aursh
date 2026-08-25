@@ -66,20 +66,21 @@ export default async function ExecutionDocsPage() {
 
         {/* Section Jump Bar */}
         <Section title="System Architecture Modules">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
             {[
-              ['1. High-Level System Topology', '#topology'],
+              ['1. System Topology', '#topology'],
               ['2. Funnel: Auth & Onboarding', '#funnel-auth'],
-              ['3. Funnel: Projects & Contracts Vault', '#funnel-contracts'],
-              ['4. Funnel: Deliverables & AI Guardian', '#funnel-deliverables'],
-              ['5. Funnel: Milestones & Multi-Currency', '#funnel-financials'],
-              ['6. Funnel: Scrunity AI Lexical Engine', '#funnel-ai'],
-              ['7. Master Action-to-API Matrix', '#master-matrix'],
+              ['3. Funnel: Contracts Vault', '#funnel-contracts'],
+              ['4. Funnel: Deliverables & AI', '#funnel-deliverables'],
+              ['5. Funnel: Financials & Currency', '#funnel-financials'],
+              ['6. Funnel: Torch AI Agent', '#funnel-ai'],
+              ['7. Funnel: Billing & Subscriptions', '#funnel-billing'],
+              ['8. Master Action Matrix', '#master-matrix'],
             ].map(([label, href]) => (
               <a
                 key={href}
                 href={href}
-                className="text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted/50 px-3 py-2 rounded-lg border border-border/40 transition-colors font-medium"
+                className="text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted/50 px-3 py-2 rounded-lg border border-border/40 transition-colors font-medium text-center"
               >
                 {label}
               </a>
@@ -95,18 +96,18 @@ export default async function ExecutionDocsPage() {
 
           <CodeBlock>{`┌─────────────────────────────────────────────────────────────────────────────┐
 │                           CLIENT BROWSER LAYER                              │
-│  React 19 Client Components • Meta Lexical Prompt • EvilCharts (ECharts)   │
+│  React 19 Client Components • Meta Lexical Prompt • Torch Co-Pilot • EvilCharts│
 └──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ HTTP Requests (JSON / Form Data)
+                                       │ HTTP Requests (JSON / Form Data / SSE)
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         NEXT.JS 16 APP ROUTER LAYER                         │
-│  RSC Pre-rendering • React.cache() Deduplication • Dynamic SSR Route Handlers│
+│  RSC Pre-rendering • React.cache() Deduplication • Streaming SSE Handlers    │
 └──────────────┬───────────────────────┬───────────────────────┬──────────────┘
                │                       │                       │
                ▼                       ▼                       ▼
 ┌───────────────────────────┐ ┌───────────────────┐ ┌─────────────────────────┐
-│     SECURITY & AUTH       │ │   SERVERLESS DB   │ │    GROQ AI ENGINE       │
+│     SECURITY & AUTH       │ │   SERVERLESS DB   │ │   GROQ & AI SDK ENGINE  │
 │  Better Auth (Google)     │ │  Neon Postgres    │ │  openai/gpt-oss-120b    │
 │  getProjectAccess Policy  │ │  Drizzle ORM      │ │  openai/gpt-oss-20b     │
 └───────────────────────────┘ └───────────────────┘ └─────────────────────────┘
@@ -143,7 +144,7 @@ export default async function ExecutionDocsPage() {
 [Queries user's member & projectMember tables concurrently]
        │
        ├─► IF user belongs to an Agency (member.role === "owner" | "agency" | "member"):
-       │     └─► Renders Agency Dashboard Shell (Overview, Projects, Analytics, Team, AI)
+       │     └─► Renders Agency Dashboard Shell (Overview, Projects, Analytics, Team, AI, Billing)
        │
        └─► IF user is strictly a Client (member.role === "client" ONLY):
              └─► STRICT CLIENT SAFEGUARD: Blocked from /dashboard!
@@ -156,7 +157,7 @@ export default async function ExecutionDocsPage() {
               ['user', 'Select / Insert', 'id, name, email, image'],
               ['session', 'Select / Insert', 'id, token, userId, activeOrganizationId, expiresAt'],
               ['account', 'Select / Insert', 'accountId, providerId, userId, accessToken'],
-              ['organization', 'Select', 'id, name, slug, plan, logoUrl'],
+              ['organization', 'Select', 'id, name, slug, plan, logoUrl, subscriptionId'],
               ['member', 'Select', 'organizationId, userId, role'],
               ['project_member', 'Select', 'projectId, userId, role'],
             ]}
@@ -248,39 +249,63 @@ export default async function ExecutionDocsPage() {
        │  └─► Updates PaymentsRadialChart, DashboardKpiRow, & Analytics Hero Velocity`}</CodeBlock>
         </Section>
 
-        {/* ─── FUNNEL 5: SCRUNITY AI LEXICAL ─── */}
-        <Section id="funnel-ai" title="6. Funnel: Scrunity AI Lexical Prompt & Workspace Context Engine">
+        {/* ─── FUNNEL 5: TORCH AI AGENT ─── */}
+        <Section id="funnel-ai" title="6. Funnel: Torch AI Co-Pilot & Streaming Tool Loop">
           <P>
-            How user prompts typed into Meta Lexical editor execute against live workspace database context:
+            How prompts typed in Meta Lexical input stream multi-step tool calls, render live reasoning, and execute human-in-the-loop actions:
           </P>
 
-          <CodeBlock>{`[User Types Prompt in LexicalAIInput] (/dashboard/ai)
+          <CodeBlock>{`[User Enters Prompt in LexicalAIInput] (/dashboard/ai)
+       │  ├─► Supports "/" slash commands (/summarize, /analyze-revenue, /draft-contract)
+       │  └─► Supports "@" mention popover to attach project context
        │
-       ├─► Types "/" -> Triggers Slash Command Menu (/summarize, /analyze-revenue)
-       ├─► Types "@" -> Triggers Mention Menu (@ProjectName)
+       ▼ (POST /api/ai/torch) -> AI SDK v7 Event Stream
+[Groq LLM Engine (openai/gpt-oss-120b)]
        │
-       ▼ (Presses Enter -> KeyboardSubmitPlugin)
-[ScrunityAIView.handleSend(promptText)]
+       ▼ (Multi-Step Tool Loop Execution: src/lib/ai/torch-tools.ts)
+[Tool Invocation Step]
+       │  ├─► Query Tools: getWorkspaceOverview, auditProjectScope, getFinancialSummary, generateClientDigest
+       │  │     └─► Client executes useMinVisibleSteps (400ms duration floor) to avoid UI flicker
+       │  │     └─► Dashed timeline connector renders per-tool icons with ThinkingShimmer
+       │  │
+       │  └─► Draft Tools: generateAddendumDraft, createDeliverableDraft
+       │        └─► Renders interactive ApprovalCard in message stream
        │
-       ▼ (Server Page Execution: src/app/dashboard/ai/page.tsx)
-[Promise.all Concurrent Queries]
-       │  ├─► Queries organization details (name, plan)
-       │  ├─► Queries org active projects
-       │  ├─► Queries accepted proposals total value
-       │  └─► Queries deliverables pending review count
+       ▼ (Human-in-the-Loop Action)
+[User Clicks "Approve" on ApprovalCard]
        │
-       ▼ (Constructs SCRUNITY_SYSTEM_PROMPT)
-[ScrunityAIChainOfThought Reasoning Execution]
-       │  ├─► Step 1: Querying Workspace System Context
-       │  ├─► Step 2: Analyzing Deliverables & Contract Volume
-       │  └─► Step 3: Synthesizing Executive Recommendation
+       ▼ (POST /api/ai/torch/confirm)
+[Executes DB Mutation: Inserts proposal / deliverable row atomically]
        │
-       ▼ (Executive AI Response Render)
-[Renders Markdown Content Bubble + Copy-to-Clipboard Action]`}</CodeBlock>
+       └─► Updates ApprovalCard status to "applied" with check confirmation`}</CodeBlock>
+        </Section>
+
+        {/* ─── FUNNEL 6: BILLING & SUBSCRIPTIONS ─── */}
+        <Section id="funnel-billing" title="7. Funnel: Billing, Invoicing & Subscription Lifecycle">
+          <P>
+            How agency owners upgrade plans, access customer billing portals, and process automated webhook events:
+          </P>
+
+          <CodeBlock>{`[Agency Owner Selects Plan in /dashboard/billing]
+       │
+       ▼ (POST /api/billing/checkout)
+[Creates Hosted Checkout Session with organizationId metadata]
+       │
+       ▼ (Redirects to Hosted Checkout Provider)
+[User Enters Payment Details & Completes Transaction]
+       │
+       ▼ (Webhook Dispatch)
+[POST /api/billing/webhook]
+       │  ├─► Verifies cryptographic webhook signature
+       │  ├─► Parses event: "subscription.created" | "subscription.updated"
+       │  └─► Atomically updates organization table (plan: "pro", subscriptionId, periodEnd)
+       │
+       ▼ (Customer Portal Management)
+[POST /api/billing/portal] -> Generates secure self-service portal URL for invoices`}</CodeBlock>
         </Section>
 
         {/* ─── MASTER MATRIX ─── */}
-        <Section id="master-matrix" title="7. Master User Action to API Route & Database Matrix">
+        <Section id="master-matrix" title="8. Master User Action to API Route & Database Matrix">
           <P>
             The complete code audit matrix mapping every user action across Scrunity to its triggering component, API endpoint, authorization policy, database table mutations, and background tasks:
           </P>
@@ -289,6 +314,11 @@ export default async function ExecutionDocsPage() {
             headers={['User Action / Event', 'Trigger Component', 'API Endpoint & Method', 'Auth Policy', 'Database Mutations', 'Async Background Worker (after())']}
             rows={[
               ['Sign in with Google', 'SignInButton', 'POST /api/auth/sign-in/social', 'Better Auth', 'Selects user, session, account tables', 'Sets session token cookie'],
+              ['Execute Torch AI Prompt', 'LexicalAIInput', 'POST /api/ai/torch', 'getTenantContext', 'Streams tool outputs over SSE', 'Live token analytics'],
+              ['Confirm Torch Draft', 'ApprovalCard', 'POST /api/ai/torch/confirm', 'canManageProject', 'Inserts proposal or deliverable row', 'Logs activity_log entry'],
+              ['Initiate Plan Upgrade', 'PricingCard', 'POST /api/billing/checkout', 'auth.api.getSession', 'Selects organization plan', 'Generates checkout redirect'],
+              ['Open Billing Portal', 'BillingPortalButton', 'POST /api/billing/portal', 'auth.api.getSession', 'Selects organization subscription', 'Generates portal redirect'],
+              ['Process Plan Webhook', 'WebhookReceiver', 'POST /api/billing/webhook', 'Signature Seal', 'Updates organization (plan, status, periodEnd)', 'Syncs customer email'],
               ['Create New Project', 'CreateProjectModal', 'POST /api/projects', 'getTenantContext', 'Inserts project, project_member (role: owner)', 'Logs activity_log entry'],
               ['Update Project Details', 'ProjectSettingsForm', 'PATCH /api/projects', 'canManageProject', 'Updates project (name, description, status)', 'Logs activity_log entry'],
               ['Delete Project', 'ProjectSettingsForm', 'DELETE /api/projects', 'canManageProject', 'Deletes project & cascades to all related tables', 'Purges project files from Blob'],
@@ -309,7 +339,6 @@ export default async function ExecutionDocsPage() {
               ['Download Private File', 'FileListRow', 'GET /api/files/download', 'getProjectAccess', 'Streams private Vercel Blob file', 'None'],
               ['Accept Org Invite', 'AcceptOrgInviteButton', 'POST /api/organizations/invites/accept', 'auth.api.getSession', 'Updates invitation to accepted, inserts member row', 'Redirects to /dashboard'],
               ['Accept Project Invite', 'AcceptProjectInviteButton', 'POST /api/projects/invites/accept', 'auth.api.getSession', 'Updates project_invitation to accepted, inserts project_member', 'Syncs contract signature rows'],
-              ['Execute Lexical Prompt', 'LexicalAIInput', 'ScrunityAIView.handleSend()', 'getTenantContext', 'Promise.all queries org, project, proposal, deliverable tables', 'Renders Chain of Thought reasoning'],
               ['Post Comment', 'CommentSection', 'POST /api/comments', 'getProjectAccess', 'Inserts comment row', 'Logs comment_added activity'],
             ]}
           />

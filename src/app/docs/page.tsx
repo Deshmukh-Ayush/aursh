@@ -13,7 +13,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Developer Docs",
-  description: "Internal developer documentation for Scrunity — architecture, Scrunity AI Lexical engine, Team workflows, Client access safeguards, speed optimization, DB schema, API routes, and multi-currency engine.",
+  description: "Internal developer documentation for Scrunity — architecture, Torch AI agent engine, Billing OS, Team workflows, Client access safeguards, speed optimization, DB schema, API routes, and multi-currency engine.",
 };
 
 // Gate: only allow specific developer emails
@@ -42,7 +42,7 @@ export default async function DocsPage() {
       <nav className="sticky top-0 z-50 h-13 px-6 border-b border-border/40 bg-background/80 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="text-[14px] font-bold tracking-tight text-foreground">Scrunity</span>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#00AAF7]/10 text-[#00AAF7] dark:text-[#00AAF7] tracking-wider uppercase">
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand/10 text-brand tracking-wider uppercase">
             Internal Developer Docs
           </span>
         </div>
@@ -56,7 +56,7 @@ export default async function DocsPage() {
             Developer Documentation
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground max-w-2xl text-pretty">
-            Technical architecture, Scrunity AI Lexical prompt engine, Team management workflows, Client access safeguards, speed optimization suite, EvilCharts data visualization, DB schemas, and multi-currency handling.
+            Technical architecture, Torch AI agent co-pilot, Billing &amp; subscription OS, Team management workflows, Client access safeguards, speed optimization suite, EvilCharts data visualization, DB schemas, and multi-currency handling.
           </p>
         </header>
 
@@ -65,9 +65,10 @@ export default async function DocsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {[
               ['What is Scrunity?', '#overview'],
-              ['Tech Stack & EvilCharts', '#stack'],
+              ['Tech Stack & Architecture', '#stack'],
               ['Folder Structure', '#folders'],
-              ['Scrunity AI Route & Lexical Engine', '#scrunity-ai'],
+              ['Torch AI Co-Pilot & Agent Engine', '#torch-ai'],
+              ['Billing & Subscription OS', '#billing'],
               ['Team Management & Workflows', '#team'],
               ['Client Access Safeguards & Redirection', '#client-safeguards'],
               ['Vercel & Linear Speed Architecture', '#speed'],
@@ -106,23 +107,25 @@ export default async function DocsPage() {
         </Section>
 
         {/* ─── TECH STACK ─── */}
-        <Section id="stack" title="Tech Stack & EvilCharts">
+        <Section id="stack" title="Tech Stack & Architecture">
           <Table
             headers={['Layer', 'Technology', 'Notes']}
             rows={[
               ['Framework', 'Next.js 16 (App Router)', 'RSC by default, Turbopack, async params, React.cache() deduplication'],
               ['Language', 'TypeScript 5', 'Strict type safety (tsc --noEmit)'],
+              ['AI Co-Pilot Engine', 'Vercel AI SDK v7 + Groq', 'Streaming SSE tool calling, multi-step loops (openai/gpt-oss-120b & gpt-oss-20b)'],
               ['Rich AI Input', 'Meta Lexical (@lexical/react)', 'Slash commands / and mention @ popover triggers in LexicalAIInput'],
-              ['AI Engine', 'Vercel AI SDK + Groq', 'Primary: openai/gpt-oss-120b | Fallback: openai/gpt-oss-20b'],
+              ['Agent & Motion UI', 'beUI Primitives + Motion React', 'ApprovalCard, ThinkingShimmer, ActionSwap, AnimatedButton, Dashed Timeline'],
+              ['Billing & Subscriptions', 'Billing Portal & Webhooks', 'Automated checkout sessions, idempotent webhook processor, subscription lifecycle sync'],
               ['Charts & Analytics', 'EvilCharts Component Suite', 'EChartsRadialChart, EChartsAreaChart, EChartsBarChart with next/dynamic lazy loading'],
               ['Database', 'Neon (Serverless Postgres)', 'Stateless HTTP driver @neondatabase/serverless'],
               ['ORM', 'Drizzle ORM', 'Schema defined in src/db/schema.ts'],
               ['Auth', 'Better Auth', 'Google OAuth + organization plugin'],
-              ['State Management', 'Zustand', 'Modular stores in src/store/ (ai-store.ts, etc.)'],
+              ['State Management', 'Zustand & Torch Context', 'Context provider with JSON Event Stream parser + Zustand stores'],
               ['Icons', 'Phosphor Icons & Lucide', '@phosphor-icons/react in client components, Lucide in RSC'],
-              ['Styling', 'Tailwind CSS v4 & CSS Variables', 'Brand color #00AAF7, dark mode, custom neutral tokens'],
-              ['Storage', 'Vercel Blob', 'PDF contract uploads and attachment storage'],
-              ['Email', 'Resend', 'Transactional emails for invites and notifications'],
+              ['Styling', 'Tailwind CSS v4 & CSS Variables', 'Brand color #00AAF7 (bg-brand), dark mode, custom neutral tokens'],
+              ['Storage', 'Vercel Blob (Private)', 'Private PDF contract uploads, attachments, and auth-gated download streams'],
+              ['Email', 'Resend', 'Transactional emails for invites, signatures, and notifications'],
             ]}
           />
         </Section>
@@ -136,47 +139,78 @@ export default async function DocsPage() {
 │   ├── docs/                   # Developer documentation route
 │   ├── dashboard/              # Main organization dashboard
 │   │   ├── page.tsx            # Overview dashboard (2 Hero KPI Cards, EvilCharts)
-│   │   ├── ai/                 # Scrunity AI route with Lexical rich prompt engine & Chain of Thought
+│   │   ├── ai/                 # Torch AI Agent Co-Pilot (Compound Torch architecture)
+│   │   ├── billing/            # Subscription plans, invoices, and billing portal
 │   │   ├── team/               # Team management section (Seat capacity, contributors, activity stream)
 │   │   ├── projects/           # Projects overview table & multi-currency contract values
 │   │   ├── analytics/          # Sales velocity & pipeline analytics
 │   │   ├── clients/            # Client conversion rates & relationship tracking
 │   │   └── settings/           # Agency settings & global currency preferences
-│   ├── api/ai/                 # AI Engine API endpoints
+│   ├── api/
+│   │   ├── ai/torch/           # Streaming SSE agent endpoint & confirmation handler
+│   │   ├── billing/            # Checkout, Customer Portal & Webhook handlers
+│   │   ├── contracts/          # Contract uploads, e-signatures & private download streams
+│   │   └── files/              # Private project attachments & download proxies
 │   └── projects/[projectId]/   # Project workspace routes
-│       ├── page.tsx            # Project dashboard
-│       ├── payments/           # PaymentsRadialChart, multi-currency, milestones
-│       ├── proposal/           # ProposalDonutChart, proposal builder drawer
-│       ├── deliverables/       # DeliverablesVelocityChart, Scope Guardian badges
-│       └── contract/           # ContractStatusChart, ContractAIDrawer, e-signatures
 │
 ├── components/
 │   ├── dashboard/              # Dashboard Domain Modules
-│   │   ├── ai/                 # LexicalAIInput, ScrunityAIView, ScrunityAIChainOfThought
+│   │   ├── ai/torch/           # Torch compound system (Root, Messages, Input, Reasoning, Artifact, Results)
 │   │   ├── team/               # TeamKpiRow, TeamAnalyticsBreakdown, TeamWorkflowsTable
-│   │   ├── overview/           # DashboardKpiRow, DashboardHeroChart
-│   │   └── sidebar/            # Sidebar navigation & org switcher
-│   ├── evilcharts/             # EvilCharts Visualization Library
-│   └── ai-elements/            # AI Elements UI Component Suite
+│   │   └── overview/           # DashboardKpiRow, DashboardHeroChart
+│   ├── agents/                 # beUI Agent Primitives (ApprovalCard, MessageBubble, Disclosure, ActivityRow)
+│   ├── motion/                 # beUI Motion Suite (Button, Input, Checkbox, PopoverMorph, TextShimmer)
+│   └── evilcharts/             # EvilCharts Visualization Library
 │
 ├── lib/
+│   ├── ai/torch-tools.ts       # Centralized Torch agent tool registry (queries, scope audit, addendum, drafts)
 │   ├── tenant-context.ts       # React.cache() deduplicated tenant context & auth resolver
 │   ├── project-auth.ts         # Centralized project authorization policy
 │   ├── currency.ts             # Multi-currency exchange rate engine (USD_TO_INR = 95.43)
 │   └── activity.ts             # Next.js 16 after() background notification logger`}</CodeBlock>
         </Section>
 
-        {/* ─── SCRUNITY AI & LEXICAL ENGINE ─── */}
-        <Section id="scrunity-ai" title="Scrunity AI Route & Lexical Engine">
+        {/* ─── TORCH AI CO-PILOT & AGENT ENGINE ─── */}
+        <Section id="torch-ai" title="Torch AI Co-Pilot & Agent Engine">
           <P>
-            The **Scrunity AI** route (<Code>/dashboard/ai</Code>) provides a workspace-aware executive AI assistant powered natively by Meta&apos;s <Code>@lexical/react</Code>:
+            The **Torch AI Co-Pilot** (<Code>/dashboard/ai</Code>) is a workspace-aware autonomous agent built on a compound component architecture following Vercel React best practices and AI SDK v7 streaming standards:
           </P>
-          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
-            <li><strong className="text-foreground font-medium">Lexical Rich Prompt Input (<Code>LexicalAIInput</Code>):</strong> Built with <Code>LexicalComposer</Code>, <Code>RichTextPlugin</Code>, <Code>ContentEditable</Code>, <Code>HistoryPlugin</Code>, and <Code>OnChangePlugin</Code>.</li>
-            <li><strong className="text-foreground font-medium">Slash Commands (<Code>/</Code>):</strong> Floating popover offering <Code>/summarize</Code>, <Code>/analyze-revenue</Code>, <Code>/review-deliverables</Code>, and <Code>/draft-contract</Code>.</li>
-            <li><strong className="text-foreground font-medium">Project Mention Context (<Code>@</Code>):</strong> Mention popover allowing users to selectively attach specific project context to AI prompts.</li>
-            <li><strong className="text-foreground font-medium">Chain of Thought Reasoning (<Code>ScrunityAIChainOfThought</Code>):</strong> Integrated with AI Elements (<Code>chain-of-thought.tsx</Code> &amp; <Code>reasoning.tsx</Code>) featuring monochrome reasoning steps.</li>
-            <li><strong className="text-foreground font-medium">Workspace System Context (<Code>SCRUNITY_SYSTEM_PROMPT</Code>):</strong> Passes live workspace details (active projects, deliverable counts, proposal values, plan tier) to the LLM engine.</li>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1.5 list-disc">
+            <li><strong className="text-foreground font-medium">Compound Architecture (<Code>&lt;Torch.Root&gt;</Code>):</strong> Coordinates <Code>&lt;Torch.Messages&gt;</Code>, <Code>&lt;Torch.Input&gt;</Code>, and <Code>&lt;Torch.Artifact&gt;</Code> through a unified <Code>TorchProvider</Code> context parsing JSON event streams.</li>
+            <li><strong className="text-foreground font-medium">Streaming Agent Route (<Code>/api/ai/torch</Code>):</strong> Executes multi-step tool calling loops using Groq (<Code>openai/gpt-oss-120b</Code>) with automated fallback to <Code>openai/gpt-oss-20b</Code>. Streams partial results over SSE with live tool status.</li>
+            <li><strong className="text-foreground font-medium">Centralized Tool Registry (<Code>src/lib/ai/torch-tools.ts</Code>):</strong>
+              <ul className="pl-5 pt-1 space-y-1 list-circle text-xs">
+                <li><Code>getWorkspaceOverview</Code> — Fetches active projects, pending deliverables, and financial totals.</li>
+                <li><Code>auditProjectScope</Code> — Inspects SOW revision limits against deliverable counts.</li>
+                <li><Code>getFinancialSummary</Code> — Aggregates collected vs outstanding milestone cashflow.</li>
+                <li><Code>generateClientDigest</Code> — Compiles weekly progress digest per project.</li>
+                <li><Code>generateAddendumDraft</Code> — Generates Change Order SOW addendum with itemized price delta.</li>
+                <li><Code>createDeliverableDraft</Code> — Prepares actionable deliverable submission drafts.</li>
+              </ul>
+            </li>
+            <li><strong className="text-foreground font-medium">Human-in-the-Loop Actions (<Code>ApprovalCard</Code>):</strong> Draft-creating tools return interactive proposal and deliverable cards. Agency owners can approve or reject with one click, dispatching to <Code>/api/ai/torch/confirm</Code> to execute DB mutations safely.</li>
+            <li><strong className="text-foreground font-medium">Timeline &amp; Motion Details:</strong>
+              <ul className="pl-5 pt-1 space-y-1 list-circle text-xs">
+                <li>Two-column dashed timeline connector (<Code>border-dashed border-border/50</Code>) linking per-tool icon badges.</li>
+                <li>400ms minimum visible duration floor (<Code>useMinVisibleSteps</Code>) preventing fast query tools from flickering.</li>
+                <li>In-progress reasoning narration rendered with <Code>ThinkingShimmer</Code>.</li>
+                <li>Strict 13px typography floor across all result components and badge labels.</li>
+              </ul>
+            </li>
+            <li><strong className="text-foreground font-medium">Lexical Rich Input (<Code>LexicalAIInput</Code>):</strong> Centered <Code>max-w-3xl</Code> input container with floating <Code>/</Code> slash command menu and <Code>@</Code> project mention context injection.</li>
+          </ul>
+        </Section>
+
+        {/* ─── BILLING & SUBSCRIPTION OS ─── */}
+        <Section id="billing" title="Billing & Subscription OS">
+          <P>
+            Scrunity provides automated subscription billing, seat management, and invoice tracking:
+          </P>
+          <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1.5 list-disc">
+            <li><strong className="text-foreground font-medium">Subscription Tiers:</strong> Free Tier (1 project, basic scope tracking), Pro Tier (unlimited projects, full AI Scope Guardian, Torch Co-Pilot), and Agency Enterprise Tier (custom seats, dedicated SLA).</li>
+            <li><strong className="text-foreground font-medium">Checkout Flow (<Code>/api/billing/checkout</Code>):</strong> Initiates hosted checkout sessions with automated organization ID metadata binding, plan selection, and fallback country configuration.</li>
+            <li><strong className="text-foreground font-medium">Customer Portal (<Code>/api/billing/portal</Code>):</strong> Auth-gated redirect allowing agency owners to manage payment methods, download VAT/tax invoices, and update plan tiers.</li>
+            <li><strong className="text-foreground font-medium">Idempotent Webhook Processor (<Code>/api/billing/webhook</Code>):</strong> Cryptographically verifies webhook payloads and syncs subscription state (<Code>active</Code>, <Code>past_due</Code>, <Code>canceled</Code>) directly to the <Code>organization</Code> table.</li>
           </ul>
         </Section>
 
@@ -213,6 +247,7 @@ export default async function DocsPage() {
             headers={['Optimization Rule', 'Implementation File', 'Performance Impact']}
             rows={[
               ['server-cache-react', 'src/lib/tenant-context.ts', 'Wrapped getTenantContext in React.cache() to deduplicate DB & session queries per HTTP request. Drops TTFB from 870ms to <200ms.'],
+              ['cached-org-queries', 'src/utils/cached-org-queries.ts', 'Cached organization and project metadata lookups across dashboard routes.'],
               ['bundle-barrel-imports', 'next.config.ts', 'Added experimental.optimizePackageImports for Phosphor, Lucide, Lexical, Date-fns, Drizzle, and Recharts. Tree-shakes client JS by ~45%.'],
               ['bundle-dynamic-imports', 'src/components/dashboard/*/', 'Dynamically imported heavy ECharts hero visualization components across Overview, Analytics, and Clients sections. Drops initial JS payload by ~1.2MB.'],
               ['rendering-resource-hints', 'src/app/layout.tsx', 'Added display: "swap" to Inter, Geist Mono, and Instrument Serif font loaders to unblock FCP render.'],
@@ -264,9 +299,9 @@ export default async function DocsPage() {
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
             <li><strong className="text-foreground font-medium">Model Fallback Architecture:</strong> Uses <Code>openai/gpt-oss-120b</Code> as the primary LLM engine on Groq with automated fallback to <Code>openai/gpt-oss-20b</Code> if rate limits occur.</li>
-            <li><strong className="text-foreground font-medium">Universal Preprocessors & Type Safety:</strong> Zero <Code>any</Code> types. Uses Zod v4 preprocessors to coerce LLM JSON variations cleanly into typed objects.</li>
+            <li><strong className="text-foreground font-medium">Universal Preprocessors &amp; Type Safety:</strong> Zero <Code>any</Code> types. Uses Zod v4 preprocessors to coerce LLM JSON variations cleanly into typed objects.</li>
             <li><strong className="text-foreground font-medium">AI Clause Inspector Drawer:</strong> Slide-over panel (<Code>ContractAIDrawer</Code>) displaying extracted scope items, exclusions, revision limits, and payment terms.</li>
-            <li><strong className="text-foreground font-medium">Scope Creep Alert & Addendum Generator:</strong> <Code>ScopeGuardianPill</Code> evaluates deliverable revision counts against contract terms (<Code>within_scope</Code> | <Code>limit_reached</Code> | <Code>scope_creep_alert</Code>) and launches the AI Addendum Drafter (<Code>AddendumModal</Code>).</li>
+            <li><strong className="text-foreground font-medium">Scope Creep Alert &amp; Addendum Generator:</strong> <Code>ScopeGuardianPill</Code> evaluates deliverable revision counts against contract terms (<Code>within_scope</Code> | <Code>limit_reached</Code> | <Code>scope_creep_alert</Code>) and launches the AI Addendum Drafter (<Code>AddendumModal</Code>).</li>
           </ul>
         </Section>
 
@@ -286,7 +321,16 @@ export default async function DocsPage() {
         <Section id="schema" title="Database Schema">
           <P>All tables are defined in <Code>src/db/schema.ts</Code> using Drizzle&apos;s <Code>pgTable</Code>.</P>
 
-          <H3>Payment & Financial Tables</H3>
+          <H3>Organization &amp; Billing Tables</H3>
+          <Table
+            headers={['Table', 'Key Columns', 'Purpose']}
+            rows={[
+              ['organization', 'id, name, slug, plan, logoUrl, subscriptionId, billingEmail, planPeriodEnd', 'Manages organization tenant and active subscription status'],
+              ['member', 'organizationId, userId, role', 'Organization membership (owner, agency, member, client)'],
+            ]}
+          />
+
+          <H3>Payment &amp; Financial Tables</H3>
           <Table
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
@@ -295,7 +339,7 @@ export default async function DocsPage() {
             ]}
           />
 
-          <H3>Contract, AI Scope, Proposal & Activity Tables</H3>
+          <H3>Contract, AI Scope, Proposal &amp; Activity Tables</H3>
           <Table
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
@@ -328,9 +372,14 @@ export default async function DocsPage() {
           <Table
             headers={['Route', 'Method', 'Purpose']}
             rows={[
+              ['/api/ai/torch', 'POST', 'Streaming SSE agent endpoint with multi-step tool loops & live reasoning'],
+              ['/api/ai/torch/confirm', 'POST', 'Human-in-the-loop confirmation handler executing approved drafts'],
               ['/api/ai/extract-contract', 'GET/POST', 'Extract scope clauses from contract PDF via Groq AI & persist in DB'],
               ['/api/ai/check-scope', 'POST', 'Evaluate deliverable revision count against AI scope terms'],
               ['/api/ai/generate-addendum', 'POST', 'Draft itemized SOW Change Order addendum with pricing'],
+              ['/api/billing/checkout', 'POST', 'Generate subscription checkout session with organization binding'],
+              ['/api/billing/portal', 'POST', 'Generate auth-gated customer billing portal redirect'],
+              ['/api/billing/webhook', 'POST', 'Idempotent webhook handler syncing subscription lifecycle state to DB'],
               ['/api/milestones', 'GET/POST/PATCH/DELETE', 'Fetch, create, update, or delete payment milestones'],
               ['/api/milestones/mark-paid', 'POST', 'Record manual payment verification & UTR reference note'],
               ['/api/contracts', 'GET/POST/PATCH/DELETE', 'Upload agreements, fetch contracts, update status'],
@@ -358,7 +407,7 @@ export default async function DocsPage() {
               ['GOOGLE_CLIENT_ID', 'Yes', 'Google OAuth client ID'],
               ['GOOGLE_CLIENT_SECRET', 'Yes', 'Google OAuth client secret'],
               ['BETTER_AUTH_SECRET', 'Yes', 'Session encryption secret'],
-              ['BLOB_READ_WRITE_TOKEN', 'Yes', 'Vercel Blob storage token'],
+              ['BLOB_READ_WRITE_TOKEN', 'Yes', 'Vercel Blob private storage token'],
               ['RESEND_API_KEY', 'Yes', 'Resend transactional email API key'],
             ]}
           />
