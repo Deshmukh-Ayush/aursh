@@ -129,7 +129,7 @@ export const LexicalAIInput  = ({
       console.error("Lexical error:", error)
     },
     theme: {
-      paragraph: "text-[16px] sm:text-sm text-gray-900 leading-relaxed",
+      paragraph: "text-[15px] sm:text-sm text-foreground leading-relaxed",
     },
   }
 
@@ -197,7 +197,7 @@ export const LexicalAIInput  = ({
   }
 
   return (
-    <div className="relative w-3xl">
+    <div className="relative w-full max-w-3xl mx-auto">
       {showSlashMenu && (
         <SlashMenu commands={commands} selectCommand={selectCommand} />
       )}
@@ -206,7 +206,7 @@ export const LexicalAIInput  = ({
         <MentionMenu projects={projects} selectProject={selectProject} />
       )}
 
-      <div className="flex min-h-[100px] mx-auto w-full flex-col justify-between rounded-[14px] border border-[#E8E8E8] bg-white shadow-[1px_0px_4px_0px_rgba(0,0,0,0.06),0px_1px_4px_0px_rgba(0,0,0,0.06)] transition-all focus-within:border-gray-300 focus-within:shadow-sm">
+      <div className="flex min-h-[100px] w-full flex-col justify-between rounded-[14px] border border-border/80 bg-background shadow-xs transition-all focus-within:border-ring/50 focus-within:ring-1 focus-within:ring-ring/20">
         <LexicalComposer initialConfig={initialConfig}>
           <div className="relative flex-1 p-3">
             <RichTextPlugin
@@ -214,7 +214,7 @@ export const LexicalAIInput  = ({
                 <ContentEditable className="max-h-[160px] min-h-[32px] w-full overflow-y-auto outline-none" />
               }
               placeholder={
-                <div className="pointer-events-none absolute top-3 left-3 select-none text-[16px] text-gray-400 sm:text-sm">
+                <div className="pointer-events-none absolute top-3 left-3 select-none text-[15px] text-muted-foreground sm:text-sm">
                   Ask anything or @ to add context
                 </div>
               }
@@ -234,7 +234,7 @@ export const LexicalAIInput  = ({
               setShowSlashMenu((prev) => !prev)
               setShowMentionMenu(false)
             }}
-            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#E8E8E8] bg-white text-neutral-500 transition-colors hover:bg-gray-100 hover:text-gray-900 active:scale-[0.97]"
+            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.97]"
           >
             <Plus className="h-5 w-5" />
           </button>
@@ -243,7 +243,7 @@ export const LexicalAIInput  = ({
             type="button"
             disabled={disabled || !currentText.trim()}
             onClick={handleSend}
-            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-[8px] bg-[#0088C4] text-white transition-opacity active:scale-[0.97] disabled:opacity-40"
+            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-[8px] bg-brand text-white transition-opacity hover:bg-brand/90 active:scale-[0.97] disabled:opacity-40"
           >
             <ArrowUp className="h-4 w-4" />
           </button>
@@ -263,8 +263,8 @@ const SlashMenu = ({
   const [hovered, setHovered] = useState<number | null>(null)
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-72 rounded-[12px] border border-[#E8E8E8] bg-white p-1.5 shadow-lg">
-      <div className="px-2 py-1 text-[11px] font-medium text-neutral-400">
+    <div className="absolute bottom-full left-0 mb-2 w-72 rounded-[12px] border border-border bg-popover text-popover-foreground p-1.5 shadow-lg">
+      <div className="px-2 py-1 text-[13px] font-medium text-muted-foreground">
         Commands
       </div>
 
@@ -281,7 +281,7 @@ const SlashMenu = ({
             {hovered === idx && (
               <motion.span
                 layoutId="slash-menu-hover"
-                className="absolute inset-0 rounded-md bg-neutral-200"
+                className="absolute inset-0 rounded-md bg-muted"
                 transition={{
                   type: "spring",
                   stiffness: 380,
@@ -290,11 +290,11 @@ const SlashMenu = ({
               />
             )}
 
-            <span className="relative z-10 text-xs font-medium text-neutral-900">
+            <span className="relative z-10 text-[13px] font-medium text-foreground">
               {cmd.label}
             </span>
 
-            <span className="relative z-10 text-[11px] text-neutral-500">
+            <span className="relative z-10 text-[13px] text-muted-foreground">
               {cmd.description}
             </span>
           </button>
@@ -314,8 +314,8 @@ const MentionMenu = ({
   const [hovered, setHovered] = useState<number | null>(null)
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-64 rounded-[12px] border border-[#E8E8E8] bg-white p-1.5 shadow-lg">
-      <div className="px-2 py-1 text-[11px] font-medium text-neutral-400">
+    <div className="absolute bottom-full left-0 mb-2 w-64 rounded-[12px] border border-border bg-popover text-popover-foreground p-1.5 shadow-lg">
+      <div className="px-2 py-1 text-[13px] font-medium text-muted-foreground">
         Projects
       </div>
 
@@ -327,12 +327,12 @@ const MentionMenu = ({
             onClick={() => selectProject(proj.name)}
             onMouseEnter={() => setHovered(idx)}
             onMouseLeave={() => setHovered(null)}
-            className="group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-neutral-900"
+            className="group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium text-foreground"
           >
             {hovered === idx && (
               <motion.span
                 layoutId="mention-menu-hover"
-                className="absolute inset-0 rounded-md bg-neutral-200"
+                className="absolute inset-0 rounded-md bg-muted"
                 transition={{
                   type: "spring",
                   stiffness: 380,

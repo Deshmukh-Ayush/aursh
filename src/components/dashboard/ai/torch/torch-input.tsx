@@ -12,7 +12,7 @@ export function TorchInput() {
   const { sendMessage, loading, projects } = useTorch();
 
   return (
-    <div>
+    <div className="w-full">
       <LexicalAIInput
         onSend={sendMessage}
         disabled={loading}
