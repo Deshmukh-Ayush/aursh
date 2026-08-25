@@ -221,7 +221,7 @@
 }
 
 /* prompt-kit Text Shimmer keyframe */
-@keyframes shimmer {
+@keyframes shimmer-removed-prompt-kit {
   from { background-position: 0% 0; }
   to { background-position: 200% 0; }
 }
