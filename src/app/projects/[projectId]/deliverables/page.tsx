@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/utils/db";
-import { deliverable, comment, user } from "@/db/schema";
+import { deliverable, comment, user, contract } from "@/db/schema";
 import { eq, and, desc, isNotNull, asc } from "drizzle-orm";
 import { CreateDeliverableDialog } from "../../../../components/projects/deliverables/create-deliverable-dialog";
 import { DeliverablesContainer } from "@/components/projects/deliverables/deliverables-container";
 import { getProjectAccess } from "@/lib/project-auth";
 import { getCachedSession } from "@/utils/cached-session";
+import { evaluateDeliverableScope } from "@/lib/ai/scope-guardian";
+import type { ScopeEvaluation } from "@/lib/ai/schemas";
 
 export const metadata: Metadata = {
   title: "Deliverables",
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 async function DeliverablesData({ projectId, userId, role }: { projectId: string, userId: string, role: string }) {
-  const [deliverablesList, allComments] = await Promise.all([
+  const [deliverablesList, allComments, activeContract] = await Promise.all([
     db.select().from(deliverable).where(eq(deliverable.projectId, projectId)).orderBy(desc(deliverable.createdAt)),
     db
       .select({
@@ -25,7 +27,14 @@ async function DeliverablesData({ projectId, userId, role }: { projectId: string
       .from(comment)
       .leftJoin(user, eq(comment.userId, user.id))
       .where(and(eq(comment.projectId, projectId), isNotNull(comment.deliverableId)))
-      .orderBy(asc(comment.createdAt))
+      .orderBy(asc(comment.createdAt)),
+    db
+      .select({ id: contract.id, fileName: contract.fileName })
+      .from(contract)
+      .where(and(eq(contract.projectId, projectId), eq(contract.status, "signed")))
+      .orderBy(desc(contract.createdAt))
+      .limit(1)
+      .then((res) => res[0] || null),
   ]);
 
   if (deliverablesList.length === 0) {
@@ -46,6 +55,15 @@ async function DeliverablesData({ projectId, userId, role }: { projectId: string
     );
   }
 
+  const scopeEvaluationsRecord: Record<string, ScopeEvaluation> = {};
+  if (activeContract) {
+    await Promise.all(
+      deliverablesList.map(async (d) => {
+        scopeEvaluationsRecord[d.id] = await evaluateDeliverableScope(projectId, d.title, d.description);
+      })
+    );
+  }
+
   return (
     <DeliverablesContainer 
       deliverables={deliverablesList}
@@ -53,6 +71,8 @@ async function DeliverablesData({ projectId, userId, role }: { projectId: string
       memberRole={role as any}
       projectId={projectId}
       userId={userId}
+      scopeEvaluations={scopeEvaluationsRecord}
+      contractId={activeContract?.id}
     />
   );
 }

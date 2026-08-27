@@ -3,6 +3,7 @@
 import { DeliverableList } from "./deliverable-list";
 import { DeliverablesVelocityChart } from "./deliverables-velocity-chart";
 import { DeliverableItem } from "./types";
+import type { ScopeEvaluation } from "@/lib/ai/schemas";
 
 export function DeliverablesContainer({
   deliverables,
@@ -10,12 +11,16 @@ export function DeliverablesContainer({
   memberRole,
   projectId,
   userId,
+  scopeEvaluations,
+  contractId,
 }: {
   deliverables: DeliverableItem[];
   allComments: any[];
   memberRole: string;
   projectId: string;
   userId: string;
+  scopeEvaluations?: Record<string, ScopeEvaluation>;
+  contractId?: string;
 }) {
   return (
     <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
@@ -36,6 +41,8 @@ export function DeliverablesContainer({
           memberRole={memberRole}
           projectId={projectId}
           userId={userId}
+          scopeEvaluations={scopeEvaluations}
+          contractId={contractId}
         />
       </section>
     </div>

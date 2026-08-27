@@ -6,6 +6,7 @@ import { DeliverableItem as DeliverableType } from "./types";
 import { motion } from "framer-motion";
 import { DeliverableItem } from "./deliverable-item";
 import { DeliverableSubmissionBadge } from "./deliverable-submission-badge";
+import type { ScopeEvaluation } from "@/lib/ai/schemas";
 
 interface DeliverableListProps {
   deliverables: DeliverableType[];
@@ -13,6 +14,8 @@ interface DeliverableListProps {
   projectId: string;
   memberRole: string;
   userId: string;
+  scopeEvaluations?: Record<string, ScopeEvaluation>;
+  contractId?: string;
 }
 
 export function DeliverableList({
@@ -21,12 +24,15 @@ export function DeliverableList({
   memberRole,
   projectId,
   userId,
+  scopeEvaluations,
+  contractId,
 }: DeliverableListProps) {
   return (
     <div className="w-full">
       <Accordion type="multiple" className="w-full">
         {deliverables.map((deliv, index) => {
           const delivComments = allComments.filter((c) => c.comment.deliverableId === deliv.id);
+          const delivScope = scopeEvaluations ? scopeEvaluations[deliv.id] : null;
 
           return (
             <motion.div
@@ -42,6 +48,8 @@ export function DeliverableList({
                 index={index}
                 commentCount={delivComments.length}
                 memberRole={memberRole}
+                scopeEvaluation={delivScope}
+                contractId={contractId}
               />
 
               {/* Submission Information Pill if submitted */}
