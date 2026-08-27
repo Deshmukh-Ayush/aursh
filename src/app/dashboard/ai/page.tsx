@@ -1,24 +1,23 @@
 import { Suspense } from "react"
 import { db } from "@/utils/db"
-import { project, proposal, deliverable } from "@/db/schema"
-import { eq, inArray } from "drizzle-orm"
+import { proposal, deliverable } from "@/db/schema"
+import { inArray } from "drizzle-orm"
 import { getCachedTenant } from "@/utils/cached-tenant"
 import { getCachedOrg } from "@/utils/cached-org-queries"
+import { getAccessibleProjects } from "@/lib/project-queries"
 import { ScrunityAIView } from "@/components/dashboard/ai/scrunity-ai-view"
 import Image from "next/image"
 
 async function AIDataFetcher() {
   const { user, organizationId } = await getCachedTenant()
-  if (!organizationId) return null
+  if (!user) return null
 
-  const [org, orgProjects] = await Promise.all([
-    getCachedOrg(organizationId),
-    db.select({ id: project.id, name: project.name, status: project.status })
-      .from(project)
-      .where(eq(project.organizationId, organizationId)),
+  const [org, accessibleProjects] = await Promise.all([
+    organizationId ? getCachedOrg(organizationId) : Promise.resolve(null),
+    getAccessibleProjects(user.id, organizationId),
   ])
 
-  const projectIds = orgProjects.map((p) => p.id)
+  const projectIds = accessibleProjects.map((p) => p.id)
 
   const [proposalsList, deliverablesList] = projectIds.length > 0
     ? await Promise.all([
@@ -32,11 +31,11 @@ async function AIDataFetcher() {
   const workspaceSummary = {
     orgName,
     plan: org?.plan || "free",
-    activeProjectsCount: orgProjects.filter((p) => p.status === "active").length,
-    totalProjectsCount: orgProjects.length,
+    activeProjectsCount: accessibleProjects.filter((p) => p.status === "active").length,
+    totalProjectsCount: accessibleProjects.length,
     inReviewDeliverablesCount: deliverablesList.filter((d) => d.status === "in_review" || d.status === "pending").length,
     totalProposalValue: proposalsList.filter((p) => p.status === "accepted").reduce((acc, p) => acc + p.price, 0),
-    projects: orgProjects.map((p) => ({ id: p.id, name: p.name })),
+    projects: accessibleProjects.map((p) => ({ id: p.id, name: p.name })),
   }
 
   return (
