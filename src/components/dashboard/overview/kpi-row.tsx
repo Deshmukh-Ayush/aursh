@@ -1,8 +1,9 @@
 import { getTenantContext } from "@/lib/tenant-context"
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { eq, inArray } from "drizzle-orm"
-import { project, proposal, activityLog } from "@/db/schema"
+import { inArray } from "drizzle-orm"
+import { proposal, activityLog } from "@/db/schema"
+import { getAccessibleProjectIds } from "@/lib/project-queries"
 import { DashboardKpiRowUI } from "./kpi-row-client"
 import { subDays, isSameDay } from "date-fns"
 import { convertToINR } from "@/lib/currency"
@@ -11,18 +12,13 @@ export async function DashboardKpiRow() {
   const reqHeaders = await headers()
   const ctx = await getTenantContext(reqHeaders)
 
-  if (!ctx.organizationId) {
+  if (!ctx.user) {
     return null
   }
 
-  // Fetch workspace projects
-  const orgProjects = await db
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.organizationId, ctx.organizationId))
-
-  const projectIds = orgProjects.map((p) => p.id)
-  const activeProjectsCount = orgProjects.length
+  // Fetch accessible projects for the active user
+  const projectIds = await getAccessibleProjectIds(ctx.user.id, ctx.organizationId)
+  const activeProjectsCount = projectIds.length
 
   if (projectIds.length === 0) {
     return (

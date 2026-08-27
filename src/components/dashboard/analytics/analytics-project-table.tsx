@@ -1,8 +1,6 @@
 import { headers } from "next/headers"
-import { db } from "@/utils/db"
-import { project } from "@/db/schema"
-import { eq } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getAccessibleProjects } from "@/lib/project-queries"
 import {
   AnalyticsProjectTableClient,
   AnalyticsProjectPerformanceItem,
@@ -12,25 +10,12 @@ export async function AnalyticsProjectTable() {
   const reqHeaders = await headers()
   const ctx = await getTenantContext(reqHeaders)
 
-  if (!ctx.organizationId) {
+  if (!ctx.user) {
     return null
   }
 
-  // Fetch raw projects with members, proposals, deliverables
-  const rawProjects = await db.query.project.findMany({
-    where: eq(project.organizationId, ctx.organizationId),
-    with: {
-      members: {
-        with: {
-          user: true,
-        },
-      },
-      proposals: true,
-      deliverables: true,
-    },
-    orderBy: (p, { desc }) => [desc(p.updatedAt)],
-    limit: 10,
-  })
+  // Fetch raw projects with members, proposals, deliverables across accessible workspaces
+  const rawProjects = await getAccessibleProjects(ctx.user.id, ctx.organizationId)
 
   const projectsData: AnalyticsProjectPerformanceItem[] = rawProjects.map((p) => {
     const acceptedProposal = p.proposals.find((prop) => prop.status === "accepted")

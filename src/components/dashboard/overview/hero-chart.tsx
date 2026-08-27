@@ -1,7 +1,8 @@
 import { db } from "@/utils/db"
-import { activityLog, project } from "@/db/schema"
-import { eq, and, gte } from "drizzle-orm"
+import { activityLog } from "@/db/schema"
+import { and, gte, inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
+import { getAccessibleProjectIds } from "@/lib/project-queries"
 import { headers } from "next/headers"
 import { format, subDays, isSameDay } from "date-fns"
 import dynamic from "next/dynamic"
@@ -18,8 +19,21 @@ export async function DashboardHeroChart() {
   const reqHeaders = await headers()
   const ctx = await getTenantContext(reqHeaders)
 
-  if (!ctx.organizationId) {
+  if (!ctx.user) {
     return null
+  }
+
+  const projectIds = await getAccessibleProjectIds(ctx.user.id, ctx.organizationId)
+  if (projectIds.length === 0) {
+    return (
+      <DynamicDashboardHeroChartUI
+        chartData={[]}
+        totalEvents={0}
+        avgDaily={0}
+        topDayLabel=""
+        topDayCount={0}
+      />
+    )
   }
 
   // Fetch activity over the last 7 days
@@ -29,10 +43,9 @@ export async function DashboardHeroChart() {
   const recentActivity = await db
     .select({ createdAt: activityLog.createdAt })
     .from(activityLog)
-    .innerJoin(project, eq(activityLog.projectId, project.id))
     .where(
       and(
-        eq(project.organizationId, ctx.organizationId),
+        inArray(activityLog.projectId, projectIds),
         gte(activityLog.createdAt, sevenDaysAgo)
       )
     )
