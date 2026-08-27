@@ -15,6 +15,17 @@ export const fallbackModel = groq("openai/gpt-oss-20b");
 export const scopeModel = primaryModel;
 export const classifierModel = fallbackModel;
 
+// Polyfill Math.sumPrecise for Node runtime compatibility
+if (typeof (Math as any).sumPrecise !== "function") {
+  (Math as any).sumPrecise = function (items: Iterable<number>) {
+    let sum = 0;
+    for (const item of items) {
+      sum += Number(item);
+    }
+    return sum;
+  };
+}
+
 /**
  * Executes a structured text generation call using the primary model (openai/gpt-oss-120b).
  * If the primary model encounters a rate limit, error, or fails to generate an output,
@@ -33,11 +44,6 @@ export async function generateStructuredWithFallback<T>({
   try {
     const { output } = await generateText({
       model: primaryModel,
-      providerOptions: {
-        groq: {
-          structuredOutputs: false,
-        },
-      },
       output: Output.object({ schema }),
       system,
       prompt,
@@ -54,11 +60,6 @@ export async function generateStructuredWithFallback<T>({
   // Fallback Model Execution (openai/gpt-oss-20b)
   const { output } = await generateText({
     model: fallbackModel,
-    providerOptions: {
-      groq: {
-        structuredOutputs: false,
-      },
-    },
     output: Output.object({ schema }),
     system,
     prompt,
