@@ -1,28 +1,15 @@
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { db } from "@/utils/db"
-import { project } from "@/db/schema"
-import { eq } from "drizzle-orm"
 import { getCachedTenant } from "@/utils/cached-tenant"
+import { getAccessibleProjects } from "@/lib/project-queries"
 import { ProjectsTableClient, ProjectTableItem } from "@/components/dashboard/projects/projects-table-client"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
 
 async function ProjectsData() {
-  const { organizationId } = await getCachedTenant()
-  if (!organizationId) return null
+  const { user, organizationId } = await getCachedTenant()
+  if (!user) return null
 
-  const rawProjects = await db.query.project.findMany({
-    where: eq(project.organizationId, organizationId),
-    with: {
-      members: {
-        with: { user: true },
-      },
-      contracts: true,
-      proposals: true,
-      deliverables: true,
-    },
-    orderBy: (p, { desc }) => [desc(p.updatedAt)],
-  })
+  const rawProjects = await getAccessibleProjects(user.id, organizationId)
 
   const projectsData: ProjectTableItem[] = rawProjects.map((p) => {
     const acceptedProposal = p.proposals.find((prop) => prop.status === "accepted")
