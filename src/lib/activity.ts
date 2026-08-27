@@ -17,6 +17,7 @@ type ActivityType =
   | "project_completed" 
   | "member_joined"
   | "deliverable_in_review"
+  | "deliverable_reconciled"
   | "comment_added"
   | "proposal_sent"
   | "proposal_accepted"
@@ -28,7 +29,7 @@ type ActivityType =
 
 interface LogActivityParams {
   projectId: string;
-  userId: string;
+  userId?: string | null;
   type: ActivityType;
   metadata?: Record<string, unknown>;
 }
@@ -48,6 +49,7 @@ function getActivityMessage(type: ActivityType, metadata: Record<string, unknown
     case "deliverable_approved": return `${actorName} approved the deliverable: ${value("title", "Task")}`;
     case "revision_requested": return `${actorName} requested a revision on: ${value("title", "Task")}`;
     case "deliverable_completed": return `${actorName} completed a deliverable: ${value("title", "Task")}`;
+    case "deliverable_reconciled": return `Deliverable "${value("title", "Task")}" scope terms reconciled with signed contract.`;
     case "project_completed": return `${actorName} marked the project as complete!`;
     case "member_joined": return `${actorName} joined the project.`;
     case "comment_added": return `${actorName} added a new comment.`;
@@ -94,8 +96,7 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
     // 4. Distribute to all other members asynchronously (Non-blocking)
     const org = proj.organization;
     
-    // Use Next.js `after()` to ensure notifications complete in serverless
-    after(async () => {
+    const dispatchNotifications = async () => {
       const results = await Promise.allSettled(
         proj.members
           .filter(m => m.userId !== userId)
@@ -121,7 +122,14 @@ export async function logActivity({ projectId, userId, type, metadata = {} }: Lo
           console.error("Notification delivery failed:", result.reason);
         }
       }
-    });
+    };
+
+    // Use Next.js `after()` in request scope, or execute directly in test/worker contexts
+    try {
+      after(dispatchNotifications);
+    } catch {
+      dispatchNotifications().catch(() => {});
+    }
 
   } catch (error) {
     console.error("Failed to log activity:", error);

@@ -13,6 +13,7 @@ export type NotificationType =
   | "project_completed" 
   | "member_joined"
   | "deliverable_in_review"
+  | "deliverable_reconciled"
   | "comment_added"
   | "proposal_sent"
   | "proposal_accepted"
