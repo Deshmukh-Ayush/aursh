@@ -1,6 +1,6 @@
-import { get, put } from "@vercel/blob";
+import { getBlobBuffer, putBlob } from "@/lib/blob";
 import { db } from "@/utils/db";
-import { contract, signature, user as userTable } from "@/db/schema";
+import { contract, contractScopeTerm, signature, user as userTable } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -9,6 +9,8 @@ import { logActivity } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 import { hashDocument } from "@/lib/hash-document";
 import { embedSignaturesInPdf, buildAuditTrailEvent } from "@/lib/pdf-signing";
+import { extractAndSaveContractScope } from "@/lib/ai/contract-parser";
+import { reconcileContractDeliverables } from "@/lib/ai/scope-guardian";
 import { z } from "zod";
 import { getProjectAccess } from "@/lib/project-auth";
 
@@ -50,9 +52,8 @@ export async function POST(req: NextRequest) {
 
     if (existing.fileUrl) {
       try {
-        const storedDocument = await get(existing.fileUrl, { access: "private", useCache: false });
-        if (storedDocument?.stream) {
-          originalBuffer = await new Response(storedDocument.stream).arrayBuffer();
+        originalBuffer = await getBlobBuffer(existing.fileUrl);
+        if (originalBuffer) {
           currentDocHash = hashDocument(originalBuffer);
           if (existing.documentHash && currentDocHash !== existing.documentHash) {
             return NextResponse.json({ error: "Document has changed since upload" }, { status: 409 });
@@ -113,8 +114,7 @@ export async function POST(req: NextRequest) {
           });
 
           const signedPdfBuffer = await embedSignaturesInPdf(originalBuffer, sigItems);
-          const finalBlob = await put(`contracts/${existing.projectId}/${contractId}/signed_${existing.fileName}`, signedPdfBuffer, {
-            access: "private",
+          const finalBlob = await putBlob(`contracts/${existing.projectId}/${contractId}/signed_${existing.fileName}`, signedPdfBuffer, {
             addRandomSuffix: false,
             allowOverwrite: true,
           });
@@ -125,6 +125,26 @@ export async function POST(req: NextRequest) {
       }
 
       await db.update(contract).set(finalStatusUpdate).where(eq(contract.id, contractId));
+
+      // Reconcile and generate deliverables from the signed contract's scope terms
+      try {
+        const existingTerms = await db
+          .select()
+          .from(contractScopeTerm)
+          .where(eq(contractScopeTerm.contractId, contractId));
+
+        if (existingTerms.length === 0 && originalBuffer) {
+          try {
+            await extractAndSaveContractScope(contractId, existing.projectId, originalBuffer);
+          } catch (extractError) {
+            console.error("Auto extraction on contract sign notice:", extractError);
+          }
+        }
+
+        await reconcileContractDeliverables(existing.projectId, contractId, userId);
+      } catch (scopeError) {
+        console.error("Deliverable reconciliation on contract sign notice:", scopeError);
+      }
     } else {
       await db
         .update(contract)
@@ -142,6 +162,7 @@ export async function POST(req: NextRequest) {
     revalidatePath("/dashboard");
     revalidatePath(`/projects/${existing.projectId}`);
     revalidatePath(`/projects/${existing.projectId}/contract`);
+    revalidatePath(`/projects/${existing.projectId}/deliverables`);
     return NextResponse.json({
       success: true,
       fullySigned: isFullySigned,
