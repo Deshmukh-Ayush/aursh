@@ -1,17 +1,28 @@
 import { extractText, getDocumentProxy } from "unpdf";
 
+function toCleanUint8Array(input: Buffer | Uint8Array | ArrayBuffer): Uint8Array {
+  if (input instanceof ArrayBuffer) {
+    return new Uint8Array(input);
+  }
+  // Node.js Buffer is a subclass of Uint8Array. PDF.js explicitly rejects Buffer instances.
+  // Creating a new ArrayBuffer slice detaches any Node Buffer prototype.
+  const byteOffset = input.byteOffset ?? 0;
+  const byteLength = input.byteLength ?? input.length;
+  const newBuffer = input.buffer.slice(byteOffset, byteOffset + byteLength);
+  return new Uint8Array(newBuffer);
+}
+
 /**
  * Extracts plain text from a PDF buffer using unpdf (serverless PDF.js).
  *
- * @param pdfBuffer - Raw PDF file as a Buffer or Uint8Array.
+ * @param pdfBuffer - Raw PDF file as a Buffer, Uint8Array, or ArrayBuffer.
  * @returns Object with `text` (merged page text) and `totalPages`.
  * @throws Error if the PDF cannot be parsed.
  */
 export async function extractPdfText(
-  pdfBuffer: Buffer | Uint8Array,
+  pdfBuffer: Buffer | Uint8Array | ArrayBuffer,
 ): Promise<{ text: string; totalPages: number }> {
-  const data =
-    pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer);
+  const data = toCleanUint8Array(pdfBuffer);
 
   const pdf = await getDocumentProxy(data);
   const result = await extractText(pdf, { mergePages: true });
