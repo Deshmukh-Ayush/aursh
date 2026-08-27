@@ -79,7 +79,7 @@ export interface ExtractionResult {
 export async function extractAndSaveContractScope(
   contractId: string,
   projectId: string,
-  source: string | Buffer | Uint8Array,
+  source: string | Buffer | Uint8Array | ArrayBuffer,
 ): Promise<ExtractionResult> {
   // Step 1: Extract text
   const { text } =

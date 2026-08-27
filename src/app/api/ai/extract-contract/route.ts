@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { get } from "@vercel/blob";
+import { getBlobBuffer } from "@/lib/blob";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { db } from "@/utils/db";
@@ -57,10 +57,19 @@ export async function POST(req: NextRequest) {
     const rateLimitResult = await checkRateLimit(aiRateLimiter, `ai_extract_${session.user.id}`);
     if (!rateLimitResult.success) return NextResponse.json({ error: "Too many extraction requests. Please try again later." }, { status: 429 });
 
-    const storedDocument = await get(contractRow.fileUrl, { access: "private", useCache: false });
-    if (!storedDocument?.stream) return NextResponse.json({ error: "Contract file not found" }, { status: 404 });
-    const documentBuffer = Buffer.from(await new Response(storedDocument.stream).arrayBuffer());
-    const result = await extractAndSaveContractScope(contractRow.id, contractRow.projectId, documentBuffer);
+    const documentArrayBuffer = await getBlobBuffer(contractRow.fileUrl);
+    if (!documentArrayBuffer) return NextResponse.json({ error: "Contract file not found" }, { status: 404 });
+    const result = await extractAndSaveContractScope(contractRow.id, contractRow.projectId, documentArrayBuffer);
+
+    if (contractRow.status === "signed") {
+      try {
+        const { reconcileContractDeliverables } = await import("@/lib/ai/scope-guardian");
+        await reconcileContractDeliverables(contractRow.projectId, contractRow.id, session.user.id);
+      } catch (reconError) {
+        console.error("Reconciliation after scope extraction notice:", reconError);
+      }
+    }
+
     return NextResponse.json({ success: true, contractId: result.contractId, extractedCount: result.extractedCount, terms: result.terms });
   } catch (error) {
     console.error("[AI Extract Contract]", error);
