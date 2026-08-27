@@ -1,4 +1,5 @@
-import { del, put } from '@vercel/blob';
+import { del } from '@vercel/blob';
+import { putBlob } from "@/lib/blob";
 import { db } from "@/utils/db";
 import { contract, signature, projectMember } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -84,8 +85,7 @@ export async function POST(req: NextRequest) {
     // hashing (CPU-bound, cheap) are independent — File supports multiple
     // independent reads, so overlap them instead of running sequentially.
     const [blob, fileBuffer] = await Promise.all([
-      put(`contracts/${projectId}/${newContractId}/${storageFileName}`, file, {
-        access: 'private',
+      putBlob(`contracts/${projectId}/${newContractId}/${storageFileName}`, file, {
         addRandomSuffix: false,
         allowOverwrite: true,
       }),
