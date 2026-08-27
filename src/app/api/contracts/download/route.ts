@@ -1,4 +1,4 @@
-import { get } from "@vercel/blob";
+import { getBlobStream } from "@/lib/blob";
 import { contract } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getProjectAccess } from "@/lib/project-auth";
@@ -22,68 +22,24 @@ export async function GET(req: NextRequest) {
   if (!access.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const targetUrl = contractRow.signedDocumentUrl || contractRow.fileUrl;
-  let stream: ReadableStream | null = null;
-  let contentType = "application/pdf";
+  let blobData = await getBlobStream(targetUrl);
 
-  // Tier 1: Try Vercel Blob private get on targetUrl
-  try {
-    const document = await get(targetUrl, { access: "private", useCache: false });
-    if (document?.stream) {
-      stream = document.stream;
-      if (document.blob?.contentType) contentType = document.blob.contentType;
-    }
-  } catch (err) {
-    console.warn("Vercel Blob get for targetUrl notice:", err);
+  // Fallback to original fileUrl if signedDocumentUrl failed
+  if (!blobData && contractRow.signedDocumentUrl && contractRow.fileUrl !== contractRow.signedDocumentUrl) {
+    blobData = await getBlobStream(contractRow.fileUrl);
   }
 
-  // Tier 2: Try Vercel Blob private get on original fileUrl if targetUrl was signedDocumentUrl
-  if (!stream && contractRow.signedDocumentUrl && contractRow.fileUrl !== contractRow.signedDocumentUrl) {
-    try {
-      const document = await get(contractRow.fileUrl, { access: "private", useCache: false });
-      if (document?.stream) {
-        stream = document.stream;
-        if (document.blob?.contentType) contentType = document.blob.contentType;
-      }
-    } catch (err) {
-      console.warn("Fallback Vercel Blob get for original fileUrl notice:", err);
-    }
-  }
-
-  // Tier 3: Direct HTTP fetch fallback on targetUrl
-  if (!stream) {
-    try {
-      const res = await fetch(targetUrl);
-      if (res.ok && res.body) {
-        stream = res.body;
-        contentType = res.headers.get("content-type") || "application/pdf";
-      }
-    } catch (err) {
-      console.warn("HTTP fetch fallback for targetUrl notice:", err);
-    }
-  }
-
-  // Tier 4: Direct HTTP fetch fallback on fileUrl
-  if (!stream && contractRow.fileUrl) {
-    try {
-      const res = await fetch(contractRow.fileUrl);
-      if (res.ok && res.body) {
-        stream = res.body;
-        contentType = res.headers.get("content-type") || "application/pdf";
-      }
-    } catch (err) {
-      console.error("HTTP fetch fallback for fileUrl error:", err);
-    }
-  }
-
-  if (!stream) {
+  if (!blobData?.stream) {
     return NextResponse.json({ error: "Contract document stream unavailable" }, { status: 404 });
   }
 
-  return new NextResponse(stream, {
+  return new NextResponse(blobData.stream, {
     headers: {
-      "Content-Type": contentType,
+      "Content-Type": blobData.contentType || "application/pdf",
       "Content-Disposition": `inline; filename="${contractRow.fileName.replace(/[\r\n"]/g, "_")}"`,
       "Cache-Control": "private, no-store",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Content-Security-Policy": "frame-ancestors 'self'",
     },
   });
 }
