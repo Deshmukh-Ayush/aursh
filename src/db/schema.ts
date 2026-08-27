@@ -452,7 +452,7 @@ export const activityTypes = [
   "contract_uploaded", "contract_signed", "file_uploaded", 
   "deliverable_created", "deliverable_approved", "revision_requested", 
   "deliverable_completed", "project_completed", "member_joined",
-  "deliverable_in_review", "comment_added",
+  "deliverable_in_review", "deliverable_reconciled", "comment_added",
   "proposal_sent", "proposal_accepted", "proposal_declined",
   "payment_requested", "payment_completed", "payment_overdue", "milestone_created"
 ] as const;
