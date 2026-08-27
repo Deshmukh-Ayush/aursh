@@ -57,16 +57,29 @@ export async function POST(req: NextRequest) {
       createdBy: userId,
     });
 
+    let scopeEvaluation = null;
+    try {
+      const { evaluateDeliverableScope } = await import("@/lib/ai/scope-guardian");
+      scopeEvaluation = await evaluateDeliverableScope(projectId, data.title, data.description);
+    } catch (e) {
+      console.error("Scope evaluation on create deliverable notice:", e);
+    }
+
     await logActivity({
       projectId,
       userId,
       type: "deliverable_created",
-      metadata: { deliverableId, title: data.title }
+      metadata: {
+        deliverableId,
+        title: data.title,
+        isScopeCreep: scopeEvaluation?.isScopeCreep ?? false,
+        scopeStatus: scopeEvaluation?.status ?? "within_scope",
+      }
     });
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/deliverables`);
-    return NextResponse.json({ success: true, deliverableId });
+    return NextResponse.json({ success: true, deliverableId, scopeEvaluation });
   } catch (error) {
     console.error("Create deliverable error:", error);
     return NextResponse.json({ error: "Failed to create deliverable." }, { status: 500 });
