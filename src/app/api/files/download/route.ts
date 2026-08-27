@@ -1,4 +1,4 @@
-import { get } from "@vercel/blob";
+import { getBlobStream } from "@/lib/blob";
 import { files } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getProjectAccess } from "@/lib/project-auth";
@@ -16,13 +16,17 @@ export async function GET(req: NextRequest) {
   if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 });
   const access = await getProjectAccess(file.projectId, session.user.id);
   if (!access.isAuthorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const storedFile = await get(file.url, { access: "private", useCache: false });
-  if (!storedFile?.stream) return NextResponse.json({ error: "File not found" }, { status: 404 });
-  return new NextResponse(storedFile.stream, {
+  
+  const blobData = await getBlobStream(file.url);
+  if (!blobData?.stream) return NextResponse.json({ error: "File not found" }, { status: 404 });
+  
+  return new NextResponse(blobData.stream, {
     headers: {
-      "Content-Type": storedFile.blob.contentType || file.mimeType,
+      "Content-Type": blobData.contentType || file.mimeType,
       "Content-Disposition": `attachment; filename="${file.name.replace(/[\r\n"]/g, "_")}"`,
       "Cache-Control": "private, no-store",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Content-Security-Policy": "frame-ancestors 'self'",
     },
   });
 }

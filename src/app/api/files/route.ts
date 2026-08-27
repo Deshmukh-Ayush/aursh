@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
-import { put } from "@vercel/blob";
+import { putBlob } from "@/lib/blob";
 import { logActivity } from "@/lib/activity";
 import { uploadRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
@@ -58,9 +58,7 @@ export async function POST(req: NextRequest) {
     if (!rateLimitResult.success) return NextResponse.json({ error: "Too many uploads. Please try again later." }, { status: 429 });
 
     const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_") || "upload";
-    const blob = await put(`files/${projectId}/${crypto.randomUUID()}/${safeFileName}`, file, {
-      access: "private",
-    });
+    const blob = await putBlob(`files/${projectId}/${crypto.randomUUID()}/${safeFileName}`, file);
 
     await db.insert(files).values({
       id: crypto.randomUUID(),
