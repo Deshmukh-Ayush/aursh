@@ -52,12 +52,30 @@ export function ContractVaultPreviewModal({ contract, onClose }: ContractVaultPr
               </div>
             </div>
 
-            <div className="flex-1 bg-neutral-900 overflow-hidden">
-              <iframe
-                src={contract.contract.signedDocumentUrl || contract.contract.fileUrl}
+            <div className="flex-1 bg-neutral-900 overflow-hidden relative">
+              <object
+                data={contract.contract.signedDocumentUrl || contract.contract.fileUrl}
+                type="application/pdf"
                 className="w-full h-full border-none"
-                title="PDF Document Preview"
-              />
+              >
+                <iframe
+                  src={contract.contract.signedDocumentUrl || contract.contract.fileUrl}
+                  className="w-full h-full border-none"
+                  title="PDF Document Preview"
+                >
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground gap-3">
+                    <p className="text-sm">This browser does not support inline PDF viewing.</p>
+                    <a
+                      href={contract.contract.signedDocumentUrl || contract.contract.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 text-xs font-medium rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      Open PDF in New Window
+                    </a>
+                  </div>
+                </iframe>
+              </object>
             </div>
           </motion.div>
         </div>
