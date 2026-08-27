@@ -3,7 +3,7 @@ import { organization, member } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { put } from "@vercel/blob";
+import { putBlob } from "@/lib/blob";
 import { revalidatePath } from "next/cache";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -22,26 +22,28 @@ export async function PATCH(req: NextRequest) {
     const session = await auth.api.getSession({ headers: reqHeaders });
 
     if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    const contentType = req.headers.get("content-type") || "";
+    const formData = await req.formData();
+    const action = formData.get("action");
 
-    // Handle branding update (multipart/form-data)
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
+    if (action === "update_branding") {
       const orgId = formData.get("orgId") as string;
       const file = formData.get("logo") as File | null;
 
-      if (!orgId) return NextResponse.json({ error: "Organization ID required" }, { status: 400 });
+      if (!orgId) return NextResponse.json({ error: "Org ID is required." }, { status: 400 });
 
-      const [orgMember] = await db
-        .select()
-        .from(member)
-        .where(and(eq(member.organizationId, orgId), eq(member.userId, userId)));
+      // Verify user is an owner of this org
+      const [userMembership] = await db.select().from(member).where(
+        and(
+          eq(member.organizationId, orgId),
+          eq(member.userId, session.user.id),
+          eq(member.role, "owner")
+        )
+      );
 
-      if (!orgMember || orgMember.role !== "owner") {
+      if (!userMembership) {
         return NextResponse.json({ error: "Only organization owners can update branding." }, { status: 403 });
       }
 
@@ -52,9 +54,7 @@ export async function PATCH(req: NextRequest) {
 
       if (file && file.size > 0) {
         try {
-          const blob = await put(`logos/${orgId}-${Date.now()}-${file.name}`, file, {
-            access: 'public',
-          });
+          const blob = await putBlob(`logos/${orgId}-${Date.now()}-${file.name}`, file);
           logoUrl = blob.url;
         } catch (uploadError) {
           console.error("Blob upload error:", uploadError);
@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest) {
       const [orgMember] = await db
         .select()
         .from(member)
-        .where(and(eq(member.organizationId, orgId), eq(member.userId, userId)));
+        .where(and(eq(member.organizationId, orgId), eq(member.userId, session.user.id)));
 
       if (!orgMember || orgMember.role !== "owner") {
         return NextResponse.json({ error: "Only organization owners can change the plan." }, { status: 403 });
