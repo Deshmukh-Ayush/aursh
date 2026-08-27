@@ -1,5 +1,5 @@
 import { db } from "@/utils/db";
-import { deliverable, paymentMilestone, proposal, proposalLineItems } from "@/db/schema";
+import { contract, deliverable, paymentMilestone, proposal, proposalLineItems } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { canManageProject, getProjectAccess } from "@/lib/project-auth";
@@ -164,6 +164,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     const lineItems = await db.query.proposalLineItems.findMany({ where: eq(proposalLineItems.proposalId, existing.id) });
+
+    // Check if an active signed contract with scope terms already exists
+    const [signedContract] = await db
+      .select({ id: contract.id })
+      .from(contract)
+      .where(and(eq(contract.projectId, existing.projectId), eq(contract.status, "signed")))
+      .limit(1);
+
     const deliverableRows = lineItems.map((item) => ({
       id: crypto.randomUUID(), projectId: existing.projectId, title: item.description,
       description: `Auto-generated from proposal \"${existing.title}\"`, status: "pending" as const,
@@ -184,6 +192,16 @@ export async function PATCH(req: NextRequest) {
     if (deliverableRows.length > 0) {
       await db.batch([db.insert(deliverable).values(deliverableRows), db.insert(paymentMilestone).values(milestoneRows)]);
     }
+
+    if (signedContract) {
+      try {
+        const { reconcileContractDeliverables } = await import("@/lib/ai/scope-guardian");
+        await reconcileContractDeliverables(existing.projectId, signedContract.id, session.user.id);
+      } catch (reconErr) {
+        console.error("Contract deliverable reconciliation on proposal accept notice:", reconErr);
+      }
+    }
+
     await logActivity({ projectId: existing.projectId, userId: session.user.id, type: "proposal_accepted", metadata: { proposalId: existing.id, title: existing.title } });
     return NextResponse.json({ success: true });
   } catch (error) {
