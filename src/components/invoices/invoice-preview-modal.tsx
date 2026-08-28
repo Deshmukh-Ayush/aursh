@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Download, X, CheckCircle2, Send, Loader2, FileText, Ban } from "lucide-react";
+import { DownloadSimple, X, CheckCircle, PaperPlaneTilt, SpinnerGap, FileText, Prohibit } from "@phosphor-icons/react";
 import { InvoiceData } from "@/lib/invoices/types";
-import { InvoiceDocumentView } from "./invoice-document-view";
+import { InvoiceDocumentView, getContrastTextColor } from "./invoice-document-view";
 
 interface InvoicePreviewModalProps {
   invoice: InvoiceData | null;
@@ -25,7 +25,23 @@ export function InvoicePreviewModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !invoice) return null;
+
+  const themeColor = invoice.themeColor || "#4F46E5";
+  const primaryTextColor = getContrastTextColor(themeColor);
 
   const handleDownloadPdf = async () => {
     setIsDownloading(true);
@@ -81,21 +97,26 @@ export function InvoicePreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
-      <div className="bg-background border border-border/60 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden focus:outline-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="invoice-preview-title"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200"
+    >
+      <div className="bg-background border border-border/60 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden focus-visible:outline-hidden">
         {/* Modal Top Bar */}
         <div className="px-6 py-3.5 border-b border-border/40 flex items-center justify-between bg-card/60 shrink-0">
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-2xs"
-              style={{ backgroundColor: invoice.themeColor || "#4F46E5" }}
+              style={{ backgroundColor: themeColor }}
             >
-              <FileText className="w-4 h-4 stroke-[2.2]" />
+              <FileText size={16} weight="bold" aria-hidden="true" />
             </div>
             <div>
-              <span className="text-sm font-bold text-foreground">
+              <h2 id="invoice-preview-title" className="text-sm font-bold text-foreground">
                 Invoice #{invoice.invoiceNumber}
-              </span>
+              </h2>
             </div>
           </div>
 
@@ -104,12 +125,12 @@ export function InvoicePreviewModal({
               type="button"
               onClick={handleDownloadPdf}
               disabled={isDownloading}
-              className="active:scale-[0.96] transition-transform h-8.5 px-3.5 rounded-xl border border-border/70 bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+              className="active:scale-[0.96] transition-transform h-8.5 px-3.5 rounded-xl border border-border/70 bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
               {isDownloading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
               ) : (
-                <Download className="w-3.5 h-3.5 text-brand" />
+                <DownloadSimple size={14} className="text-brand" aria-hidden="true" />
               )}
               <span>Download PDF</span>
             </button>
@@ -119,13 +140,13 @@ export function InvoicePreviewModal({
                 type="button"
                 onClick={() => handleAction("send")}
                 disabled={isProcessing}
-                className="active:scale-[0.96] transition-transform h-8.5 px-3.5 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
-                style={{ backgroundColor: invoice.themeColor || "#4F46E5" }}
+                className="active:scale-[0.96] transition-transform h-8.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                style={{ backgroundColor: themeColor, color: primaryTextColor }}
               >
                 {isProcessing ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
                 ) : (
-                  <Send className="w-3.5 h-3.5 stroke-[2.2]" />
+                  <PaperPlaneTilt size={14} weight="bold" aria-hidden="true" />
                 )}
                 <span>Send to Client</span>
               </button>
@@ -136,12 +157,12 @@ export function InvoicePreviewModal({
                 type="button"
                 onClick={() => handleAction("mark_paid")}
                 disabled={isProcessing}
-                className="active:scale-[0.96] transition-transform h-8.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                className="active:scale-[0.96] transition-transform h-8.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-hidden"
               >
                 {isProcessing ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
                 ) : (
-                  <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                  <CheckCircle size={14} weight="bold" aria-hidden="true" />
                 )}
                 <span>Mark Paid</span>
               </button>
@@ -150,9 +171,10 @@ export function InvoicePreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-8.5 w-8.5 rounded-xl hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors ml-1"
+              aria-label="Close invoice preview"
+              className="h-8.5 w-8.5 rounded-xl hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors ml-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
-              <X className="w-4 h-4" />
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
