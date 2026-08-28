@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, FileText, Download, CheckCircle2, Send, Clock, Eye } from "lucide-react";
+import { Plus, FileText, DownloadSimple, CheckCircle, PaperPlaneTilt, Clock, Eye } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -102,7 +102,7 @@ export function PaymentsViewClient({
           <h1 className="text-[36px] font-semibold tracking-tight text-foreground text-balance">
             Payments & Invoices
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5 text-pretty">
             Manage project milestones, track payment receipts, and issue branded invoices.
           </p>
         </div>
@@ -110,18 +110,22 @@ export function PaymentsViewClient({
         {isAgency && (
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <button
+              type="button"
               onClick={() => handleOpenInvoiceBuilder()}
-              className="active:scale-[0.96] transition-transform h-9 px-3.5 rounded-full border border-border bg-background hover:bg-muted text-foreground font-semibold text-xs flex items-center gap-1.5 shadow-2xs"
+              aria-label="Create invoice"
+              className="active:scale-[0.96] transition-transform h-9 px-3.5 rounded-full border border-border bg-background hover:bg-muted text-foreground font-semibold text-xs flex items-center gap-1.5 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
-              <FileText className="w-4 h-4 text-brand" />
+              <FileText size={16} className="text-brand" aria-hidden="true" />
               <span>Create Invoice</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setCreateMilestoneOpen(true)}
-              className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5"
+              aria-label="Create new milestone"
+              className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-[#00AAF7] text-white font-semibold text-sm flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
-              <Plus className="w-5 h-5 stroke-3" />
+              <Plus size={20} weight="bold" aria-hidden="true" />
               <span>New Milestone</span>
             </button>
           </div>
@@ -132,36 +136,44 @@ export function PaymentsViewClient({
       <PaymentsRadialChart milestones={milestones} formatMoney={formatMoney} />
 
       {/* Section Tabs: Milestones vs Invoices */}
-      <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-xl border border-border/40 w-fit">
+      <div role="tablist" aria-label="Payments sections" className="flex items-center gap-1 p-1 bg-muted/40 rounded-xl border border-border/40 w-fit">
         <button
           type="button"
+          role="tab"
+          id="tab-milestones"
+          aria-selected={activeTab === "milestones"}
+          aria-controls="panel-milestones"
           onClick={() => setActiveTab("milestones")}
           className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5",
+            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
             activeTab === "milestones"
               ? "bg-background text-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
           <span>Milestones</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground">
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-mono tabular-nums">
             {milestones.length}
           </span>
         </button>
 
         <button
           type="button"
+          role="tab"
+          id="tab-invoices"
+          aria-selected={activeTab === "invoices"}
+          aria-controls="panel-invoices"
           onClick={() => setActiveTab("invoices")}
           className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5",
+            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
             activeTab === "invoices"
               ? "bg-background text-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <FileText className="w-3.5 h-3.5 text-brand" />
+          <FileText size={14} className="text-brand" aria-hidden="true" />
           <span>Invoices</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-mono">
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-mono tabular-nums">
             {invoices.length}
           </span>
         </button>
@@ -169,7 +181,12 @@ export function PaymentsViewClient({
 
       {/* TAB 1: Milestones List Section */}
       {activeTab === "milestones" && (
-        <section aria-label="Project Milestones List" className="space-y-3">
+        <section
+          id="panel-milestones"
+          role="tabpanel"
+          aria-labelledby="tab-milestones"
+          className="space-y-3"
+        >
           <div className="flex items-center justify-between">
             <h2 className="text-[16px] font-semibold tracking-tight text-foreground">
               All Scheduled Milestones ({milestones.length})
@@ -205,7 +222,12 @@ export function PaymentsViewClient({
 
       {/* TAB 2: Invoices List Section */}
       {activeTab === "invoices" && (
-        <section aria-label="Project Invoices List" className="space-y-3">
+        <section
+          id="panel-invoices"
+          role="tabpanel"
+          aria-labelledby="tab-invoices"
+          className="space-y-3"
+        >
           <div className="flex items-center justify-between">
             <h2 className="text-[16px] font-semibold tracking-tight text-foreground">
               All Project Invoices ({invoices.length})
@@ -214,9 +236,9 @@ export function PaymentsViewClient({
               <button
                 type="button"
                 onClick={() => handleOpenInvoiceBuilder()}
-                className="text-xs text-brand hover:underline flex items-center gap-1"
+                className="text-xs text-brand hover:underline flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden rounded"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus size={14} aria-hidden="true" />
                 <span>New Invoice</span>
               </button>
             )}
@@ -224,12 +246,12 @@ export function PaymentsViewClient({
 
           {invoices.length === 0 ? (
             <div className="text-center py-12 px-4 rounded-xl border border-dashed border-border/60 bg-card/20 space-y-3">
-              <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+              <FileText size={32} className="text-muted-foreground/40 mx-auto" aria-hidden="true" />
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">
                   No invoices created yet
                 </p>
-                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto text-pretty">
                   Issue professional split-pane invoices, sync them with milestones, and send them directly to clients.
                 </p>
               </div>
@@ -237,9 +259,9 @@ export function PaymentsViewClient({
                 <button
                   type="button"
                   onClick={() => handleOpenInvoiceBuilder()}
-                  className="h-8 px-3.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-hover inline-flex items-center gap-1.5 transition-colors"
+                  className="h-8 px-3.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-hover inline-flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus size={14} aria-hidden="true" />
                   <span>Create First Invoice</span>
                 </button>
               )}
@@ -258,13 +280,14 @@ export function PaymentsViewClient({
                       <div
                         className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: inv.themeColor || "#00AAF7" }}
+                        aria-hidden="true"
                       />
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => setPreviewInvoice(inv)}
-                            className="text-sm font-bold text-foreground font-mono hover:text-brand transition-colors truncate"
+                            className="text-sm font-bold text-foreground font-mono hover:text-brand transition-colors truncate focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden rounded"
                           >
                             {inv.invoiceNumber}
                           </button>
@@ -306,20 +329,20 @@ export function PaymentsViewClient({
                         <button
                           type="button"
                           onClick={() => setPreviewInvoice(inv)}
-                          className="h-7 px-2.5 rounded-md border border-border/60 hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1 transition-colors"
-                          title="View invoice"
+                          aria-label={`View invoice ${inv.invoiceNumber}`}
+                          className="h-7 px-2.5 rounded-md border border-border/60 hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         >
-                          <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                          <Eye size={14} className="text-muted-foreground" aria-hidden="true" />
                           <span className="hidden sm:inline">View</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleDownloadInvoicePdf(inv)}
-                          className="h-7 w-7 rounded-md border border-border/60 hover:bg-muted text-foreground flex items-center justify-center transition-colors"
-                          title="Download PDF"
+                          aria-label={`Download invoice ${inv.invoiceNumber} PDF`}
+                          className="h-7 w-7 rounded-md border border-border/60 hover:bg-muted text-foreground flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         >
-                          <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                          <DownloadSimple size={14} className="text-muted-foreground" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
