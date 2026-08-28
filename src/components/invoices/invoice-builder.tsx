@@ -5,30 +5,26 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-  Building2,
-  User,
+  Buildings,
   FileText,
-  ListPlus,
-  Info,
   Plus,
-  Trash2,
-  Upload,
-  Download,
-  Send,
-  Save,
-  ChevronDown,
-  ChevronUp,
+  Trash,
+  DownloadSimple,
+  PaperPlaneTilt,
+  FloppyDisk,
+  CaretDown,
+  CaretUp,
   X,
-  Loader2,
-  Image as ImageIcon,
-  PenTool,
-  Columns2,
+  SpinnerGap,
+  Image as PhImage,
+  PenNib,
+  Columns,
   Eye,
-  Edit3,
-  Type,
+  PencilSimple,
+  TextAa,
   Palette,
-  Layers,
-} from "lucide-react";
+  Stack,
+} from "@phosphor-icons/react";
 import {
   InvoiceData,
   InvoiceLineItemData,
@@ -38,7 +34,7 @@ import {
   calculateInvoiceTotals,
   formatInvoiceMoney,
 } from "@/lib/invoices/types";
-import { InvoiceDocumentView } from "./invoice-document-view";
+import { InvoiceDocumentView, getContrastTextColor } from "./invoice-document-view";
 import { cn } from "@/lib/utils";
 
 interface InvoiceBuilderProps {
@@ -120,7 +116,7 @@ export function InvoiceBuilder({
     d.setDate(d.getDate() + 14); // default Net 14
     return d.toISOString().split("T")[0];
   });
-  const [paymentTerms, setPaymentTerms] = useState<string>("Net 14 days");
+  const [paymentTerms, setPaymentTerms] = useState<string>("");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(
     initialMilestoneId || null
   );
@@ -175,8 +171,8 @@ export function InvoiceBuilder({
           setLogoUrl(defaults.logoUrl || null);
           setSignatureUrl(defaults.signatureUrl || null);
           setPaymentInformation(defaults.defaultPaymentInfo || []);
-          setNotes(defaults.defaultNotes || "");
-          setPaymentTerms(defaults.defaultTerms || "Net 14 days");
+          setNotes("");
+          setPaymentTerms("");
           setCompanyCustomFields(defaults.defaultCustomFields || []);
 
           setClientName(clientPrefill.name || "");
@@ -236,7 +232,7 @@ export function InvoiceBuilder({
         }
       } catch (err) {
         console.error("Failed to load invoice defaults:", err);
-        toast.error("Could not load organization defaults");
+        toast.error("Unable to load organization defaults");
       } finally {
         setIsLoadingDefaults(false);
       }
@@ -295,10 +291,10 @@ export function InvoiceBuilder({
       if (res.data.success) {
         if (isLogo) {
           setLogoUrl(res.data.url);
-          toast.success("Logo uploaded");
+          toast.success("Logo uploaded successfully");
         } else {
           setSignatureUrl(res.data.url);
-          toast.success("Signature uploaded");
+          toast.success("Signature uploaded successfully");
         }
       }
     } catch (err: any) {
@@ -366,13 +362,13 @@ export function InvoiceBuilder({
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) {
-      toast.error("Item name is required");
+      toast.error("Enter an item name");
       return;
     }
 
     const priceNum = parseFloat(newItemPrice);
     if (isNaN(priceNum) || priceNum < 0) {
-      toast.error("Please enter a valid unit price");
+      toast.error("Enter a valid unit price");
       return;
     }
 
@@ -408,6 +404,7 @@ export function InvoiceBuilder({
   const invoiceNumber = `${prefix.trim() || "INV-"}${formattedSerial}`;
 
   const currentTotals = calculateInvoiceTotals(lineItems, billingDetails);
+  const primaryTextColor = getContrastTextColor(themeColor);
 
   const liveInvoice: InvoiceData = {
     id: "preview-temp",
@@ -454,15 +451,15 @@ export function InvoiceBuilder({
   // Save / Send Handler
   const handleSubmit = async (action: "save_draft" | "send") => {
     if (!companyName.trim()) {
-      toast.error("Company name is required");
+      toast.error("Enter your company name before saving");
       return;
     }
     if (!clientName.trim()) {
-      toast.error("Client name is required");
+      toast.error("Enter your client's name before saving");
       return;
     }
     if (lineItems.length === 0) {
-      toast.error("Please add at least one line item to the invoice");
+      toast.error("Add at least one line item before sending");
       return;
     }
 
@@ -521,7 +518,7 @@ export function InvoiceBuilder({
         else if (onClose) onClose();
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error || "Failed to create invoice";
+      const msg = err.response?.data?.error || "Failed to save invoice";
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -555,7 +552,7 @@ export function InvoiceBuilder({
   if (isLoadingDefaults) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[550px] space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
+        <SpinnerGap size={32} className="animate-spin text-brand" />
         <p className="text-sm font-medium text-muted-foreground">
           Loading invoice workspace...
         </p>
@@ -565,7 +562,7 @@ export function InvoiceBuilder({
 
   return (
     <div className="flex flex-col h-full bg-background selection:bg-brand/20">
-      {/* TOP APP BAR: Title, Mode View Controls & Primary Actions (Invoicely Style) */}
+      {/* TOP APP BAR: Title, Mode View Controls & Primary Actions */}
       <header className="h-16 px-4 sm:px-6 border-b border-border/40 bg-card/80 backdrop-blur-md flex items-center justify-between gap-4 shrink-0 z-20">
         {/* Left Title */}
         <div className="flex items-center gap-3">
@@ -573,10 +570,10 @@ export function InvoiceBuilder({
             className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs"
             style={{ backgroundColor: themeColor }}
           >
-            <FileText className="w-5 h-5 stroke-[2.2]" />
+            <FileText size={20} weight="bold" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+            <h1 id="invoice-builder-title" className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
               <span>Create Invoice</span>
               {projectName && (
                 <span className="text-xs font-normal text-muted-foreground hidden md:inline">
@@ -594,40 +591,43 @@ export function InvoiceBuilder({
             <button
               type="button"
               onClick={() => setViewMode("form")}
+              aria-pressed={viewMode === "form"}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                 viewMode === "form"
                   ? "bg-background text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <PencilSimple size={14} aria-hidden="true" />
               <span>Form</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode("both")}
+              aria-pressed={viewMode === "both"}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                 viewMode === "both"
                   ? "bg-background text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Columns2 className="w-3.5 h-3.5" />
+              <Columns size={14} aria-hidden="true" />
               <span>Both</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode("preview")}
+              aria-pressed={viewMode === "preview"}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                 viewMode === "preview"
                   ? "bg-background text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye size={14} aria-hidden="true" />
               <span>Preview</span>
             </button>
           </div>
@@ -637,14 +637,14 @@ export function InvoiceBuilder({
             type="button"
             onClick={handleDirectPdfDownload}
             disabled={isDownloadingPdf}
-            className="active:scale-[0.96] transition-transform h-9 px-3.5 rounded-xl border border-border/70 bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+            className="active:scale-[0.96] transition-transform h-9 px-3.5 rounded-xl border border-border/70 bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
           >
             {isDownloadingPdf ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
             ) : (
-              <Download className="w-3.5 h-3.5 text-brand" />
+              <DownloadSimple size={14} className="text-brand" aria-hidden="true" />
             )}
-            <span>Download</span>
+            <span>Download PDF</span>
           </button>
 
           {/* Send to Client Primary Button */}
@@ -652,13 +652,13 @@ export function InvoiceBuilder({
             type="button"
             onClick={() => handleSubmit("send")}
             disabled={isSubmitting}
-            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-            style={{ backgroundColor: themeColor }}
+            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+            style={{ backgroundColor: themeColor, color: primaryTextColor }}
           >
             {isSubmitting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
             ) : (
-              <Send className="w-3.5 h-3.5 stroke-[2.2]" />
+              <PaperPlaneTilt size={14} weight="bold" aria-hidden="true" />
             )}
             <span>Send Invoice</span>
           </button>
@@ -667,29 +667,36 @@ export function InvoiceBuilder({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 w-9 rounded-xl hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors ml-1"
+              aria-label="Close invoice builder"
+              className="h-9 w-9 rounded-xl hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors ml-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
-              <X className="w-4 h-4" />
+              <X size={16} aria-hidden="true" />
             </button>
           )}
         </div>
       </header>
 
-      {/* TEMPLATE CUSTOMIZATION STRIP: Font, Preset & Accent Color Bar */}
+      {/* TEMPLATE CUSTOMIZATION STRIP: Logo, Font & Accent Color */}
       <div className="px-4 sm:px-6 py-2.5 bg-card/40 border-b border-border/30 flex flex-wrap items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-4">
-          <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-brand" />
-            <span>Invoice Template</span>
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo/scrunity_logo_svg.svg"
+            alt="Scrunity"
+            className="h-5 opacity-60"
+          />
+          <span className="text-[11px] text-muted-foreground font-medium">Invoice Builder</span>
+        </div>
 
+        <div className="flex items-center gap-4">
           {/* Font Selector */}
           <div className="flex items-center gap-1.5">
-            <Type className="w-3.5 h-3.5 text-muted-foreground" />
+            <TextAa size={14} className="text-muted-foreground" aria-hidden="true" />
             <select
               value={fontFamily}
               onChange={(e) => setFontFamily(e.target.value)}
-              className="h-7 px-2 text-xs rounded-md bg-background border border-border/60 text-foreground focus:outline-hidden"
+              aria-label="Invoice typography font family"
+              className="h-7 px-2 text-xs rounded-md bg-background border border-border/60 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
               {FONT_OPTIONS.map((f) => (
                 <option key={f.value} value={f.value}>
@@ -698,23 +705,22 @@ export function InvoiceBuilder({
               ))}
             </select>
           </div>
-        </div>
 
-        {/* Accent Color Palette */}
-        <div className="flex items-center gap-2">
-          <Palette className="w-3.5 h-3.5 text-muted-foreground" />
-          <div className="flex items-center gap-1.5">
+          {/* Accent Color Palette */}
+          <div className="flex items-center gap-1.5" role="group" aria-label="Brand accent colors">
             {THEME_COLORS.map((c) => (
               <button
                 key={c.value}
                 type="button"
                 onClick={() => setThemeColor(c.value)}
                 title={c.label}
+                aria-label={`Select ${c.label} color theme`}
+                aria-pressed={themeColor === c.value}
                 className={cn(
-                  "w-5 h-5 rounded-full transition-transform active:scale-[0.96]",
+                  "w-4 h-4 rounded-full transition-transform active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                   themeColor === c.value
-                    ? "scale-120 ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                    : "opacity-75 hover:opacity-100"
+                    ? "ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                    : "opacity-60 hover:opacity-100"
                 )}
                 style={{ backgroundColor: c.value }}
               />
@@ -730,23 +736,24 @@ export function InvoiceBuilder({
           <div
             className={cn(
               "border-r border-border/40 flex flex-col h-full bg-card/20 overflow-y-auto",
-              viewMode === "both" ? "w-full lg:w-[500px] xl:w-[540px] shrink-0" : "w-full max-w-4xl mx-auto"
+              viewMode === "both" ? "w-full lg:w-[480px] xl:w-[540px] shrink-0" : "w-full max-w-4xl mx-auto"
             )}
           >
             <div className="p-4 sm:p-6 space-y-3.5 flex-1">
               {/* Optional Milestone Picker */}
               {availableMilestones.length > 0 && (
                 <div className="bg-muted/30 rounded-xl p-3 border border-border/40 space-y-1.5">
-                  <label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                  <label htmlFor="milestone-select" className="text-[11px] font-semibold text-foreground flex items-center justify-between">
                     <span>Link Project Milestone</span>
                     <span className="text-[10px] text-muted-foreground font-normal">
                       Auto-fills amount & due date
                     </span>
                   </label>
                   <select
+                    id="milestone-select"
                     value={selectedMilestoneId || ""}
                     onChange={(e) => handleMilestoneSelect(e.target.value)}
-                    className="w-full h-8 px-2.5 text-xs rounded-lg bg-background border border-border/60 text-foreground focus:outline-hidden"
+                    className="w-full h-8 px-2.5 text-xs rounded-lg bg-background border border-border/60 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                   >
                     <option value="">-- Standalone Invoice (No Milestone) --</option>
                     {availableMilestones.map((m) => (
@@ -763,7 +770,8 @@ export function InvoiceBuilder({
                 <button
                   type="button"
                   onClick={() => toggleSection("company")}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors"
+                  aria-expanded={openSection === "company"}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
                   <span
                     className={cn(
@@ -774,9 +782,9 @@ export function InvoiceBuilder({
                     Company Details
                   </span>
                   {openSection === "company" ? (
-                    <ChevronUp className="w-4 h-4 text-brand" />
+                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
                   )}
                 </button>
 
@@ -786,30 +794,31 @@ export function InvoiceBuilder({
                     <div className="grid grid-cols-2 gap-3 pt-3">
                       {/* Company Logo Card */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-foreground">
+                        <span className="text-[11px] font-semibold text-foreground block">
                           Company Logo
-                        </label>
+                        </span>
                         <div className="h-32 border-2 border-dashed border-border/70 hover:border-brand/60 rounded-xl p-3 flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-all relative">
                           {logoUrl ? (
                             <div className="flex flex-col items-center gap-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={logoUrl}
-                                alt="Logo"
-                                className="h-12 max-w-[120px] object-contain rounded ring-1 ring-black/5 dark:ring-white/10"
+                                alt="Company logo preview"
+                                className="h-12 max-w-[120px] object-contain rounded ring-1 ring-black/10 dark:ring-white/10"
                               />
                               <button
                                 type="button"
                                 onClick={() => setLogoUrl(null)}
-                                className="text-[10px] text-destructive hover:underline flex items-center gap-1 font-medium"
+                                aria-label="Remove company logo"
+                                className="text-[10px] text-destructive hover:underline flex items-center gap-1 font-medium focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                               >
-                                <Trash2 className="w-3 h-3" /> Remove
+                                <Trash size={12} aria-hidden="true" /> Remove
                               </button>
                             </div>
                           ) : (
                             <label className="cursor-pointer flex flex-col items-center gap-1.5 w-full h-full justify-center">
                               <div className="w-8 h-8 rounded-full bg-muted/80 flex items-center justify-center text-muted-foreground">
-                                <ImageIcon className="w-4 h-4" />
+                                <PhImage size={16} aria-hidden="true" />
                               </div>
                               <span className="text-[11px] font-semibold text-foreground">
                                 {uploadingLogo ? "Uploading..." : "Select Image"}
@@ -823,6 +832,7 @@ export function InvoiceBuilder({
                                 onChange={(e) => handleFileUpload(e, "logo")}
                                 disabled={uploadingLogo}
                                 className="hidden"
+                                aria-label="Upload company logo image"
                               />
                             </label>
                           )}
@@ -831,30 +841,31 @@ export function InvoiceBuilder({
 
                       {/* Company Signature Card */}
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-foreground">
+                        <span className="text-[11px] font-semibold text-foreground block">
                           Company Signature
-                        </label>
+                        </span>
                         <div className="h-32 border-2 border-dashed border-border/70 hover:border-brand/60 rounded-xl p-3 flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-all relative">
                           {signatureUrl ? (
                             <div className="flex flex-col items-center gap-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={signatureUrl}
-                                alt="Signature"
-                                className="h-12 max-w-[120px] object-contain rounded ring-1 ring-black/5 dark:ring-white/10"
+                                alt="Company signature preview"
+                                className="h-12 max-w-[120px] object-contain rounded ring-1 ring-black/10 dark:ring-white/10"
                               />
                               <button
                                 type="button"
                                 onClick={() => setSignatureUrl(null)}
-                                className="text-[10px] text-destructive hover:underline flex items-center gap-1 font-medium"
+                                aria-label="Remove company signature"
+                                className="text-[10px] text-destructive hover:underline flex items-center gap-1 font-medium focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                               >
-                                <Trash2 className="w-3 h-3" /> Remove
+                                <Trash size={12} aria-hidden="true" /> Remove
                               </button>
                             </div>
                           ) : (
                             <label className="cursor-pointer flex flex-col items-center gap-1.5 w-full h-full justify-center">
                               <div className="w-8 h-8 rounded-full bg-muted/80 flex items-center justify-center text-muted-foreground">
-                                <PenTool className="w-4 h-4" />
+                                <PenNib size={16} aria-hidden="true" />
                               </div>
                               <span className="text-[11px] font-semibold text-foreground">
                                 {uploadingSig ? "Uploading..." : "Select Image"}
@@ -868,6 +879,7 @@ export function InvoiceBuilder({
                                 onChange={(e) => handleFileUpload(e, "signature")}
                                 disabled={uploadingSig}
                                 className="hidden"
+                                aria-label="Upload company signature image"
                               />
                             </label>
                           )}
@@ -878,15 +890,16 @@ export function InvoiceBuilder({
                     {/* Inputs with subtle helper text */}
                     <div className="space-y-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <label htmlFor="company-name-input" className="text-[11px] font-semibold text-foreground block mb-1">
                           Company Name *
                         </label>
                         <input
+                          id="company-name-input"
                           type="text"
                           value={companyName}
                           onChange={(e) => setCompanyName(e.target.value)}
                           placeholder="Your business name"
-                          className="w-full h-9 px-3 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus:outline-hidden focus:ring-1 focus:ring-brand"
+                          className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                         />
                         <span className="text-[10px] text-muted-foreground mt-0.5 block">
                           ⓘ Name of your company or studio
@@ -894,41 +907,44 @@ export function InvoiceBuilder({
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <label htmlFor="company-address-input" className="text-[11px] font-semibold text-foreground block mb-1">
                           Company Address
                         </label>
                         <textarea
+                          id="company-address-input"
                           rows={2}
                           value={companyAddress}
                           onChange={(e) => setCompanyAddress(e.target.value)}
                           placeholder="Street, City, State, Country, ZIP"
-                          className="w-full p-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus:outline-hidden focus:ring-1 focus:ring-brand"
+                          className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="text-[11px] font-semibold text-foreground block mb-1">
+                          <label htmlFor="company-email-input" className="text-[11px] font-semibold text-foreground block mb-1">
                             Email
                           </label>
                           <input
+                            id="company-email-input"
                             type="email"
                             value={companyEmail}
                             onChange={(e) => setCompanyEmail(e.target.value)}
                             placeholder="billing@company.com"
-                            className="w-full h-8.5 px-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                            className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-semibold text-foreground block mb-1">
+                          <label htmlFor="company-phone-input" className="text-[11px] font-semibold text-foreground block mb-1">
                             Phone
                           </label>
                           <input
+                            id="company-phone-input"
                             type="text"
                             value={companyPhone}
                             onChange={(e) => setCompanyPhone(e.target.value)}
                             placeholder="+1 (555) 000-0000"
-                            className="w-full h-8.5 px-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                            className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                         </div>
                       </div>
@@ -948,7 +964,8 @@ export function InvoiceBuilder({
                                 )
                               }
                               placeholder="Label (e.g. GSTIN)"
-                              className="w-1/3 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70"
+                              aria-label="Company custom field label"
+                              className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                             />
                             <input
                               type="text"
@@ -961,14 +978,16 @@ export function InvoiceBuilder({
                                 )
                               }
                               placeholder="Value"
-                              className="w-2/3 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70"
+                              aria-label="Company custom field value"
+                              className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                             />
                             <button
                               type="button"
                               onClick={() => removeCompanyCustomField(field.id)}
-                              className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted"
+                              aria-label="Remove company field"
+                              className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash size={14} aria-hidden="true" />
                             </button>
                           </div>
                         ))}
@@ -976,9 +995,9 @@ export function InvoiceBuilder({
                         <button
                           type="button"
                           onClick={addCompanyCustomField}
-                          className="w-full py-2 rounded-xl border border-dashed border-border/80 hover:border-brand/60 text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+                          className="w-full py-2 rounded-xl border border-dashed border-border/80 hover:border-brand/60 text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         >
-                          <Plus className="w-3.5 h-3.5 text-brand" />
+                          <Plus size={14} className="text-brand" aria-hidden="true" />
                           <span>Add New Field</span>
                         </button>
                       </div>
@@ -992,7 +1011,8 @@ export function InvoiceBuilder({
                 <button
                   type="button"
                   onClick={() => toggleSection("client")}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors"
+                  aria-expanded={openSection === "client"}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
                   <span
                     className={cn(
@@ -1003,63 +1023,67 @@ export function InvoiceBuilder({
                     Client Details
                   </span>
                   {openSection === "client" ? (
-                    <ChevronUp className="w-4 h-4 text-brand" />
+                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
                   )}
                 </button>
 
                 {openSection === "client" && (
                   <div className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-border/20 text-xs">
                     <div className="pt-2">
-                      <label className="text-[11px] font-semibold text-foreground block mb-1">
+                      <label htmlFor="client-name-input" className="text-[11px] font-semibold text-foreground block mb-1">
                         Client Name *
                       </label>
                       <input
+                        id="client-name-input"
                         type="text"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
                         placeholder="John Doe / Client Company"
-                        className="w-full h-9 px-3 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus:outline-hidden focus:ring-1 focus:ring-brand"
+                        className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-foreground block mb-1">
+                      <label htmlFor="client-address-input" className="text-[11px] font-semibold text-foreground block mb-1">
                         Client Address
                       </label>
                       <textarea
+                        id="client-address-input"
                         rows={2}
                         value={clientAddress}
                         onChange={(e) => setClientAddress(e.target.value)}
                         placeholder="456 Second St, Anytown, USA"
-                        className="w-full p-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus:outline-hidden focus:ring-1 focus:ring-brand"
+                        className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <label htmlFor="client-email-input" className="text-[11px] font-semibold text-foreground block mb-1">
                           Email
                         </label>
                         <input
+                          id="client-email-input"
                           type="email"
                           value={clientEmail}
                           onChange={(e) => setClientEmail(e.target.value)}
                           placeholder="client@domain.com"
-                          className="w-full h-8.5 px-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                          className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <label htmlFor="client-phone-input" className="text-[11px] font-semibold text-foreground block mb-1">
                           Phone
                         </label>
                         <input
+                          id="client-phone-input"
                           type="text"
                           value={clientPhone}
                           onChange={(e) => setClientPhone(e.target.value)}
                           placeholder="+1 (555) 999-9999"
-                          className="w-full h-8.5 px-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                          className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         />
                       </div>
                     </div>
@@ -1079,7 +1103,8 @@ export function InvoiceBuilder({
                               )
                             }
                             placeholder="Label"
-                            className="w-1/3 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70"
+                            aria-label="Client custom field label"
+                            className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                           <input
                             type="text"
@@ -1092,14 +1117,16 @@ export function InvoiceBuilder({
                               )
                             }
                             placeholder="Value"
-                            className="w-2/3 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70"
+                            aria-label="Client custom field value"
+                            className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                           <button
                             type="button"
                             onClick={() => removeClientCustomField(field.id)}
-                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted"
+                            aria-label="Remove client field"
+                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash size={14} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -1107,9 +1134,9 @@ export function InvoiceBuilder({
                       <button
                         type="button"
                         onClick={addClientCustomField}
-                        className="w-full py-2 rounded-xl border border-dashed border-border/80 hover:border-brand/60 text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+                        className="w-full py-2 rounded-xl border border-dashed border-border/80 hover:border-brand/60 text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                       >
-                        <Plus className="w-3.5 h-3.5 text-brand" />
+                        <Plus size={14} className="text-brand" aria-hidden="true" />
                         <span>Add New Field</span>
                       </button>
                     </div>
@@ -1122,7 +1149,8 @@ export function InvoiceBuilder({
                 <button
                   type="button"
                   onClick={() => toggleSection("details")}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors"
+                  aria-expanded={openSection === "details"}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
                   <span
                     className={cn(
@@ -1133,9 +1161,9 @@ export function InvoiceBuilder({
                     Invoice Details
                   </span>
                   {openSection === "details" ? (
-                    <ChevronUp className="w-4 h-4 text-brand" />
+                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
                   )}
                 </button>
 
@@ -1144,15 +1172,16 @@ export function InvoiceBuilder({
                     {/* Currency & Serial Number */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <span className="text-[11px] font-semibold text-foreground block mb-1">
                           Currency
-                        </label>
-                        <div className="flex rounded-xl bg-muted/40 p-0.5 border border-border/70">
+                        </span>
+                        <div className="flex rounded-xl bg-muted/40 p-0.5 border border-border/70" role="group" aria-label="Invoice currency">
                           <button
                             type="button"
                             onClick={() => setCurrency("USD")}
+                            aria-pressed={currency === "USD"}
                             className={cn(
-                              "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors",
+                              "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                               currency === "USD"
                                 ? "bg-background text-foreground shadow-2xs"
                                 : "text-muted-foreground hover:text-foreground"
@@ -1163,8 +1192,9 @@ export function InvoiceBuilder({
                           <button
                             type="button"
                             onClick={() => setCurrency("INR")}
+                            aria-pressed={currency === "INR"}
                             className={cn(
-                              "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors",
+                              "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                               currency === "INR"
                                 ? "bg-background text-foreground shadow-2xs"
                                 : "text-muted-foreground hover:text-foreground"
@@ -1177,27 +1207,29 @@ export function InvoiceBuilder({
 
                       <div className="grid grid-cols-2 gap-1.5">
                         <div>
-                          <label className="text-[11px] font-semibold text-foreground block mb-1">
+                          <label htmlFor="prefix-input" className="text-[11px] font-semibold text-foreground block mb-1">
                             Prefix
                           </label>
                           <input
+                            id="prefix-input"
                             type="text"
                             value={prefix}
                             onChange={(e) => setPrefix(e.target.value)}
                             placeholder="INV-"
-                            className="w-full h-9 px-2 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono"
+                            className="w-full h-9 px-2 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-semibold text-foreground block mb-1">
+                          <label htmlFor="serial-input" className="text-[11px] font-semibold text-foreground block mb-1">
                             Serial
                           </label>
                           <input
+                            id="serial-input"
                             type="number"
                             min={1}
                             value={serialNumber}
                             onChange={(e) => setSerialNumber(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-full h-9 px-2 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono"
+                            className="w-full h-9 px-2 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                         </div>
                       </div>
@@ -1206,63 +1238,66 @@ export function InvoiceBuilder({
                     {/* Dates */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <label htmlFor="invoice-date-input" className="text-[11px] font-semibold text-foreground block mb-1">
                           Issue Date
                         </label>
                         <input
+                          id="invoice-date-input"
                           type="date"
                           value={invoiceDate}
                           onChange={(e) => setInvoiceDate(e.target.value)}
-                          className="w-full h-9 px-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                          className="w-full h-9 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-semibold text-foreground block mb-1">
+                        <label htmlFor="due-date-input" className="text-[11px] font-semibold text-foreground block mb-1">
                           Due Date
                         </label>
                         <input
+                          id="due-date-input"
                           type="date"
                           value={dueDate}
                           onChange={(e) => setDueDate(e.target.value)}
-                          className="w-full h-9 px-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                          className="w-full h-9 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         />
                       </div>
                     </div>
 
                     {/* Payment Terms */}
                     <div>
-                      <label className="text-[11px] font-semibold text-foreground block mb-1">
+                      <label htmlFor="payment-terms-input" className="text-[11px] font-semibold text-foreground block mb-1">
                         Payment Terms
                       </label>
                       <input
+                        id="payment-terms-input"
                         type="text"
                         value={paymentTerms}
                         onChange={(e) => setPaymentTerms(e.target.value)}
                         placeholder="e.g. Net 14 days"
-                        className="w-full h-9 px-3 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground"
+                        className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                       />
                     </div>
 
-                    {/* Taxes & Discounts */}
+                    {/* Taxes & Adjustments */}
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-foreground">
-                          Taxes & Billing Adjustments
+                          Taxes & Adjustments
                         </span>
                         <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => addBillingRow("percentage")}
-                            className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5"
+                            className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           >
-                            <Plus className="w-3 h-3" /> Add % Tax
+                            <Plus size={12} aria-hidden="true" /> Add % Tax
                           </button>
                           <button
                             type="button"
                             onClick={() => addBillingRow("fixed")}
-                            className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5"
+                            className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           >
-                            <Plus className="w-3 h-3" /> Add Fixed (+/-)
+                            <Plus size={12} aria-hidden="true" /> Add Fixed (+/-)
                           </button>
                         </div>
                       </div>
@@ -1280,7 +1315,8 @@ export function InvoiceBuilder({
                               )
                             }
                             placeholder="Label (e.g. GST)"
-                            className="w-1/2 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70"
+                            aria-label="Billing adjustment label"
+                            className="w-1/2 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                           <div className="w-1/2 flex items-center gap-1">
                             <input
@@ -1300,7 +1336,8 @@ export function InvoiceBuilder({
                                 );
                               }}
                               placeholder={b.type === "percentage" ? "18%" : "Amount"}
-                              className="w-full h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70 font-mono"
+                              aria-label="Billing adjustment value"
+                              className="w-full h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                             />
                             <span className="text-[10px] text-muted-foreground shrink-0 font-bold">
                               {b.type === "percentage" ? "%" : currency === "USD" ? "$" : "₹"}
@@ -1309,9 +1346,10 @@ export function InvoiceBuilder({
                           <button
                             type="button"
                             onClick={() => removeBillingRow(b.id)}
-                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted"
+                            aria-label="Remove adjustment"
+                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash size={14} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -1326,7 +1364,8 @@ export function InvoiceBuilder({
                   <button
                     type="button"
                     onClick={() => toggleSection("items")}
-                    className="flex items-center gap-2 text-left flex-1"
+                    aria-expanded={openSection === "items"}
+                    className="flex items-center gap-2 text-left flex-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                   >
                     <span
                       className={cn(
@@ -1341,16 +1380,21 @@ export function InvoiceBuilder({
                     <button
                       type="button"
                       onClick={() => setIsAddItemOpen(true)}
-                      className="active:scale-[0.96] transition-transform h-7 px-2.5 text-[11px] font-bold rounded-lg text-white flex items-center gap-1 shadow-2xs"
-                      style={{ backgroundColor: themeColor }}
+                      className="active:scale-[0.96] transition-transform h-7 px-2.5 text-[11px] font-bold rounded-lg flex items-center gap-1 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                      style={{ backgroundColor: themeColor, color: primaryTextColor }}
                     >
-                      <Plus className="w-3 h-3 stroke-3" /> Add Item
+                      <Plus size={12} weight="bold" aria-hidden="true" /> Add Item
                     </button>
-                    <button type="button" onClick={() => toggleSection("items")}>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("items")}
+                      aria-label="Toggle invoice items section"
+                      className="focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                    >
                       {openSection === "items" ? (
-                        <ChevronUp className="w-4 h-4 text-brand" />
+                        <CaretUp size={16} className="text-brand" aria-hidden="true" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
                       )}
                     </button>
                   </div>
@@ -1373,11 +1417,11 @@ export function InvoiceBuilder({
                               {item.itemName}
                             </p>
                             {item.description && (
-                              <p className="text-[11px] text-muted-foreground truncate">
+                              <p className="text-[11px] text-muted-foreground truncate text-pretty">
                                 {item.description}
                               </p>
                             )}
-                            <p className="text-[10px] text-muted-foreground font-mono">
+                            <p className="text-[10px] text-muted-foreground font-mono tabular-nums">
                               {item.quantity} × {formatInvoiceMoney(item.unitPrice, currency)}
                             </p>
                           </div>
@@ -1388,9 +1432,10 @@ export function InvoiceBuilder({
                             <button
                               type="button"
                               onClick={() => removeItem(item.id)}
-                              className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-muted"
+                              aria-label={`Remove ${item.itemName}`}
+                              className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash size={14} aria-hidden="true" />
                             </button>
                           </div>
                         </div>
@@ -1405,7 +1450,8 @@ export function InvoiceBuilder({
                 <button
                   type="button"
                   onClick={() => toggleSection("additional")}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors"
+                  aria-expanded={openSection === "additional"}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/20 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
                   <span
                     className={cn(
@@ -1416,9 +1462,9 @@ export function InvoiceBuilder({
                     Additional Information
                   </span>
                   {openSection === "additional" ? (
-                    <ChevronUp className="w-4 h-4 text-brand" />
+                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
                   )}
                 </button>
 
@@ -1428,14 +1474,14 @@ export function InvoiceBuilder({
                     <div className="space-y-2 pt-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-foreground">
-                          Bank & Payment Information (Shown on Invoice)
+                          Payment Information
                         </span>
                         <button
                           type="button"
                           onClick={addPaymentInfoRow}
-                          className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5"
+                          className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         >
-                          <Plus className="w-3 h-3" /> Add Detail
+                          <Plus size={12} aria-hidden="true" /> Add Detail
                         </button>
                       </div>
 
@@ -1452,7 +1498,8 @@ export function InvoiceBuilder({
                               )
                             }
                             placeholder="Label (e.g. Bank / UPI)"
-                            className="w-1/3 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70"
+                            aria-label="Payment detail label"
+                            className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                           <input
                             type="text"
@@ -1465,42 +1512,46 @@ export function InvoiceBuilder({
                               )
                             }
                             placeholder="Value"
-                            className="w-2/3 h-8 px-2.5 text-xs rounded-lg bg-muted/20 border border-border/70 font-mono"
+                            aria-label="Payment detail value"
+                            className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
                           <button
                             type="button"
                             onClick={() => removePaymentInfoRow(info.id)}
-                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted"
+                            aria-label="Remove payment detail"
+                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash size={14} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-foreground block mb-1">
+                      <label htmlFor="invoice-notes-input" className="text-[11px] font-semibold text-foreground block mb-1">
                         Invoice Notes
                       </label>
                       <textarea
+                        id="invoice-notes-input"
                         rows={2}
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Thank you for your business..."
-                        className="w-full p-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus:outline-hidden focus:ring-1 focus:ring-brand"
+                        className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none text-pretty focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-foreground block mb-1">
+                      <label htmlFor="additional-terms-input" className="text-[11px] font-semibold text-foreground block mb-1">
                         Terms & Conditions
                       </label>
                       <textarea
+                        id="additional-terms-input"
                         rows={2}
                         value={additionalTerms}
                         onChange={(e) => setAdditionalTerms(e.target.value)}
                         placeholder="Late payment penalty or jurisdiction terms..."
-                        className="w-full p-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus:outline-hidden focus:ring-1 focus:ring-brand"
+                        className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none text-pretty focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                       />
                     </div>
                   </div>
@@ -1514,9 +1565,9 @@ export function InvoiceBuilder({
                 type="button"
                 onClick={() => handleSubmit("save_draft")}
                 disabled={isSubmitting}
-                className="flex-1 h-9 px-3 rounded-xl border border-border/70 hover:bg-muted text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                className="flex-1 h-9 px-3 rounded-xl border border-border/70 hover:bg-muted text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
               >
-                <Save className="w-3.5 h-3.5" />
+                <FloppyDisk size={14} aria-hidden="true" />
                 <span>Save Draft</span>
               </button>
 
@@ -1524,13 +1575,13 @@ export function InvoiceBuilder({
                 type="button"
                 onClick={() => handleSubmit("send")}
                 disabled={isSubmitting}
-                className="flex-1 h-9 px-4 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs disabled:opacity-50"
-                style={{ backgroundColor: themeColor }}
+                className="flex-1 h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                style={{ backgroundColor: themeColor, color: primaryTextColor }}
               >
                 {isSubmitting ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
                 ) : (
-                  <Send className="w-3.5 h-3.5" />
+                  <PaperPlaneTilt size={14} aria-hidden="true" />
                 )}
                 <span>Send to Client</span>
               </button>
@@ -1552,67 +1603,77 @@ export function InvoiceBuilder({
 
       {/* POPUP: Add Item Modal */}
       {isAddItemOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-item-modal-title"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+        >
           <div className="bg-background border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
-              <h3 className="text-sm font-bold text-foreground">
+              <h2 id="add-item-modal-title" className="text-sm font-bold text-foreground">
                 Add Invoice Item
-              </h3>
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsAddItemOpen(false)}
-                className="text-muted-foreground hover:text-foreground p-1"
+                aria-label="Close add item dialog"
+                className="text-muted-foreground hover:text-foreground p-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
               >
-                <X className="w-4 h-4" />
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
 
             <form onSubmit={handleAddItem} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-[11px] font-semibold text-foreground block mb-1">
+                <label htmlFor="modal-item-name" className="text-[11px] font-semibold text-foreground block mb-1">
                   Item Name *
                 </label>
                 <input
+                  id="modal-item-name"
                   type="text"
                   required
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="e.g. Website Redesign Milestone 1"
-                  className="w-full h-9 px-3 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus:outline-hidden focus:ring-1 focus:ring-brand"
+                  className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-foreground block mb-1">
+                <label htmlFor="modal-item-desc" className="text-[11px] font-semibold text-foreground block mb-1">
                   Description
                 </label>
                 <textarea
+                  id="modal-item-desc"
                   rows={2}
                   value={newItemDesc}
                   onChange={(e) => setNewItemDesc(e.target.value)}
                   placeholder="Scope details or deliverable description"
-                  className="w-full p-2.5 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus:outline-hidden focus:ring-1 focus:ring-brand"
+                  className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">
+                  <label htmlFor="modal-item-qty" className="text-[11px] font-semibold text-foreground block mb-1">
                     Quantity
                   </label>
                   <input
+                    id="modal-item-qty"
                     type="number"
                     min={1}
                     value={newItemQty}
                     onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full h-9 px-3 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono"
+                    className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-foreground block mb-1">
+                  <label htmlFor="modal-item-price" className="text-[11px] font-semibold text-foreground block mb-1">
                     Unit Price ({currency === "USD" ? "$" : "₹"}) *
                   </label>
                   <input
+                    id="modal-item-price"
                     type="number"
                     step="0.01"
                     min="0"
@@ -1620,7 +1681,7 @@ export function InvoiceBuilder({
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value)}
                     placeholder="0.00"
-                    className="w-full h-9 px-3 text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono"
+                    className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                   />
                 </div>
               </div>
@@ -1629,14 +1690,14 @@ export function InvoiceBuilder({
                 <button
                   type="button"
                   onClick={() => setIsAddItemOpen(false)}
-                  className="h-8.5 px-3.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-semibold"
+                  className="h-8.5 px-3.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-semibold focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="active:scale-[0.96] transition-transform h-8.5 px-4 rounded-xl text-white text-xs font-bold shadow-xs"
-                  style={{ backgroundColor: themeColor }}
+                  className="active:scale-[0.96] transition-transform h-8.5 px-4 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                  style={{ backgroundColor: themeColor, color: primaryTextColor }}
                 >
                   Add Item
                 </button>
