@@ -1,6 +1,6 @@
 import { db } from "@/utils/db";
-import { paymentMilestone, payment } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { paymentMilestone, payment, invoice } from "@/db/schema";
+import { and, eq, ne } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -62,6 +62,12 @@ export async function POST(req: NextRequest) {
       status: "succeeded",
       paidAt: now,
     });
+
+    // Synchronize any linked invoice
+    await db
+      .update(invoice)
+      .set({ status: "paid", paidAt: now, updatedAt: now })
+      .where(and(eq(invoice.milestoneId, milestoneId), ne(invoice.status, "paid")));
 
     await logActivity({
       projectId: milestone.projectId,
