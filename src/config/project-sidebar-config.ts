@@ -19,7 +19,7 @@ export const secondaryNavItems: NavItem[] = [
 ];
 
 export const unreadTypeMap: Record<string, string[]> = {
-    "/payments": ["payment_requested", "payment_completed", "payment_overdue", "milestone_created"],
+    "/payments": ["payment_requested", "payment_completed", "payment_overdue", "milestone_created", "invoice_sent", "invoice_paid", "invoice_viewed"],
     "/deliverables": [
         "deliverable_created",
         "deliverable_approved",

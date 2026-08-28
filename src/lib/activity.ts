@@ -25,7 +25,10 @@ type ActivityType =
   | "payment_requested"
   | "payment_completed"
   | "payment_overdue"
-  | "milestone_created";
+  | "milestone_created"
+  | "invoice_sent"
+  | "invoice_paid"
+  | "invoice_viewed";
 
 interface LogActivityParams {
   projectId: string;
@@ -60,6 +63,9 @@ function getActivityMessage(type: ActivityType, metadata: Record<string, unknown
     case "payment_completed": return `${actorName} completed payment for: ${value("milestoneTitle", "Milestone")}`;
     case "payment_overdue": return `Payment milestone is overdue: ${value("milestoneTitle", "Milestone")}`;
     case "milestone_created": return `${actorName} created a new payment milestone: ${value("milestoneTitle", "Milestone")}`;
+    case "invoice_sent": return `${actorName} sent invoice ${value("invoiceNumber", "Invoice")}`;
+    case "invoice_paid": return `Invoice ${value("invoiceNumber", "Invoice")} has been marked as paid.`;
+    case "invoice_viewed": return `${actorName} viewed invoice ${value("invoiceNumber", "Invoice")}.`;
     default: return `${actorName} updated the project.`;
   }
 }

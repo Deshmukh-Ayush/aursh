@@ -21,7 +21,10 @@ export type NotificationType =
   | "payment_requested"
   | "payment_completed"
   | "payment_overdue"
-  | "milestone_created";
+  | "milestone_created"
+  | "invoice_sent"
+  | "invoice_paid"
+  | "invoice_viewed";
 
 export async function createNotification(
   userId: string,
