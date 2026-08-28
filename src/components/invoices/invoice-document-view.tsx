@@ -3,16 +3,27 @@
 import React from "react";
 import { InvoiceData, calculateInvoiceTotals, formatInvoiceMoney } from "@/lib/invoices/types";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Clock, Ban } from "lucide-react";
+import { CheckCircle, Clock, Prohibit } from "@phosphor-icons/react";
 
 interface InvoiceDocumentViewProps {
   invoice: InvoiceData;
   className?: string;
 }
 
+export function getContrastTextColor(hexColor: string): string {
+  const hex = hexColor.replace("#", "");
+  const clean = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
+  const r = parseInt(clean.substring(0, 2), 16) || 0;
+  const g = parseInt(clean.substring(2, 4), 16) || 0;
+  const b = parseInt(clean.substring(4, 6), 16) || 0;
+  // Calculate relative luminance / YIQ
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 150 ? "#09090b" : "#ffffff";
+}
+
 export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewProps) {
   const totals = calculateInvoiceTotals(invoice.lineItems, invoice.billingDetails);
-  const themeColor = invoice.themeColor || "#00AAF7";
+  const themeColor = invoice.themeColor || "#000000";
 
   const formattedInvoiceDate = invoice.invoiceDate
     ? new Date(invoice.invoiceDate).toLocaleDateString("en-US", {
@@ -38,42 +49,46 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
       : "font-sans";
 
   const getStatusBadge = () => {
+    let dotColor = "bg-neutral-300 dark:bg-neutral-600";
+    let statusText = "DRAFT";
+    let Icon = null;
+    let iconColor = "text-neutral-400";
+    
     switch (invoice.status) {
       case "paid":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
-            <CheckCircle2 className="w-3 h-3" />
-            PAID
-          </span>
-        );
+        dotColor = "bg-emerald-500";
+        statusText = "PAID";
+        Icon = CheckCircle;
+        iconColor = "text-emerald-500";
+        break;
       case "sent":
       case "viewed":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 uppercase tracking-wide">
-            <Clock className="w-3 h-3" />
-            {invoice.status}
-          </span>
-        );
+        dotColor = "bg-blue-500";
+        statusText = invoice.status.toUpperCase();
+        Icon = Clock;
+        iconColor = "text-blue-500";
+        break;
       case "overdue":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 uppercase tracking-wide">
-            OVERDUE
-          </span>
-        );
+        dotColor = "bg-rose-500";
+        statusText = "OVERDUE";
+        break;
       case "void":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border border-neutral-500/20 uppercase tracking-wide">
-            <Ban className="w-3 h-3" />
-            VOID
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 uppercase tracking-wide">
-            DRAFT
-          </span>
-        );
+        dotColor = "bg-neutral-500";
+        statusText = "VOID";
+        Icon = Prohibit;
+        iconColor = "text-neutral-500";
+        break;
     }
+
+    return (
+      <div className="flex items-center gap-1.5 justify-end">
+        <div className={cn("w-1 h-1 rounded-full", dotColor)} aria-hidden="true" />
+        {Icon && <Icon weight="bold" className={cn("w-3 h-3", iconColor)} aria-hidden="true" />}
+        <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+          {statusText}
+        </span>
+      </div>
+    );
   };
 
   return (
@@ -85,171 +100,166 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
       )}
       style={{ minHeight: "860px" }}
     >
-      {/* Top Accent Strip */}
-      <div className="h-1.5 w-full" style={{ backgroundColor: themeColor }} />
-
-      <div className="p-8 sm:p-12 space-y-7">
-        {/* Header Block: Hero Invoice Title + Meta Block */}
-        <div className="flex flex-wrap items-start justify-between gap-6 pb-2">
-          {/* Left Title / Branding */}
-          <div className="space-y-2">
-            {invoice.companySnapshot?.logoUrl ? (
+      <div className="p-8 sm:p-12 space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-6">
+          {/* Left: Logo */}
+          <div className="w-1/2">
+            {invoice.companySnapshot?.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={invoice.companySnapshot.logoUrl}
-                alt="Logo"
-                className="h-10 max-w-[180px] object-contain mb-3 rounded-md ring-1 ring-black/5 dark:ring-white/10"
+                alt={`${invoice.companySnapshot.name || "Company"} logo`}
+                className="h-10 max-w-[180px] object-contain"
               />
-            ) : null}
-            <div
-              className="text-2xl sm:text-3xl font-extrabold tracking-tight font-mono"
+            )}
+          </div>
+
+          {/* Right: Invoice Number & Status */}
+          <div className="text-right">
+            <div 
+              className="text-3xl font-semibold tracking-tight font-mono"
               style={{ color: themeColor }}
             >
               Invoice {invoice.invoiceNumber || "INV-001"}
             </div>
-            <div>{getStatusBadge()}</div>
-          </div>
-
-          {/* Right Meta Info Table */}
-          <div className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400 min-w-[180px]">
-            <div className="grid grid-cols-2 gap-4 py-0.5">
-              <span className="text-neutral-500 font-medium">Serial Number:</span>
-              <span className="font-mono text-neutral-900 dark:text-neutral-100 font-semibold text-right">
-                {String(invoice.serialNumber || 1).padStart(4, "0")}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 py-0.5">
-              <span className="text-neutral-500 font-medium">Date:</span>
-              <span className="font-mono text-neutral-900 dark:text-neutral-100 font-semibold text-right">
-                {formattedInvoiceDate}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 py-0.5">
-              <span className="text-neutral-500 font-medium">Due Date:</span>
-              <span className="font-mono text-neutral-900 dark:text-neutral-100 font-semibold text-right">
-                {formattedDueDate}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 py-0.5">
-              <span className="text-neutral-500 font-medium">Currency:</span>
-              <span className="font-mono text-neutral-900 dark:text-neutral-100 font-semibold text-right">
-                {invoice.currency || "USD"}
-              </span>
+            <div className="mt-2">
+              {getStatusBadge()}
             </div>
           </div>
         </div>
 
-        {/* Billed By & Billed To Side-by-Side Highlight Cards (Invoicely Style) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          {/* Billed By (From) */}
-          <div className="bg-neutral-50 dark:bg-neutral-900/60 p-4 sm:p-5 rounded-xl border border-neutral-200/70 dark:border-neutral-800 space-y-2">
-            <p
-              className="font-bold text-[11px] uppercase tracking-wider"
-              style={{ color: themeColor }}
-            >
-              Billed By
+        {/* Metadata Row */}
+        <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500">
+          <div className="flex items-center gap-1.5">
+            <span>Serial Number:</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100 font-mono tabular-nums">
+              {String(invoice.serialNumber || 1).padStart(4, "0")}
+            </span>
+          </div>
+          <span className="text-neutral-300 dark:text-neutral-700">|</span>
+          <div className="flex items-center gap-1.5">
+            <span>Issue Date:</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100 font-mono tabular-nums">
+              {formattedInvoiceDate}
+            </span>
+          </div>
+          <span className="text-neutral-300 dark:text-neutral-700">|</span>
+          <div className="flex items-center gap-1.5">
+            <span>Due Date:</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100 font-mono tabular-nums">
+              {formattedDueDate}
+            </span>
+          </div>
+          <span className="text-neutral-300 dark:text-neutral-700">|</span>
+          <div className="flex items-center gap-1.5">
+            <span>Currency:</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100 font-mono">
+              {invoice.currency || "USD"}
+            </span>
+          </div>
+        </div>
+
+        <hr className="border-t border-neutral-200 dark:border-neutral-800" />
+
+        {/* Billed By & Billed To */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
+          {/* From */}
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wider text-neutral-400 font-medium">
+              From
             </p>
-            <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">
+            <p className="font-medium text-neutral-900 dark:text-neutral-100">
               {invoice.companySnapshot?.name || "Your Company Name"}
             </p>
             {invoice.companySnapshot?.address && (
-              <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line leading-relaxed">
+              <p className="text-neutral-500 whitespace-pre-line leading-relaxed text-pretty text-[13px]">
                 {invoice.companySnapshot.address}
               </p>
             )}
             {invoice.companySnapshot?.email && (
-              <p className="text-neutral-600 dark:text-neutral-400">
+              <p className="text-neutral-500 break-all text-[13px]">
                 {invoice.companySnapshot.email}
               </p>
             )}
             {invoice.companySnapshot?.phone && (
-              <p className="text-neutral-600 dark:text-neutral-400">
+              <p className="text-neutral-500 text-[13px]">
                 {invoice.companySnapshot.phone}
               </p>
             )}
             {invoice.companySnapshot?.customFields?.map((field) => (
               <p key={field.id} className="text-neutral-500 text-[11px]">
-                <span className="font-medium text-neutral-700 dark:text-neutral-300">{field.label}:</span>{" "}
-                {field.value}
+                {field.label}: <span className="font-mono text-neutral-700 dark:text-neutral-300">{field.value}</span>
               </p>
             ))}
           </div>
 
-          {/* Billed To (To) */}
-          <div className="bg-neutral-50 dark:bg-neutral-900/60 p-4 sm:p-5 rounded-xl border border-neutral-200/70 dark:border-neutral-800 space-y-2">
-            <p
-              className="font-bold text-[11px] uppercase tracking-wider"
-              style={{ color: themeColor }}
-            >
-              Billed To
+          {/* To */}
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wider text-neutral-400 font-medium">
+              To
             </p>
-            <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">
+            <p className="font-medium text-neutral-900 dark:text-neutral-100">
               {invoice.clientSnapshot?.name || "Client Name"}
             </p>
             {invoice.clientSnapshot?.address && (
-              <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line leading-relaxed">
+              <p className="text-neutral-500 whitespace-pre-line leading-relaxed text-pretty text-[13px]">
                 {invoice.clientSnapshot.address}
               </p>
             )}
             {invoice.clientSnapshot?.email && (
-              <p className="text-neutral-600 dark:text-neutral-400">
+              <p className="text-neutral-500 break-all text-[13px]">
                 {invoice.clientSnapshot.email}
               </p>
             )}
             {invoice.clientSnapshot?.phone && (
-              <p className="text-neutral-600 dark:text-neutral-400">
+              <p className="text-neutral-500 text-[13px]">
                 {invoice.clientSnapshot.phone}
               </p>
             )}
             {invoice.clientSnapshot?.customFields?.map((field) => (
               <p key={field.id} className="text-neutral-500 text-[11px]">
-                <span className="font-medium text-neutral-700 dark:text-neutral-300">{field.label}:</span>{" "}
-                {field.value}
+                {field.label}: <span className="font-mono text-neutral-700 dark:text-neutral-300">{field.value}</span>
               </p>
             ))}
           </div>
         </div>
 
-        {/* Line Items Table with Solid Theme Color Header */}
-        <div className="overflow-hidden rounded-xl border border-neutral-200/80 dark:border-neutral-800">
-          <table className="w-full text-left border-collapse text-xs">
+        {/* Table */}
+        <div className="mt-8 pt-4">
+          <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr
-                className="text-white font-bold text-[11px] uppercase tracking-wider"
-                style={{ backgroundColor: themeColor }}
-              >
-                <th className="py-3 px-4 font-semibold">Item</th>
-                <th className="py-3 px-4 text-center w-16 font-semibold">Qty</th>
-                <th className="py-3 px-4 text-right w-28 font-semibold">Price</th>
-                <th className="py-3 px-4 text-right w-28 font-semibold">Total</th>
+              <tr className="text-[11px] uppercase tracking-wider text-neutral-400 font-medium border-b border-neutral-200 dark:border-neutral-800">
+                <th scope="col" className="pb-3 font-medium">Item</th>
+                <th scope="col" className="pb-3 text-center w-16 font-medium">Qty</th>
+                <th scope="col" className="pb-3 text-right w-28 font-medium">Price</th>
+                <th scope="col" className="pb-3 text-right w-28 font-medium">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80 bg-white dark:bg-neutral-950">
+            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
               {invoice.lineItems && invoice.lineItems.length > 0 ? (
                 invoice.lineItems.map((item, idx) => {
                   const lineTotal = (item.quantity || 1) * (item.unitPrice || 0);
                   return (
-                    <tr
-                      key={item.id || idx}
-                      className="hover:bg-neutral-50/60 dark:hover:bg-neutral-900/40 transition-colors"
-                    >
-                      <td className="py-3.5 px-4">
-                        <p className="font-semibold text-neutral-900 dark:text-neutral-100">
+                    <tr key={item.id || idx}>
+                      <td className="py-4 pr-4">
+                        <p className="font-medium text-neutral-900 dark:text-neutral-100">
                           {item.itemName || "Untitled Item"}
                         </p>
                         {item.description && (
-                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                          <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed text-pretty">
                             {item.description}
                           </p>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-center font-mono text-neutral-700 dark:text-neutral-300">
+                      <td className="py-4 px-4 text-center font-mono tabular-nums text-neutral-500">
                         {item.quantity || 1}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-neutral-700 dark:text-neutral-300">
+                      <td className="py-4 px-4 text-right font-mono tabular-nums text-neutral-500">
                         {formatInvoiceMoney(item.unitPrice, invoice.currency)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-neutral-900 dark:text-neutral-100">
+                      <td className="py-4 pl-4 text-right font-mono tabular-nums text-neutral-900 dark:text-neutral-100">
                         {formatInvoiceMoney(lineTotal, invoice.currency)}
                       </td>
                     </tr>
@@ -257,7 +267,7 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-8 text-center text-neutral-400 italic">
+                  <td colSpan={4} className="py-8 text-center text-neutral-400 text-xs">
                     No items added to invoice yet.
                   </td>
                 </tr>
@@ -266,23 +276,20 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
           </table>
         </div>
 
-        {/* Bottom Section: Notes/Payment on Left, Calculations Box on Right */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-          {/* Left: Payment Info & Notes */}
-          <div className="space-y-4 text-xs">
+        {/* Summary & Notes Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-4">
+          {/* Left: Notes & Payment Info */}
+          <div className="space-y-6 text-sm">
             {invoice.paymentInformation && invoice.paymentInformation.length > 0 && (
-              <div className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-4 border border-neutral-200/70 dark:border-neutral-800 space-y-2">
-                <p
-                  className="font-bold text-[11px] uppercase tracking-wider"
-                  style={{ color: themeColor }}
-                >
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase text-neutral-400 tracking-wider font-medium">
                   Payment Information
                 </p>
-                <div className="space-y-1.5 font-mono">
+                <div className="space-y-1">
                   {invoice.paymentInformation.map((info) => (
-                    <div key={info.id} className="flex items-center justify-between gap-4">
-                      <span className="text-neutral-500 font-sans">{info.label}:</span>
-                      <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                    <div key={info.id} className="flex gap-2">
+                      <span className="text-neutral-500 text-[13px]">{info.label}:</span>
+                      <span className="text-neutral-900 dark:text-neutral-100 font-mono text-xs mt-0.5">
                         {info.value}
                       </span>
                     </div>
@@ -292,100 +299,87 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
             )}
 
             {invoice.paymentTerms && (
-              <div className="space-y-1">
-                <p className="font-bold text-[10px] uppercase text-neutral-400 tracking-wider">
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase text-neutral-400 tracking-wider font-medium">
                   Payment Terms
                 </p>
-                <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed text-pretty text-[13px]">
                   {invoice.paymentTerms}
                 </p>
               </div>
             )}
 
             {invoice.notes && (
-              <div className="space-y-1">
-                <p className="font-bold text-[10px] uppercase text-neutral-400 tracking-wider">
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase text-neutral-400 tracking-wider font-medium">
                   Notes
                 </p>
-                <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line leading-relaxed">
+                <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line leading-relaxed text-pretty text-[13px]">
                   {invoice.notes}
                 </p>
               </div>
             )}
 
             {invoice.additionalTerms && (
-              <div className="space-y-1">
-                <p className="font-bold text-[10px] uppercase text-neutral-400 tracking-wider">
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase text-neutral-400 tracking-wider font-medium">
                   Terms & Conditions
                 </p>
-                <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line leading-relaxed">
+                <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line leading-relaxed text-pretty text-[13px]">
                   {invoice.additionalTerms}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Right: Calculations Summary Box */}
-          <div className="space-y-3">
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-neutral-100 dark:border-neutral-800">
-                <span className="text-neutral-500 font-medium">Subtotal</span>
-                <span className="font-semibold text-neutral-800 dark:text-neutral-200 tabular-nums font-mono">
+          {/* Right: Calculations */}
+          <div className="space-y-4">
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
+                <span>Subtotal</span>
+                <span className="font-mono tabular-nums text-neutral-900 dark:text-neutral-100">
                   {formatInvoiceMoney(totals.subtotal, invoice.currency)}
                 </span>
               </div>
 
               {totals.computedBilling.map((b) => (
-                <div
-                  key={b.id}
-                  className="flex justify-between py-1.5 border-b border-neutral-100 dark:border-neutral-800"
-                >
-                  <span className="text-neutral-500">
+                <div key={b.id} className="flex justify-between text-neutral-600 dark:text-neutral-400">
+                  <span>
                     {b.label} {b.type === "percentage" && `(${b.rawValue}%)`}
                   </span>
-                  <span
-                    className={cn(
-                      "font-semibold tabular-nums font-mono",
-                      b.computedAmount < 0 ? "text-emerald-600" : "text-neutral-800 dark:text-neutral-200"
-                    )}
-                  >
+                  <span className="font-mono tabular-nums text-neutral-900 dark:text-neutral-100">
                     {b.computedAmount >= 0 ? "+" : ""}
                     {formatInvoiceMoney(b.computedAmount, invoice.currency)}
                   </span>
                 </div>
               ))}
-
-              {/* Total Due Pill */}
-              <div
-                className="flex items-center justify-between p-4 rounded-xl border mt-3 transition-colors"
-                style={{
-                  backgroundColor: `${themeColor}12`,
-                  borderColor: `${themeColor}35`,
-                }}
-              >
-                <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-                  Total Due
-                </span>
-                <span
-                  className="text-xl sm:text-2xl font-black font-mono tabular-nums tracking-tight"
-                  style={{ color: themeColor }}
-                >
-                  {formatInvoiceMoney(totals.total, invoice.currency)}
-                </span>
-              </div>
             </div>
 
-            {/* Signature Area */}
+            <hr className="border-t border-neutral-200 dark:border-neutral-800" />
+
+            <div className="flex justify-between items-baseline pt-2">
+              <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                Total Due
+              </span>
+              <span
+                className="text-2xl font-semibold tracking-tight font-mono tabular-nums"
+                style={{ color: themeColor }}
+              >
+                {formatInvoiceMoney(totals.total, invoice.currency)}
+              </span>
+            </div>
+
+            {/* Signature */}
             {invoice.companySnapshot?.signatureUrl && (
-              <div className="pt-4 flex flex-col items-end">
+              <div className="pt-12 flex flex-col items-end">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={invoice.companySnapshot.signatureUrl}
-                  alt="Signature"
-                  className="h-10 max-w-[140px] object-contain mb-1 rounded ring-1 ring-black/5 dark:ring-white/10"
+                  alt={`${invoice.companySnapshot.name || "Company"} authorized signature`}
+                  className="h-10 max-w-[140px] object-contain mb-2"
                 />
-                <div className="w-40 border-t border-neutral-300 dark:border-neutral-700 pt-1 text-right">
-                  <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-semibold">
+                <div className="w-48 border-t border-neutral-200 dark:border-neutral-800 pt-2 text-right">
+                  <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">
                     Authorized Signature
                   </p>
                 </div>
@@ -394,9 +388,9 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
           </div>
         </div>
 
-        {/* Document Footer Note */}
-        <div className="pt-6 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400">
-          <span>Scrunity Invoice System</span>
+        {/* Footer */}
+        <div className="mt-12 pt-6 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-[10px] text-neutral-400">
+          <span>Scrunity</span>
           <span>Thank you for your business</span>
         </div>
       </div>
