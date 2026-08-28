@@ -1,4 +1,5 @@
 import type { MilestoneWithDetails, PaymentRecord } from "@/store/types";
+import type { InvoiceData } from "@/lib/invoices/types";
 
 export type { MilestoneWithDetails, PaymentRecord } from "@/store/types";
 
@@ -6,6 +7,7 @@ export type PaymentsViewClientProps = {
   projectId: string;
   milestones: MilestoneWithDetails[];
   payments: PaymentRecord[];
+  invoices?: InvoiceData[];
   currentUserId: string;
   userRole: "owner" | "agency" | "client";
   deliverablesList: Array<{ id: string; title: string }>;

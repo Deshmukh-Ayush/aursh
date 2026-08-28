@@ -3,25 +3,33 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, Trash2, Zap, ArrowRight, Receipt } from "lucide-react";
 import type { MilestoneWithDetails, PaymentRecord } from "@/store/types";
+import type { InvoiceData } from "@/lib/invoices/types";
 import { SealCheckIcon } from "@phosphor-icons/react";
+import { FileText } from "lucide-react";
 
 type MilestoneItemProps = {
   milestone: MilestoneWithDetails;
   paymentRecord: PaymentRecord | undefined;
+  linkedInvoice?: InvoiceData;
   isAgency: boolean;
   formatMoney: (amountInUnits: number, curr?: string) => string;
   onMarkPaid: (milestone: MilestoneWithDetails) => void;
   onDeleteMilestone: (milestoneId: string) => void;
+  onGenerateInvoice?: (milestone: MilestoneWithDetails) => void;
+  onViewInvoice?: (invoice: InvoiceData) => void;
   index: number;
 };
 
 export function MilestoneItem({
   milestone,
   paymentRecord,
+  linkedInvoice,
   isAgency,
   formatMoney,
   onMarkPaid,
   onDeleteMilestone,
+  onGenerateInvoice,
+  onViewInvoice,
   index,
 }: MilestoneItemProps) {
   const getStatusConfig = () => {
@@ -68,8 +76,8 @@ export function MilestoneItem({
       transition={{ duration: 0.15, delay: index * 0.02 }}
       className="group flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 py-2.5 px-3 hover:bg-muted/40 border-b border-border/40 last:border-0 transition-colors rounded-md"
     >
-      {/* Left: Icon, Title & Badge */}
-      <div className="flex items-center gap-3 min-w-0 flex-1">
+      {/* Left: Icon, Title, Badge & Linked Invoice */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap sm:flex-nowrap">
         <StatusIcon className={`w-4 h-4 shrink-0 ${status.color}`} />
         
         <span className="text-sm font-medium text-foreground truncate max-w-50 sm:max-w-xs">
@@ -79,6 +87,32 @@ export function MilestoneItem({
         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${status.bg} shrink-0`}>
           {status.label}
         </span>
+
+        {/* Linked Invoice Indicator */}
+        {linkedInvoice ? (
+          <button
+            type="button"
+            onClick={() => onViewInvoice?.(linkedInvoice)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-muted/60 hover:bg-muted border border-border/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            title="View linked invoice"
+          >
+            <FileText className="w-3 h-3 text-brand" />
+            <span>{linkedInvoice.invoiceNumber}</span>
+            <span className="text-[9px] uppercase font-sans text-brand font-semibold">
+              • {linkedInvoice.status}
+            </span>
+          </button>
+        ) : isAgency && !isPaid ? (
+          <button
+            type="button"
+            onClick={() => onGenerateInvoice?.(milestone)}
+            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium text-brand hover:bg-brand/10 transition-all shrink-0"
+            title="Create invoice from this milestone"
+          >
+            <FileText className="w-3 h-3" />
+            <span>Invoice</span>
+          </button>
+        ) : null}
       </div>
 
       {/* Right: Date, Amount & Actions */}
@@ -105,7 +139,7 @@ export function MilestoneItem({
                 <span className="truncate max-w-15">{paymentRecord.referenceNote}</span>
               </div>
             ) : (
-              <SealCheckIcon  className="w-5 h-5 text-emerald-500" />
+              <SealCheckIcon className="w-5 h-5 text-emerald-500" />
             )
           ) : (
             <button
