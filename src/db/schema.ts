@@ -213,11 +213,13 @@ export const teamMember = pgTable("team_member", {
 
 export const organizationRelations = relations(
   organization,
-  ({ many }) => ({
+  ({ one, many }) => ({
     members: many(member),
     invitations: many(invitation),
     teams: many(team),
     projects: many(project),
+    invoices: many(invoice),
+    invoiceDefaults: one(invoiceDefaults),
   })
 );
 
@@ -346,6 +348,7 @@ export const projectRelations = relations(project, ({ one, many }) => ({
   paymentMilestones: many(paymentMilestone),
   payments: many(payment),
   proposals: many(proposal),
+  invoices: many(invoice),
 }));
 
 export const projectMemberRelations = relations(projectMember, ({ one }) => ({
@@ -454,7 +457,8 @@ export const activityTypes = [
   "deliverable_completed", "project_completed", "member_joined",
   "deliverable_in_review", "deliverable_reconciled", "comment_added",
   "proposal_sent", "proposal_accepted", "proposal_declined",
-  "payment_requested", "payment_completed", "payment_overdue", "milestone_created"
+  "payment_requested", "payment_completed", "payment_overdue", "milestone_created",
+  "invoice_sent", "invoice_paid", "invoice_viewed"
 ] as const;
 
 export const activityLog = pgTable("activity_log", {
@@ -639,6 +643,7 @@ export const paymentMilestoneRelations = relations(paymentMilestone, ({ one, man
   project: one(project, { fields: [paymentMilestone.projectId], references: [project.id] }),
   deliverable: one(deliverable, { fields: [paymentMilestone.deliverableId], references: [deliverable.id] }),
   payments: many(payment),
+  invoices: many(invoice),
 }));
 
 export const paymentRelations = relations(payment, ({ one }) => ({
@@ -705,3 +710,107 @@ export const proposalLineItemsRelations = relations(proposalLineItems, ({ one })
     references: [proposal.id],
   }),
 }));
+
+export const invoice = pgTable("invoice", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  milestoneId: text("milestone_id")
+    .references(() => paymentMilestone.id, { onDelete: "set null" }),
+  invoiceNumber: text("invoice_number").notNull(),
+  prefix: text("prefix").notNull().default("INV-"),
+  serialNumber: integer("serial_number").notNull(),
+  currency: text("currency", { enum: ["USD", "INR"] }).notNull().default("INR"),
+  themeColor: text("theme_color").notNull().default("#00AAF7"),
+  invoiceDate: timestamp("invoice_date").defaultNow().notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  paymentTerms: text("payment_terms"),
+  companySnapshot: jsonb("company_snapshot").notNull(),
+  clientSnapshot: jsonb("client_snapshot").notNull(),
+  billingDetails: jsonb("billing_details").$type<Array<{ id: string; label: string; type: "fixed" | "percentage"; value: number }>>().default([]).notNull(),
+  notes: text("notes"),
+  additionalTerms: text("additional_terms"),
+  paymentInformation: jsonb("payment_information").$type<Array<{ id: string; label: string; value: string }>>().default([]).notNull(),
+  subtotal: integer("subtotal").notNull().default(0),
+  total: integer("total").notNull().default(0),
+  status: text("status", { enum: ["draft", "sent", "viewed", "paid", "overdue", "void"] }).notNull().default("draft"),
+  sentAt: timestamp("sent_at"),
+  viewedAt: timestamp("viewed_at"),
+  paidAt: timestamp("paid_at"),
+  pdfUrl: text("pdf_url"),
+  createdBy: text("created_by")
+    .references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  index("invoice_project_idx").on(table.projectId),
+  index("invoice_org_idx").on(table.organizationId),
+  index("invoice_milestone_idx").on(table.milestoneId),
+  uniqueIndex("invoice_org_number_unique").on(table.organizationId, table.invoiceNumber),
+]);
+
+export const invoiceLineItem = pgTable("invoice_line_item", {
+  id: text("id").primaryKey(),
+  invoiceId: text("invoice_id")
+    .notNull()
+    .references(() => invoice.id, { onDelete: "cascade" }),
+  itemName: text("item_name").notNull(),
+  description: text("description"),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: integer("unit_price").notNull(),
+  lineTotal: integer("line_total").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("invoice_item_invoice_idx").on(table.invoiceId),
+]);
+
+export const invoiceDefaults = pgTable("invoice_defaults", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  defaultPrefix: text("default_prefix").notNull().default("INV-"),
+  nextSerial: integer("next_serial").notNull().default(1),
+  companyName: text("company_name"),
+  companyAddress: text("company_address"),
+  companyEmail: text("company_email"),
+  companyPhone: text("company_phone"),
+  logoUrl: text("logo_url"),
+  signatureUrl: text("signature_url"),
+  defaultPaymentInfo: jsonb("default_payment_info").$type<Array<{ id: string; label: string; value: string }>>(),
+  defaultNotes: text("default_notes"),
+  defaultTerms: text("default_terms"),
+  defaultCustomFields: jsonb("default_custom_fields").$type<Array<{ id: string; label: string; value: string }>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  uniqueIndex("invoice_defaults_org_unique").on(table.organizationId),
+]);
+
+export const invoiceRelations = relations(invoice, ({ one, many }) => ({
+  project: one(project, { fields: [invoice.projectId], references: [project.id] }),
+  organization: one(organization, { fields: [invoice.organizationId], references: [organization.id] }),
+  milestone: one(paymentMilestone, { fields: [invoice.milestoneId], references: [paymentMilestone.id] }),
+  creator: one(user, { fields: [invoice.createdBy], references: [user.id] }),
+  lineItems: many(invoiceLineItem),
+}));
+
+export const invoiceLineItemRelations = relations(invoiceLineItem, ({ one }) => ({
+  invoice: one(invoice, { fields: [invoiceLineItem.invoiceId], references: [invoice.id] }),
+}));
+
+export const invoiceDefaultsRelations = relations(invoiceDefaults, ({ one }) => ({
+  organization: one(organization, { fields: [invoiceDefaults.organizationId], references: [organization.id] }),
+}));
+
