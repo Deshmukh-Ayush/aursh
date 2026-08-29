@@ -4,12 +4,16 @@ import { getCachedTenant } from "@/utils/cached-tenant"
 import { getAccessibleProjects } from "@/lib/project-queries"
 import { ProjectsTableClient, ProjectTableItem } from "@/components/dashboard/projects/projects-table-client"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
+import { convertToINR, getUsdToInrRate } from "@/lib/currency"
 
 async function ProjectsData() {
   const { user, organizationId } = await getCachedTenant()
   if (!user) return null
 
-  const rawProjects = await getAccessibleProjects(user.id, organizationId)
+  const [rawProjects, usdToInrRate] = await Promise.all([
+    getAccessibleProjects(user.id, organizationId),
+    getUsdToInrRate(),
+  ])
 
   const projectsData: ProjectTableItem[] = rawProjects.map((p) => {
     const acceptedProposal = p.proposals.find((prop) => prop.status === "accepted")
@@ -28,7 +32,9 @@ async function ProjectsData() {
         email: m.user.email,
         image: m.user.image,
       })),
-      contractValue: acceptedProposal ? acceptedProposal.price : null,
+      contractValue: acceptedProposal
+        ? convertToINR(acceptedProposal.price, acceptedProposal.currency, usdToInrRate)
+        : null,
       contractStatus: latestContract ? latestContract.status : null,
       deliverableStats: {
         total: p.deliverables.length,
