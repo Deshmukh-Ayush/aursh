@@ -166,7 +166,7 @@ export default async function DocsPage() {
 │   ├── ai/torch-tools.ts       # Centralized Torch agent tool registry (queries, scope audit, addendum, drafts)
 │   ├── tenant-context.ts       # React.cache() deduplicated tenant context & auth resolver
 │   ├── project-auth.ts         # Centralized project authorization policy
-│   ├── currency.ts             # Multi-currency exchange rate engine (USD_TO_INR = 95.43)
+│   ├── currency.ts             # Multi-currency engine (Live 24h-cached FX rates via open.er-api & Frankfurter)
 │   └── activity.ts             # Next.js 16 after() background notification logger`}</CodeBlock>
         </Section>
 
@@ -311,7 +311,7 @@ export default async function DocsPage() {
             Scrunity supports dual currencies (<Code>INR ₹</Code> and <Code>USD $</Code>) seamlessly:
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
-            <li><strong className="text-foreground font-medium">Exchange Rate Conversion:</strong> Set <Code>USD_TO_INR_RATE = 95.43</Code> in <Code>src/lib/currency.ts</Code>. Converted values are displayed accurately across Overview KPI cards, Analytics pipeline metrics, and Projects table rows.</li>
+            <li><strong className="text-foreground font-medium">Exchange Rate Conversion:</strong> Real-time USD to INR rates fetched dynamically from live FX providers (<Code>open.er-api.com</Code> with <Code>api.frankfurter.dev</Code> fallback) with 24-hour caching and automatic failure fallback in <Code>src/lib/currency.ts</Code>. Converted values are displayed accurately across Overview KPI cards, Analytics pipeline metrics, and Projects table rows.</li>
             <li><strong className="text-foreground font-medium">Single Currency Formatting:</strong> Formats INR as <Code>₹1,00,000</Code> and USD as <Code>$2,500</Code> using locale rules.</li>
             <li><strong className="text-foreground font-medium">Mixed-Currency Portfolio Totals:</strong> When a project contains milestones or proposals in both INR and USD, totals are formatted as <Code>₹1,00,000 + $2,000</Code> or converted via global currency settings.</li>
           </ul>
