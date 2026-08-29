@@ -8,12 +8,20 @@ import {
   contract,
   paymentMilestone,
   activityLog,
+  invoice,
+  invoiceDefaults,
+  projectMember,
+  projectInvitation,
   user as userTable,
 } from "@/db/schema";
 import { eq, inArray, desc, and } from "drizzle-orm";
 import { evaluateScopeStatus, getProjectRevisionCount } from "./scope-guardian";
 import { generateChangeOrderAddendum } from "./addendum-generator";
 import { getContractScopeFromDb } from "./contract-parser";
+import crypto from "crypto";
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null;
 
 /**
  * Torch Tool Registry
@@ -378,6 +386,529 @@ export function createTorchTools(organizationId: string) {
           projectName: proj.name,
           draft: { title, description, dueDate },
           requiresConfirmation: true,
+        };
+      },
+    }),
+
+    queryInvoiceStatus: tool({
+      description:
+        "Queries invoices across the workspace or for a specific project. Returns counts by status (draft, sent, viewed, paid, overdue, void), outstanding balance, collected revenue, and details of overdue invoices with days overdue.",
+      inputSchema: z.object({
+        projectId: z.string().nullish().describe("Optional project ID to filter invoices"),
+        projectName: z.string().nullish().describe("Optional project name for fuzzy matching"),
+      }),
+      execute: async ({ projectId, projectName }) => {
+        let targetId = projectId;
+
+        if (!targetId && projectName) {
+          const orgProjects = await db
+            .select({ id: project.id, name: project.name })
+            .from(project)
+            .where(eq(project.organizationId, organizationId));
+          const match = orgProjects.find((p) =>
+            p.name.toLowerCase().includes(projectName.toLowerCase())
+          );
+          targetId = match?.id;
+        }
+
+        const projectIds = targetId
+          ? [targetId]
+          : (
+              await db
+                .select({ id: project.id })
+                .from(project)
+                .where(eq(project.organizationId, organizationId))
+            ).map((p) => p.id);
+
+        if (projectIds.length === 0) {
+          return {
+            totalInvoices: 0,
+            summary: {
+              draft: 0,
+              sent: 0,
+              viewed: 0,
+              paid: 0,
+              overdue: 0,
+              void: 0,
+            },
+            totalOutstanding: 0,
+            totalPaid: 0,
+            currency: "USD",
+            invoices: [],
+          };
+        }
+
+        const [invoicesList, projectsList] = await Promise.all([
+          db
+            .select()
+            .from(invoice)
+            .where(
+              and(
+                eq(invoice.organizationId, organizationId),
+                inArray(invoice.projectId, projectIds)
+              )
+            )
+            .orderBy(desc(invoice.createdAt)),
+          db
+            .select({ id: project.id, name: project.name })
+            .from(project)
+            .where(inArray(project.id, projectIds)),
+        ]);
+
+        const projectMap = new Map(projectsList.map((p) => [p.id, p.name]));
+        const now = Date.now();
+
+        let draftCount = 0;
+        let sentCount = 0;
+        let viewedCount = 0;
+        let paidCount = 0;
+        let overdueCount = 0;
+        let voidCount = 0;
+
+        let totalOutstanding = 0;
+        let totalPaid = 0;
+        let totalDraft = 0;
+
+        const detailedInvoices = invoicesList.map((inv) => {
+          const dueTime = new Date(inv.dueDate).getTime();
+          const isOverdue =
+            inv.status === "overdue" ||
+            (dueTime < now && inv.status !== "paid" && inv.status !== "void");
+          const overdueDays = isOverdue
+            ? Math.max(1, Math.floor((now - dueTime) / (1000 * 60 * 60 * 24)))
+            : 0;
+
+          if (inv.status === "paid") {
+            paidCount++;
+            totalPaid += inv.total;
+          } else if (inv.status === "void") {
+            voidCount++;
+          } else if (inv.status === "draft") {
+            draftCount++;
+            totalDraft += inv.total;
+          } else if (isOverdue) {
+            overdueCount++;
+            totalOutstanding += inv.total;
+          } else if (inv.status === "viewed") {
+            viewedCount++;
+            totalOutstanding += inv.total;
+          } else {
+            sentCount++;
+            totalOutstanding += inv.total;
+          }
+
+          const clientSnap = inv.clientSnapshot as { name?: string; email?: string } | null;
+
+          return {
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            projectId: inv.projectId,
+            projectName: projectMap.get(inv.projectId) || "Project",
+            clientName: clientSnap?.name || "Client",
+            clientEmail: clientSnap?.email || "",
+            amount: inv.total,
+            currency: inv.currency,
+            status: isOverdue && inv.status !== "paid" && inv.status !== "void" ? "overdue" : inv.status,
+            dueDate: inv.dueDate,
+            invoiceDate: inv.invoiceDate,
+            isOverdue,
+            overdueDays,
+          };
+        });
+
+        return {
+          totalInvoices: invoicesList.length,
+          currency: invoicesList[0]?.currency || "USD",
+          summary: {
+            draft: draftCount,
+            sent: sentCount,
+            viewed: viewedCount,
+            paid: paidCount,
+            overdue: overdueCount,
+            void: voidCount,
+          },
+          totalOutstanding,
+          totalPaid,
+          totalDraft,
+          invoices: detailedInvoices,
+        };
+      },
+    }),
+
+    draftInvoiceForMilestone: tool({
+      description:
+        "Drafts a new invoice for a verified project payment milestone. Uses the exact milestone amount (never estimates) and real client contact info. Produces a draft requiring human confirmation before saving.",
+      inputSchema: z.object({
+        projectId: z.string().describe("The project ID containing the milestone"),
+        milestoneId: z.string().describe("The milestone ID to generate the invoice for"),
+        notes: z.string().nullish().describe("Optional custom invoice notes or memo"),
+      }),
+      execute: async ({ projectId, milestoneId, notes }) => {
+        // 1. Verify project exists
+        const [proj] = await db
+          .select()
+          .from(project)
+          .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
+
+        if (!proj) {
+          return { error: "Project not found in your workspace." };
+        }
+
+        // 2. Fetch milestone (Strict non-fabrication rule: amount comes strictly from DB)
+        const [milestoneRow] = await db
+          .select()
+          .from(paymentMilestone)
+          .where(and(eq(paymentMilestone.id, milestoneId), eq(paymentMilestone.projectId, projectId)));
+
+        if (!milestoneRow) {
+          return { error: "Payment milestone not found for this project." };
+        }
+
+        // 3. Fetch real client contact info (Strict non-fabrication rule)
+        const [clientMembers, clientInvites] = await Promise.all([
+          db
+            .select({
+              id: userTable.id,
+              name: userTable.name,
+              email: userTable.email,
+            })
+            .from(projectMember)
+            .innerJoin(userTable, eq(projectMember.userId, userTable.id))
+            .where(and(eq(projectMember.projectId, projectId), eq(projectMember.role, "client"))),
+          db
+            .select({ email: projectInvitation.email })
+            .from(projectInvitation)
+            .where(and(eq(projectInvitation.projectId, projectId), eq(projectInvitation.role, "client"))),
+        ]);
+
+        const clientName = clientMembers[0]?.name || "Client";
+        const clientEmail = clientMembers[0]?.email || clientInvites[0]?.email || "";
+
+        if (!clientMembers[0] && !clientInvites[0]) {
+          return {
+            error: "Cannot draft invoice: No client contact or invitation found for this project. Please add a client first.",
+          };
+        }
+
+        // 4. Fetch org invoice defaults
+        const defaults = await db.query.invoiceDefaults.findFirst({
+          where: eq(invoiceDefaults.organizationId, organizationId),
+        });
+
+        const prefix = defaults?.defaultPrefix || "INV-";
+        const serialNumber = defaults?.nextSerial || 1;
+        const invoiceNumber = `${prefix}${String(serialNumber).padStart(3, "0")}`;
+        const currency = (milestoneRow.currency?.toUpperCase() === "USD" ? "USD" : "INR") as "USD" | "INR";
+        const exactAmount = milestoneRow.amount;
+
+        const invoiceDate = new Date().toISOString().split("T")[0];
+        const dueDate = milestoneRow.dueDate
+          ? new Date(milestoneRow.dueDate).toISOString().split("T")[0]
+          : new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
+
+        const draftInvoice = {
+          projectId,
+          milestoneId: milestoneRow.id,
+          milestoneTitle: milestoneRow.title,
+          invoiceNumber,
+          prefix,
+          serialNumber,
+          currency,
+          invoiceDate,
+          dueDate,
+          paymentTerms: defaults?.defaultTerms || "",
+          companySnapshot: {
+            name: defaults?.companyName || "Company",
+            address: defaults?.companyAddress || "",
+            email: defaults?.companyEmail || "",
+            phone: defaults?.companyPhone || "",
+            logoUrl: defaults?.logoUrl || null,
+            signatureUrl: defaults?.signatureUrl || null,
+            customFields: defaults?.defaultCustomFields || [],
+          },
+          clientSnapshot: {
+            name: clientName,
+            email: clientEmail,
+            address: "",
+            phone: "",
+            contactMethod: "email" as const,
+            customFields: [],
+          },
+          billingDetails: [],
+          lineItems: [
+            {
+              id: crypto.randomUUID(),
+              itemName: milestoneRow.title,
+              description: `Payment for milestone: ${milestoneRow.title}`,
+              quantity: 1,
+              unitPrice: exactAmount,
+              lineTotal: exactAmount,
+            },
+          ],
+          notes: notes || defaults?.defaultNotes || "",
+          additionalTerms: "",
+          paymentInformation: defaults?.defaultPaymentInfo || [],
+          subtotal: exactAmount,
+          total: exactAmount,
+        };
+
+        return {
+          artifactType: "draft_invoice_confirmation",
+          projectId,
+          projectName: proj.name,
+          milestoneId: milestoneRow.id,
+          milestoneTitle: milestoneRow.title,
+          amount: exactAmount,
+          currency,
+          draftInvoice,
+          requiresConfirmation: true,
+        };
+      },
+    }),
+
+    webSearch: tool({
+      description:
+        "Searches the web using a licensed search API for up-to-date information, market rates, technical documentation, company lookups, and industry benchmarks.",
+      inputSchema: z.object({
+        query: z.string().describe("The search query to look up on the web"),
+      }),
+      execute: async ({ query }) => {
+        const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+        const serperKey = process.env.SERPER_API_KEY;
+        const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+
+        // 1. Firecrawl Search API (Primary Tier: Dedicated /v2/search for LLM agents)
+        if (firecrawlKey) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            let firecrawlRes = await fetch("https://api.firecrawl.dev/v2/search", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${firecrawlKey}`,
+              },
+              body: JSON.stringify({
+                query,
+                limit: 5,
+              }),
+              signal: controller.signal,
+            });
+
+            // Fallback to /v1/search if /v2/search returns 404
+            if (!firecrawlRes.ok && firecrawlRes.status === 404) {
+              firecrawlRes = await fetch("https://api.firecrawl.dev/v1/search", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${firecrawlKey}`,
+                },
+                body: JSON.stringify({
+                  query,
+                  limit: 5,
+                }),
+                signal: controller.signal,
+              });
+            }
+
+            clearTimeout(timeoutId);
+
+            if (firecrawlRes.ok) {
+              const firecrawlData = (await firecrawlRes.json()) as {
+                success?: boolean;
+                data?:
+                  | {
+                      web?: Array<{
+                        title?: string;
+                        description?: string;
+                        url?: string;
+                        markdown?: string;
+                      }>;
+                    }
+                  | Array<{
+                      title?: string;
+                      description?: string;
+                      url?: string;
+                      markdown?: string;
+                    }>;
+              };
+
+              const payload = firecrawlData.data as any;
+              const rawList = Array.isArray(payload?.web)
+                ? payload.web
+                : Array.isArray(payload)
+                  ? payload
+                  : Array.isArray((firecrawlData as any).results)
+                    ? (firecrawlData as any).results
+                    : [];
+
+              if (rawList.length > 0) {
+                console.log("[Torch WebSearch] Served by: Firecrawl (/v2/search)");
+                return {
+                  query,
+                  source: "firecrawl",
+                  results: rawList.map((item: any) => ({
+                    title: item.title || "Web Result",
+                    snippet:
+                      item.description ||
+                      (item.markdown ? item.markdown.slice(0, 300).trim() : ""),
+                    url: item.url || "",
+                  })),
+                };
+              }
+            } else {
+              const errBody = await firecrawlRes.text();
+              console.warn(`[Torch WebSearch] Firecrawl returned error HTTP ${firecrawlRes.status}: ${errBody}`);
+            }
+          } catch (firecrawlErr) {
+            console.warn("[Torch WebSearch] Firecrawl network error:", firecrawlErr);
+          }
+        } else {
+          console.log("[Torch WebSearch] Tier 1 (Firecrawl) skipped: FIRECRAWL_API_KEY not configured");
+        }
+
+        // 2. Serper (Google Search) API (Licensed Google Results API)
+        if (serperKey) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            const serperRes = await fetch("https://google.serper.dev/search", {
+              method: "POST",
+              headers: {
+                "X-API-KEY": serperKey,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ q: query, num: 5 }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (serperRes.ok) {
+              const serperData = (await serperRes.json()) as {
+                organic?: Array<{ title: string; snippet: string; link: string }>;
+              };
+              if (serperData.organic && serperData.organic.length > 0) {
+                console.log("[Torch WebSearch] Served by: Serper (Google Search API)");
+                return {
+                  query,
+                  source: "serper",
+                  results: serperData.organic.map((r) => ({
+                    title: r.title,
+                    snippet: r.snippet,
+                    url: r.link,
+                  })),
+                };
+              }
+            }
+          } catch (serperErr) {
+            console.warn("[Torch WebSearch] Serper error:", serperErr);
+          }
+        }
+
+        // 3. Brave Search API (Licensed Developer Search API)
+        if (braveKey) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            const braveRes = await fetch(
+              `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+              {
+                headers: {
+                  Accept: "application/json",
+                  "X-Subscription-Token": braveKey,
+                },
+                signal: controller.signal,
+              }
+            );
+            clearTimeout(timeoutId);
+
+            if (braveRes.ok) {
+              const braveData = (await braveRes.json()) as {
+                web?: { results?: Array<{ title: string; description: string; url: string }> };
+              };
+              if (braveData.web?.results && braveData.web.results.length > 0) {
+                console.log("[Torch WebSearch] Served by: Brave (Search API)");
+                return {
+                  query,
+                  source: "brave",
+                  results: braveData.web.results.map((r) => ({
+                    title: r.title,
+                    snippet: r.description,
+                    url: r.url,
+                  })),
+                };
+              }
+            }
+          } catch (braveErr) {
+            console.warn("[Torch WebSearch] Brave error:", braveErr);
+          }
+        }
+
+        // 4. Official Public REST API: Wikipedia Full-Text Search (100% public REST API, zero scraping)
+        try {
+          const tryWikiSearch = async (term: string) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+            const wikiRes = await fetch(
+              `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&utf8=&format=json`,
+              {
+                headers: {
+                  "User-Agent": "Scrunity-Torch/1.0 (https://scrunity.com; contact@scrunity.com)",
+                },
+                signal: controller.signal,
+              }
+            );
+            clearTimeout(timeoutId);
+
+            if (!wikiRes.ok) return [];
+            const wikiData = (await wikiRes.json()) as {
+              query?: { search?: Array<{ title: string; snippet: string }> };
+            };
+            if (wikiData?.query?.search && wikiData.query.search.length > 0) {
+              return wikiData.query.search.slice(0, 5).map((item) => ({
+                title: item.title,
+                snippet: (item.snippet || "").replace(/<[^>]*>/g, ""),
+                url: `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, "_"))}`,
+              }));
+            }
+            return [];
+          };
+
+          let wikiResults = await tryWikiSearch(query);
+          if (wikiResults.length === 0) {
+            // Relax search to core keywords if exact phrase returns 0 matches
+            const stopWords = new Set(["a", "an", "the", "in", "on", "at", "for", "to", "of", "and", "or", "is", "are", "with", "by"]);
+            const keywords = query
+              .split(/\s+/)
+              .filter((w) => !stopWords.has(w.toLowerCase()) && w.length > 1)
+              .slice(0, 3)
+              .join(" ");
+            if (keywords && keywords !== query) {
+              wikiResults = await tryWikiSearch(keywords);
+            }
+          }
+
+          if (wikiResults.length > 0) {
+            console.log("[Torch WebSearch] Served by: Wikipedia (Official REST API)");
+            return {
+              query,
+              source: "wikipedia",
+              results: wikiResults,
+            };
+          }
+        } catch (wikiErr) {
+          console.warn("[Torch WebSearch] Wikipedia REST Search Error:", wikiErr);
+        }
+
+        console.log("[Torch WebSearch] No provider returned results.");
+        return {
+          query,
+          source: "none",
+          results: [],
         };
       },
     }),
