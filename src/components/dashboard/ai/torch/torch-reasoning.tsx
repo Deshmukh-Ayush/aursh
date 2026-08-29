@@ -9,6 +9,9 @@ import {
   DollarSign,
   Newspaper,
   PackagePlus,
+  Receipt,
+  FileSpreadsheet,
+  Globe,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -159,6 +162,64 @@ function formatToolStep(toolName: string, result: unknown): FormattedStep {
         title: "Drafted new deliverable",
         detail: parts.length ? `${parts.join(" ")} · awaiting approval` : "Awaiting your approval",
         icon: PackagePlus,
+      };
+    }
+
+    case "queryInvoiceStatus": {
+      if (!isRecord(result)) {
+        return { title: "Checked invoice status", detail: "Loaded invoice overview", icon: Receipt };
+      }
+      if (typeof result.error === "string") {
+        return { title: "Checked invoice status", detail: result.error, icon: Receipt };
+      }
+      const total = result.totalInvoices;
+      const outstanding = result.totalOutstanding;
+      const overdue = isRecord(result.summary) ? result.summary.overdue : undefined;
+      const currency = typeof result.currency === "string" ? result.currency : "USD";
+      const parts: string[] = [];
+      if (typeof total === "number") parts.push(`${total} invoice${total === 1 ? "" : "s"}`);
+      if (typeof outstanding === "number" && outstanding > 0) parts.push(`${outstanding} ${currency} outstanding`);
+      if (typeof overdue === "number" && overdue > 0) parts.push(`${overdue} overdue`);
+      return {
+        title: "Checked invoice status",
+        detail: parts.length ? parts.join(" · ") : "No invoices found",
+        icon: Receipt,
+      };
+    }
+
+    case "draftInvoiceForMilestone": {
+      if (!isRecord(result)) {
+        return { title: "Drafted invoice for milestone", detail: "Awaiting your approval", icon: FileSpreadsheet };
+      }
+      if (typeof result.error === "string") {
+        return { title: "Drafted invoice for milestone", detail: result.error, icon: FileSpreadsheet };
+      }
+      const amount = typeof result.amount === "number" ? result.amount : undefined;
+      const currency = typeof result.currency === "string" ? result.currency : "USD";
+      const title = typeof result.milestoneTitle === "string" ? result.milestoneTitle : undefined;
+      const parts: string[] = [];
+      if (title) parts.push(title);
+      if (typeof amount === "number") parts.push(`${amount} ${currency}`);
+      return {
+        title: "Drafted invoice for milestone",
+        detail: parts.length ? `${parts.join(" · ")} · awaiting approval` : "Awaiting your approval",
+        icon: FileSpreadsheet,
+      };
+    }
+
+    case "webSearch": {
+      if (!isRecord(result)) {
+        return { title: "Searched the web", detail: "Search complete", icon: Globe };
+      }
+      if (typeof result.error === "string") {
+        return { title: "Searched the web", detail: result.error, icon: Globe };
+      }
+      const query = typeof result.query === "string" ? result.query : "";
+      const count = Array.isArray(result.results) ? result.results.length : 0;
+      return {
+        title: query ? `Searched for "${query}"` : "Searched the web",
+        detail: `${count} web source${count === 1 ? "" : "s"} found`,
+        icon: Globe,
       };
     }
 
