@@ -53,11 +53,11 @@ function AISkeleton() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center text-center p-6 space-y-3 h-full w-full">
       <Image
-        src="/Torch.png"
+        src="/logo/scrunity_logo_svg.svg"
         alt="Torch"
         width={44}
         height={44}
-        className="animate-pulse"
+        className="animate-pulse dark:invert"
       />
       <div className="space-y-3 flex flex-col items-center mt-2">
         <div className="h-5 w-64 bg-muted rounded-md animate-pulse"></div>

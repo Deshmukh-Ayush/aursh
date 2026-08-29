@@ -87,11 +87,11 @@ function TorchEmptyState({ summary }: { summary?: WorkspaceSummary }) {
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted border border-border/40">
             <Image
-              src="/Torch.png"
+              src="/logo/scrunity_logo_svg.svg"
               alt="Torch"
               width={28}
               height={28}
-              className="h-7 w-7 object-contain"
+              className="h-7 w-7 object-contain dark:invert"
             />
           </div>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -169,11 +169,11 @@ export function TorchMessages() {
           <Message key={msg.id} from="assistant" animateIn>
             <MessageAvatar className="bg-muted border border-border/40">
               <Image
-                src="/Torch.png"
+                src="/logo/scrunity_logo_svg.svg"
                 alt="Torch"
                 width={20}
                 height={20}
-                className="h-5 w-5 object-contain"
+                className="h-5 w-5 object-contain dark:invert"
               />
             </MessageAvatar>
             <MessageContent>
