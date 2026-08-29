@@ -5,7 +5,7 @@ import { inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { AnalyticsKpiRowClient, AnalyticsKpiData } from "./analytics-kpi-row-client"
-import { convertToINR } from "@/lib/currency"
+import { convertToINR, getUsdToInrRate } from "@/lib/currency"
 
 export async function AnalyticsKpiRow() {
   const reqHeaders = await headers()
@@ -34,8 +34,8 @@ export async function AnalyticsKpiRow() {
     return <AnalyticsKpiRowClient data={emptyData} />
   }
 
-  // Execute queries concurrently (Vercel async-parallel rule)
-  const [proposalsList, deliverablesList] = await Promise.all([
+  // Execute queries and live FX rate fetch concurrently (Vercel async-parallel rule)
+  const [proposalsList, deliverablesList, usdToInrRate] = await Promise.all([
     db
       .select({
         price: proposal.price,
@@ -50,16 +50,17 @@ export async function AnalyticsKpiRow() {
       })
       .from(deliverable)
       .where(inArray(deliverable.projectId, projectIds)),
+    getUsdToInrRate(),
   ])
 
-  // Single-pass calculation for proposals with USD -> INR conversion (95.43 rate)
+  // Single-pass calculation for proposals with live USD -> INR conversion
   let wonRevenue = 0
   let pipelineValue = 0
   let acceptedProposalsCount = 0
   let closedProposalsCount = 0
 
   proposalsList.forEach((p) => {
-    const inrValue = convertToINR(p.price, p.currency)
+    const inrValue = convertToINR(p.price, p.currency, usdToInrRate)
 
     if (p.status === "accepted") {
       wonRevenue += inrValue
