@@ -37,6 +37,16 @@ export interface CreateDeliverableArtifactData {
   draft: DeliverableDraft;
 }
 
+export interface DraftInvoiceArtifactData {
+  projectId: string;
+  projectName: string;
+  milestoneId: string;
+  milestoneTitle: string;
+  amount: number;
+  currency: string;
+  draftInvoice: Record<string, unknown>;
+}
+
 export type TorchArtifact =
   | {
       type: "change_order_addendum";
@@ -46,6 +56,11 @@ export type TorchArtifact =
   | {
       type: "create_deliverable_confirmation";
       data: CreateDeliverableArtifactData;
+      status: "pending" | "approved" | "rejected";
+    }
+  | {
+      type: "draft_invoice_confirmation";
+      data: DraftInvoiceArtifactData;
       status: "pending" | "approved" | "rejected";
     };
 
@@ -61,10 +76,19 @@ export interface CreateAddendumProposalPayload {
   addendum: ChangeOrderAddendum;
 }
 
-export type ArtifactAction = "create_deliverable" | "create_addendum_proposal";
+export interface CreateInvoiceDraftPayload {
+  projectId: string;
+  draftInvoice: Record<string, unknown>;
+}
+
+export type ArtifactAction =
+  | "create_deliverable"
+  | "create_addendum_proposal"
+  | "create_invoice_draft";
 export type ArtifactConfirmationPayload =
   | CreateDeliverablePayload
-  | CreateAddendumProposalPayload;
+  | CreateAddendumProposalPayload
+  | CreateInvoiceDraftPayload;
 
 interface ConfirmationResponse {
   success?: boolean;
@@ -152,7 +176,8 @@ export function TorchProvider({
     value: unknown,
   ): value is
     | ({ artifactType: "change_order_addendum" } & ChangeOrderArtifactData)
-    | ({ artifactType: "create_deliverable_confirmation" } & CreateDeliverableArtifactData) => {
+    | ({ artifactType: "create_deliverable_confirmation" } & CreateDeliverableArtifactData)
+    | ({ artifactType: "draft_invoice_confirmation" } & DraftInvoiceArtifactData) => {
     if (!isRecord(value) || value.requiresConfirmation !== true) return false;
 
     if (value.artifactType === "change_order_addendum") {
@@ -167,13 +192,26 @@ export function TorchProvider({
       );
     }
 
-    return (
-      value.artifactType === "create_deliverable_confirmation" &&
-      typeof value.projectId === "string" &&
-      typeof value.projectName === "string" &&
-      isRecord(value.draft) &&
-      typeof value.draft.title === "string"
-    );
+    if (value.artifactType === "create_deliverable_confirmation") {
+      return (
+        typeof value.projectId === "string" &&
+        typeof value.projectName === "string" &&
+        isRecord(value.draft) &&
+        typeof value.draft.title === "string"
+      );
+    }
+
+    if (value.artifactType === "draft_invoice_confirmation") {
+      return (
+        typeof value.projectId === "string" &&
+        typeof value.projectName === "string" &&
+        typeof value.milestoneId === "string" &&
+        typeof value.amount === "number" &&
+        isRecord(value.draftInvoice)
+      );
+    }
+
+    return false;
   };
 
   const copyMessage = async (id: string, text: string) => {
@@ -303,9 +341,15 @@ export function TorchProvider({
                   data: result,
                   status: "pending",
                 };
-              } else {
+              } else if (result.artifactType === "create_deliverable_confirmation") {
                 detectedArtifact = {
                   type: "create_deliverable_confirmation",
+                  data: result,
+                  status: "pending",
+                };
+              } else if (result.artifactType === "draft_invoice_confirmation") {
+                detectedArtifact = {
+                  type: "draft_invoice_confirmation",
                   data: result,
                   status: "pending",
                 };
