@@ -28,7 +28,9 @@ Guidelines:
 2. Use your tools whenever asked about workspace data, project health, financials, scope audits, or drafts.
 3. When auditing scope, explicitly cite extracted contract terms and revision limits.
 4. When writing proposals or addenda, use the appropriate drafting tools to output structured artifacts.
-5. If the user mentions a specific project with @ProjectName or asks about a project by name, use the matching project ID when calling tools.`;
+5. If the user mentions a specific project with @ProjectName or asks about a project by name, use the matching project ID when calling tools.
+6. When using webSearch, formulate concise targeted queries. Execute 1 to 2 targeted searches to gather necessary facts, then immediately synthesize the results into a comprehensive answer for the user rather than searching repeatedly.
+7. Always provide a final written response to the user summarizing your findings after running tools.`;
 }
 
 export async function POST(req: Request) {
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
       model: primaryModel,
       system: buildSystemPrompt(user.name || undefined),
       messages,
-      stopWhen: isStepCount(5),
+      stopWhen: isStepCount(10),
       tools,
     });
 

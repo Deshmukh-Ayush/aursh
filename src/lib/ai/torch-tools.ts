@@ -668,7 +668,7 @@ export function createTorchTools(organizationId: string) {
 
     webSearch: tool({
       description:
-        "Searches the web using a licensed search API for up-to-date information, market rates, technical documentation, company lookups, and industry benchmarks.",
+        "Searches the web using a licensed search API for up-to-date information, market rates, technical documentation, company lookups, and industry benchmarks. Use 1-2 targeted queries and then synthesize findings directly into your response.",
       inputSchema: z.object({
         query: z.string().describe("The search query to look up on the web"),
       }),
