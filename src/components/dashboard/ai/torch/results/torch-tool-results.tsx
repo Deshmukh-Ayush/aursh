@@ -6,24 +6,15 @@ import { WorkspaceOverviewResult } from "./workspace-overview-result";
 import { FinancialsResult } from "./financials-result";
 import { ClientDigestResult } from "./client-digest-result";
 import { ScopeAuditResult } from "./scope-audit-result";
+import { InvoiceStatusResult } from "./invoice-status-result";
 
 /**
  * Renders the structured, read-only results of Torch's query-type tools.
  *
- * The four informational query tools each have a purpose-built result component
- * (real tables / summary cards — unchanged) that already renders its own
+ * The informational query tools each have a purpose-built result component
+ * (real tables / summary cards) that already renders its own
  * bordered card UI with humanized enum status text. These render directly as
- * the tool-result body; they don't need beUI's `ToolResult` wrapper because
- * `ToolResult` hardcodes an inner `bg-muted/80` rounded container that would
- * double-frame cards which already carry their own `border bg-background`
- * styling. The reasoning timeline in `torch-reasoning.tsx` (built on beUI
- * `AgentActivity` / `AgentDisclosure`) already provides the per-tool status
- * disclosure and icon; these result cards are the *content* that appears once
- * a query step completes.
- *
- * Only the four informational query tools render here. The two drafting tools
- * (`generateAddendumDraft`, `createDeliverableDraft`) return actionable
- * artifacts handled separately by `torch-artifact.tsx`.
+ * the tool-result body.
  */
 const RESULT_RENDERERS: Record<
   string,
@@ -33,6 +24,7 @@ const RESULT_RENDERERS: Record<
   analyzeFinancials: FinancialsResult,
   generateClientDigest: ClientDigestResult,
   auditProjectScope: ScopeAuditResult,
+  queryInvoiceStatus: InvoiceStatusResult,
 };
 
 export interface TorchToolResultsProps {
