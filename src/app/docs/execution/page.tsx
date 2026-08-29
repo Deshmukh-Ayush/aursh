@@ -242,11 +242,11 @@ export default async function ExecutionDocsPage() {
        │  ├─► Inserts payment row (referenceNote, paymentMethod: "bank_transfer" / "upi")
        │  └─► Updates payment_milestone status to "paid"
        │
-       ▼ (Multi-Currency Conversion Engine: src/lib/currency.ts)
-[USD_TO_INR_RATE = 95.43]
-       │  ├─► USD contract/proposal values converted to INR for organization totals
-       │  ├─► Formats currency dynamically via formatCurrency(value, currency)
-       │  └─► Updates PaymentsRadialChart, DashboardKpiRow, & Analytics Hero Velocity`}</CodeBlock>
+        ▼ (Multi-Currency Conversion Engine: src/lib/currency.ts)
+[Live 24h-Cached FX Rate: getUsdToInrRate()]
+        │  ├─► USD contract/proposal values converted to INR for organization totals
+        │  ├─► Formats currency dynamically via formatCurrency(value, currency, targetCurrency, rate)
+        │  └─► Updates PaymentsRadialChart, DashboardKpiRow, & Analytics Hero Velocity`}</CodeBlock>
         </Section>
 
         {/* ─── FUNNEL 5: TORCH AI AGENT ─── */}
