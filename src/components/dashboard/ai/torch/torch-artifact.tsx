@@ -149,5 +149,77 @@ export function TorchArtifact({ message }: TorchArtifactProps) {
     );
   }
 
+  if (artifact.type === "draft_invoice_confirmation") {
+    const data = artifact.data;
+    const draft = data.draftInvoice as {
+      invoiceNumber?: string;
+      currency?: "USD" | "INR";
+      amount?: number;
+      dueDate?: string;
+      clientSnapshot?: { name?: string; email?: string };
+    };
+    const status = toApprovalStatus(artifact.status);
+    const invoiceNumber = draft?.invoiceNumber || "Draft Invoice";
+    const clientName = draft?.clientSnapshot?.name || "Client";
+    const clientEmail = draft?.clientSnapshot?.email || "";
+
+    return (
+      <motion.div {...appear} className="mt-3">
+        <ApprovalCard
+          title={`Draft Invoice: ${invoiceNumber}`}
+          description={`Milestone: ${data.milestoneTitle} (${data.projectName})`}
+          status={status}
+          approveLabel="Save draft invoice"
+          onApprove={() =>
+            confirmArtifact(message.id, "create_invoice_draft", {
+              projectId: data.projectId,
+              draftInvoice: data.draftInvoice,
+            })
+          }
+          onReject={() => rejectArtifact(message.id)}
+          result={
+            status === "approved"
+              ? "Draft invoice saved to workspace"
+              : "Invoice draft discarded"
+          }
+          className="bg-background border border-border/60 shadow-xs"
+        >
+          {/* Hierarchy: Amount is prominent */}
+          <div className="overflow-hidden rounded-lg border border-border/40">
+            <div className="flex items-baseline justify-between gap-3 bg-muted/40 px-3 py-2.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-[13px] font-medium text-muted-foreground">
+                  Invoice amount
+                </span>
+              </div>
+              <span className="shrink-0 font-mono text-lg font-bold tabular-nums text-foreground">
+                {data.amount}{" "}
+                <span className="text-[13px] font-semibold text-muted-foreground">
+                  {data.currency || "USD"}
+                </span>
+              </span>
+            </div>
+
+            <div className="space-y-1 px-3 py-2 text-[13px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Client</span>
+                <span className="text-foreground font-medium truncate max-w-[200px]">
+                  {clientName} {clientEmail ? `(${clientEmail})` : ""}
+                </span>
+              </div>
+              {draft.dueDate && (
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Due Date</span>
+                  <span className="font-mono text-foreground">{draft.dueDate}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </ApprovalCard>
+      </motion.div>
+    );
+  }
+
   return null;
 }
