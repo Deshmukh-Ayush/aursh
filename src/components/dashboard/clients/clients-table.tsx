@@ -5,6 +5,7 @@ import { eq, and, inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { ClientsTableClient, ClientTableItem } from "./clients-table-client"
+import { convertToINR, getUsdToInrRate } from "@/lib/currency"
 
 export async function ClientsTable() {
   const reqHeaders = await headers()
@@ -19,8 +20,8 @@ export async function ClientsTable() {
 
   const projectIds = orgProjects.map((p) => p.id)
 
-  // Concurrent queries for client members, invitations, proposals (Promise.all)
-  const [clientMembers, pendingInvites, proposalsList] = await Promise.all([
+  // Concurrent queries for client members, invitations, proposals, and live FX rate (Promise.all)
+  const [clientMembers, pendingInvites, proposalsList, usdToInrRate] = await Promise.all([
     projectIds.length > 0
       ? db
           .select({
@@ -45,11 +46,13 @@ export async function ClientsTable() {
           .select({
             projectId: proposal.projectId,
             price: proposal.price,
+            currency: proposal.currency,
             status: proposal.status,
           })
           .from(proposal)
           .where(inArray(proposal.projectId, projectIds))
       : [],
+    getUsdToInrRate(),
   ])
 
   // Build client items
@@ -61,7 +64,7 @@ export async function ClientsTable() {
     const projectProposals = proposalsList.filter((p) => p.projectId === m.projectId)
     const acceptedVal = projectProposals
       .filter((p) => p.status === "accepted")
-      .reduce((sum, p) => sum + p.price, 0)
+      .reduce((sum, p) => sum + convertToINR(p.price, p.currency, usdToInrRate), 0)
 
     if (existing) {
       existing.activeProjectsCount += 1
