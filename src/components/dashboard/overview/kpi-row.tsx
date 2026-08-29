@@ -6,7 +6,7 @@ import { proposal, activityLog } from "@/db/schema"
 import { getAccessibleProjectIds } from "@/lib/project-queries"
 import { DashboardKpiRowUI } from "./kpi-row-client"
 import { subDays, isSameDay } from "date-fns"
-import { convertToINR } from "@/lib/currency"
+import { convertToINR, getUsdToInrRate } from "@/lib/currency"
 
 export async function DashboardKpiRow() {
   const reqHeaders = await headers()
@@ -31,11 +31,11 @@ export async function DashboardKpiRow() {
     )
   }
 
-  // Execute queries concurrently (Promise.all)
+  // Execute queries and live FX rate fetch concurrently (Promise.all)
   const today = new Date()
   const sevenDaysAgo = subDays(today, 6)
 
-  const [proposalsList, recentActivity] = await Promise.all([
+  const [proposalsList, recentActivity, usdToInrRate] = await Promise.all([
     db
       .select({
         price: proposal.price,
@@ -48,12 +48,13 @@ export async function DashboardKpiRow() {
       .select({ createdAt: activityLog.createdAt })
       .from(activityLog)
       .where(inArray(activityLog.projectId, projectIds)),
+    getUsdToInrRate(),
   ])
 
-  // Convert USD proposals to INR at 95.43 rate for accurate totals
+  // Convert USD proposals to INR at live exchange rate for accurate totals
   const totalIncome = proposalsList
     .filter((p) => p.status === "accepted")
-    .reduce((sum, p) => sum + convertToINR(p.price, p.currency), 0)
+    .reduce((sum, p) => sum + convertToINR(p.price, p.currency, usdToInrRate), 0)
 
   // Generate 7-day trend micro sparklines
   const days = Array.from({ length: 7 }, (_, i) => subDays(today, 6 - i))
