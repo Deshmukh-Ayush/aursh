@@ -814,3 +814,49 @@ export const invoiceDefaultsRelations = relations(invoiceDefaults, ({ one }) => 
   organization: one(organization, { fields: [invoiceDefaults.organizationId], references: [organization.id] }),
 }));
 
+export const organizationCreditPeriod = pgTable("organization_credit_period", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  aiCreditsAllotted: integer("ai_credits_allotted").notNull().default(0),
+  aiCreditsUsed: integer("ai_credits_used").notNull().default(0),
+  searchCreditsAllotted: integer("search_credits_allotted").notNull().default(0),
+  searchCreditsUsed: integer("search_credits_used").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  index("org_credit_period_org_idx").on(table.organizationId),
+  index("org_credit_period_dates_idx").on(table.periodStart, table.periodEnd),
+]);
+
+export const usageEvent = pgTable("usage_event", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .references(() => user.id, { onDelete: "set null" }),
+  type: text("type", { enum: ["ai_tool_call", "web_search"] }).notNull(),
+  toolName: text("tool_name").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("usage_event_org_idx").on(table.organizationId),
+  index("usage_event_created_idx").on(table.createdAt),
+]);
+
+export const organizationCreditPeriodRelations = relations(organizationCreditPeriod, ({ one }) => ({
+  organization: one(organization, { fields: [organizationCreditPeriod.organizationId], references: [organization.id] }),
+}));
+
+export const usageEventRelations = relations(usageEvent, ({ one }) => ({
+  organization: one(organization, { fields: [usageEvent.organizationId], references: [organization.id] }),
+  user: one(user, { fields: [usageEvent.userId], references: [user.id] }),
+}));
+
