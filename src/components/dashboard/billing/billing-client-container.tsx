@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { PlanConfig, PlanTier } from "@/config/billing";
+import { CreditUsageCard } from "@/components/dashboard/billing/credit-usage-card";
 
 interface BillingClientContainerProps {
   organization: {
@@ -68,6 +69,9 @@ export function BillingClientContainer({ organization, config, userEmail }: Bill
 
   return (
     <div className="space-y-8">
+      {/* Credit Usage Summary Card */}
+      <CreditUsageCard orgId={organization.id} />
+
       {/* Current Plan Overview */}
       <Card>
         <CardHeader>
