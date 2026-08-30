@@ -9,6 +9,7 @@ import {
   user as userTable,
   contractScopeTerm,
   paymentMilestone,
+  payment,
 } from "@/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -503,14 +504,59 @@ export async function PATCH(req: NextRequest) {
 
     // Action: Mark Paid
     if (action === "mark_paid") {
+      if (!canManageProject(access.role)) {
+        return NextResponse.json({ error: "Forbidden: Only agency managers can record invoice payments." }, { status: 403 });
+      }
+
       await db.update(invoice).set({ status: "paid", paidAt: now, updatedAt: now }).where(eq(invoice.id, invoiceId));
 
-      // Synchronize linked milestone if present
+      // Synchronize linked milestone and record auditable payment row
       if (inv.milestoneId) {
-        await db
-          .update(paymentMilestone)
-          .set({ status: "paid", updatedAt: now })
-          .where(and(eq(paymentMilestone.id, inv.milestoneId), eq(paymentMilestone.status, "upcoming")));
+        const [milestone] = await db
+          .select()
+          .from(paymentMilestone)
+          .where(eq(paymentMilestone.id, inv.milestoneId));
+
+        if (milestone) {
+          if (milestone.status !== "paid") {
+            await db
+              .update(paymentMilestone)
+              .set({ status: "paid", updatedAt: now })
+              .where(eq(paymentMilestone.id, inv.milestoneId));
+          }
+
+          const paymentMethod = typeof payload.paymentMethod === "string" ? payload.paymentMethod : "bank_transfer";
+          const referenceNote = typeof payload.referenceNote === "string"
+            ? payload.referenceNote
+            : `Paid via Invoice ${inv.invoiceNumber}`;
+
+          const newPaymentId = crypto.randomUUID();
+          await db.insert(payment).values({
+            id: newPaymentId,
+            milestoneId: milestone.id,
+            projectId: inv.projectId,
+            amount: inv.total,
+            currency: inv.currency,
+            paymentMethod,
+            referenceNote,
+            status: "succeeded",
+            paidAt: now,
+          });
+
+          await logActivity({
+            projectId: inv.projectId,
+            userId: session.user.id,
+            type: "payment_completed",
+            metadata: {
+              milestoneTitle: milestone.title,
+              amount: inv.total,
+              currency: inv.currency,
+              paymentMethod,
+              referenceNote,
+              invoiceNumber: inv.invoiceNumber,
+            },
+          });
+        }
       }
 
       await logActivity({
@@ -520,6 +566,7 @@ export async function PATCH(req: NextRequest) {
         metadata: { invoiceNumber: inv.invoiceNumber, amount: inv.total, currency: inv.currency },
       });
 
+      revalidatePath(`/projects/${inv.projectId}`);
       revalidatePath(`/projects/${inv.projectId}/payments`);
       return NextResponse.json({ success: true });
     }
