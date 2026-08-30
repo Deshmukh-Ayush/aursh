@@ -18,10 +18,19 @@ import { eq, inArray, desc, and } from "drizzle-orm";
 import { evaluateScopeStatus, getProjectRevisionCount } from "./scope-guardian";
 import { generateChangeOrderAddendum } from "./addendum-generator";
 import { getContractScopeFromDb } from "./contract-parser";
+import { recordCreditUsage, checkCreditAllowance } from "./credits";
+import { checkSearchCircuitBreaker } from "./search-circuit-breaker";
 import crypto from "crypto";
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
+
+const toIsoDate = (d: unknown): string | null => {
+  if (d == null) return null;
+  if (d instanceof Date) return d.toISOString();
+  if (typeof d === "string") return d;
+  return String(d);
+};
 
 /**
  * Shared Tenant Resolver
@@ -45,13 +54,33 @@ async function resolveOrgProject(
  * Exposes workspace intelligence, scope guardian audits, change order addenda,
  * proposal estimation, and financial analytics directly to Torch agent.
  */
-export function createTorchTools(organizationId: string) {
+export function createTorchTools(organizationId: string, userId?: string | null) {
+  const trackUsage = async (toolName: string, metadata?: Record<string, unknown>) => {
+    try {
+      await recordCreditUsage({
+        organizationId,
+        userId,
+        type: "ai_tool_call",
+        toolName,
+        metadata,
+      });
+    } catch (err) {
+      console.error(`[Credit Tracking Error] ${toolName}:`, err);
+    }
+  };
+
   return {
     queryWorkspaceOverview: tool({
       description:
         "Fetches a high-level summary of active projects, deliverables in review, proposals, and contracts in the workspace.",
       inputSchema: z.object({}),
       execute: async () => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) {
+          return { error: allowance.reason || "AI credit limit reached." };
+        }
+        await trackUsage("queryWorkspaceOverview");
+
         const orgProjects = await db
           .select({
             id: project.id,
@@ -147,6 +176,10 @@ export function createTorchTools(organizationId: string) {
           .describe("Optional project name for fuzzy matching"),
       }),
       execute: async ({ projectId, projectName }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("auditProjectScope", { projectId, projectName });
+
         let targetId = projectId;
         let projName: string | undefined;
 
@@ -228,6 +261,10 @@ export function createTorchTools(organizationId: string) {
         reason: z.string().describe("The reason for the change order or extra revisions"),
       }),
       execute: async ({ projectId, reason }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("generateAddendumDraft", { projectId });
+
         const resolved = await resolveOrgProject(projectId, organizationId);
         if (!resolved) {
           return {
@@ -267,6 +304,10 @@ export function createTorchTools(organizationId: string) {
         projectId: z.string().nullish().describe("Optional project ID to filter financials"),
       }),
       execute: async ({ projectId }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("analyzeFinancials", { projectId });
+
         let projectIds: string[];
 
         if (projectId && projectId.trim().length > 0) {
@@ -322,7 +363,7 @@ export function createTorchTools(organizationId: string) {
             currency: m.currency,
             status: m.status,
             triggerType: m.triggerType,
-            dueDate: m.dueDate,
+            dueDate: toIsoDate(m.dueDate),
           })),
         };
       },
@@ -336,6 +377,10 @@ export function createTorchTools(organizationId: string) {
         projectName: z.string().nullish().describe("Optional project name"),
       }),
       execute: async ({ projectId, projectName }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("generateClientDigest", { projectId, projectName });
+
         let targetId = projectId;
         let projName: string | undefined;
 
@@ -394,7 +439,7 @@ export function createTorchTools(organizationId: string) {
           recentActivityEvents: recentLogs.map((l) => ({
             type: l.log.type,
             actor: l.user?.name || "System",
-            createdAt: l.log.createdAt,
+            createdAt: toIsoDate(l.log.createdAt) || new Date().toISOString(),
           })),
         };
       },
@@ -410,6 +455,10 @@ export function createTorchTools(organizationId: string) {
         dueDate: z.string().nullish().describe("ISO date string for due date"),
       }),
       execute: async ({ projectId, title, description, dueDate }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("createDeliverableDraft", { projectId, title });
+
         const resolved = await resolveOrgProject(projectId, organizationId);
         if (!resolved) return { error: "Project not found in current organization." };
 
@@ -431,6 +480,10 @@ export function createTorchTools(organizationId: string) {
         projectName: z.string().nullish().describe("Optional project name for fuzzy matching"),
       }),
       execute: async ({ projectId, projectName }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("queryInvoiceStatus", { projectId, projectName });
+
         let projectIds: string[];
 
         if (projectId) {
@@ -565,8 +618,8 @@ export function createTorchTools(organizationId: string) {
             amount: inv.total,
             currency: inv.currency,
             status: isOverdue && inv.status !== "paid" && inv.status !== "void" ? "overdue" : inv.status,
-            dueDate: inv.dueDate,
-            invoiceDate: inv.invoiceDate,
+            dueDate: toIsoDate(inv.dueDate) || "",
+            invoiceDate: toIsoDate(inv.invoiceDate) || "",
             isOverdue,
             overdueDays,
           };
@@ -600,6 +653,10 @@ export function createTorchTools(organizationId: string) {
         notes: z.string().nullish().describe("Optional custom invoice notes or memo"),
       }),
       execute: async ({ projectId, milestoneId, notes }) => {
+        const allowance = await checkCreditAllowance(organizationId, "ai");
+        if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
+        await trackUsage("draftInvoiceForMilestone", { projectId, milestoneId });
+
         // 1. Verify project exists in org
         const resolved = await resolveOrgProject(projectId, organizationId);
         if (!resolved) {
@@ -725,6 +782,41 @@ export function createTorchTools(organizationId: string) {
         query: z.string().describe("The search query to look up on the web"),
       }),
       execute: async ({ query }) => {
+        // 0a. Platform Technical Circuit Breaker (Always enforced)
+        const breaker = checkSearchCircuitBreaker(organizationId);
+        if (!breaker.allowed) {
+          return {
+            query,
+            source: "circuit_breaker",
+            results: [],
+            error: "Platform hourly search rate limit reached for this workspace. Please try again later.",
+          };
+        }
+
+        // 0b. Soft-cap / Credit Allowance Check
+        const allowance = await checkCreditAllowance(organizationId, "search");
+        if (!allowance.allowed) {
+          return {
+            query,
+            source: "limit_exceeded",
+            results: [],
+            error: allowance.reason || "Web search credit limit reached for current billing period.",
+          };
+        }
+
+        // Record web search consumption event
+        try {
+          await recordCreditUsage({
+            organizationId,
+            userId,
+            type: "web_search",
+            toolName: "webSearch",
+            metadata: { query },
+          });
+        } catch (err) {
+          console.error("[Credit Tracking Error] webSearch:", err);
+        }
+
         const firecrawlKey = process.env.FIRECRAWL_API_KEY;
         const serperKey = process.env.SERPER_API_KEY;
         const braveKey = process.env.BRAVE_SEARCH_API_KEY;

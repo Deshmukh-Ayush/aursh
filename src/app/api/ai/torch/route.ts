@@ -29,8 +29,9 @@ Guidelines:
 3. When auditing scope, explicitly cite extracted contract terms and revision limits.
 4. When writing proposals or addenda, use the appropriate drafting tools to output structured artifacts.
 5. If the user mentions a specific project with @ProjectName or asks about a project by name, use the matching project ID when calling tools.
-6. When using webSearch, formulate concise targeted queries. Execute 1 to 2 targeted searches to gather necessary facts, then immediately synthesize the results into a comprehensive answer for the user rather than searching repeatedly.
-7. Always provide a final written response to the user summarizing your findings after running tools.`;
+6. When answering requests that require both external web research and workspace project data/audits (e.g. researching a company/founder AND reviewing its workspace deliverables/scope), always execute the webSearch tool first to gather live facts, and then call workspace tools in subsequent steps.
+7. When using webSearch, formulate concise targeted queries. Execute 1 to 2 targeted searches to gather necessary facts, then immediately synthesize the results into a comprehensive answer for the user rather than searching repeatedly.
+8. Always provide a final written response to the user summarizing your findings after running tools.`;
 }
 
 export async function POST(req: Request) {
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
 
     const { messages } = await req.json();
 
-    const tools = createTorchTools(organizationId);
+    const tools = createTorchTools(organizationId, user.id);
 
     const result = streamText({
       model: primaryModel,
