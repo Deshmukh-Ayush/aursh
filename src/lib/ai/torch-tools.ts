@@ -24,6 +24,22 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
 
 /**
+ * Shared Tenant Resolver
+ * Validates that a project exists and strictly belongs to the caller's organization.
+ */
+async function resolveOrgProject(
+  projectId: string,
+  organizationId: string
+): Promise<{ id: string; name: string } | null> {
+  if (!projectId || !organizationId) return null;
+  const [proj] = await db
+    .select({ id: project.id, name: project.name })
+    .from(project)
+    .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
+  return proj || null;
+}
+
+/**
  * Torch Tool Registry
  *
  * Exposes workspace intelligence, scope guardian audits, change order addenda,
@@ -132,8 +148,16 @@ export function createTorchTools(organizationId: string) {
       }),
       execute: async ({ projectId, projectName }) => {
         let targetId = projectId;
+        let projName: string | undefined;
 
-        if (!targetId && projectName) {
+        if (targetId) {
+          const resolved = await resolveOrgProject(targetId, organizationId);
+          if (!resolved) {
+            return { error: "Project not found in current organization." };
+          }
+          targetId = resolved.id;
+          projName = resolved.name;
+        } else if (projectName) {
           const orgProjects = await db
             .select({ id: project.id, name: project.name })
             .from(project)
@@ -141,29 +165,22 @@ export function createTorchTools(organizationId: string) {
           const match = orgProjects.find((p) =>
             p.name.toLowerCase().includes(projectName.toLowerCase()),
           );
-          targetId = match?.id;
-        }
-
-        if (!targetId) {
+          if (!match) {
+            return { error: `Project "${projectName}" not found in current organization.` };
+          }
+          targetId = match.id;
+          projName = match.name;
+        } else {
           const [firstProj] = await db
-            .select({ id: project.id })
+            .select({ id: project.id, name: project.name })
             .from(project)
             .where(eq(project.organizationId, organizationId))
             .limit(1);
-          targetId = firstProj?.id;
-        }
-
-        if (!targetId) {
-          return { error: `No projects found in current workspace.` };
-        }
-
-        const [proj] = await db
-          .select()
-          .from(project)
-          .where(and(eq(project.id, targetId), eq(project.organizationId, organizationId)));
-
-        if (!proj) {
-          return { error: `Project not found in current organization.` };
+          if (!firstProj) {
+            return { error: `No projects found in current workspace.` };
+          }
+          targetId = firstProj.id;
+          projName = firstProj.name;
         }
 
         const [activeContract] = await db
@@ -190,7 +207,7 @@ export function createTorchTools(organizationId: string) {
 
         return {
           projectId: targetId,
-          projectName: proj.name,
+          projectName: projName || "Project",
           hasSignedContract: !!activeContract,
           contractFileName: activeContract?.fileName || null,
           contractId: activeContract?.id || null,
@@ -211,10 +228,17 @@ export function createTorchTools(organizationId: string) {
         reason: z.string().describe("The reason for the change order or extra revisions"),
       }),
       execute: async ({ projectId, reason }) => {
+        const resolved = await resolveOrgProject(projectId, organizationId);
+        if (!resolved) {
+          return {
+            error: "Project not found in current organization.",
+          };
+        }
+
         const [activeContract] = await db
           .select()
           .from(contract)
-          .where(eq(contract.projectId, projectId))
+          .where(eq(contract.projectId, resolved.id))
           .orderBy(desc(contract.createdAt))
           .limit(1);
 
@@ -227,7 +251,7 @@ export function createTorchTools(organizationId: string) {
         const addendum = await generateChangeOrderAddendum(activeContract.id, reason);
 
         return {
-          projectId,
+          projectId: resolved.id,
           contractId: activeContract.id,
           artifactType: "change_order_addendum",
           addendum,
@@ -243,14 +267,28 @@ export function createTorchTools(organizationId: string) {
         projectId: z.string().nullish().describe("Optional project ID to filter financials"),
       }),
       execute: async ({ projectId }) => {
-        const orgProjects = await db
-          .select({ id: project.id, name: project.name })
-          .from(project)
-          .where(eq(project.organizationId, organizationId));
+        let projectIds: string[];
 
-        const projectIds = projectId && projectId.trim().length > 0
-          ? [projectId]
-          : orgProjects.map((p) => p.id);
+        if (projectId && projectId.trim().length > 0) {
+          const resolved = await resolveOrgProject(projectId.trim(), organizationId);
+          if (!resolved) {
+            return {
+              error: "Project not found in current organization.",
+              collected: 0,
+              due: 0,
+              overdue: 0,
+              upcoming: 0,
+              milestones: [],
+            };
+          }
+          projectIds = [resolved.id];
+        } else {
+          const orgProjects = await db
+            .select({ id: project.id, name: project.name })
+            .from(project)
+            .where(eq(project.organizationId, organizationId));
+          projectIds = orgProjects.map((p) => p.id);
+        }
 
         if (projectIds.length === 0) {
           return { collected: 0, due: 0, overdue: 0, upcoming: 0, milestones: [] };
@@ -299,8 +337,14 @@ export function createTorchTools(organizationId: string) {
       }),
       execute: async ({ projectId, projectName }) => {
         let targetId = projectId;
+        let projName: string | undefined;
 
-        if (!targetId && projectName) {
+        if (targetId) {
+          const resolved = await resolveOrgProject(targetId, organizationId);
+          if (!resolved) return { error: "Project not found in current organization." };
+          targetId = resolved.id;
+          projName = resolved.name;
+        } else if (projectName) {
           const orgProjects = await db
             .select({ id: project.id, name: project.name })
             .from(project)
@@ -308,26 +352,19 @@ export function createTorchTools(organizationId: string) {
           const match = orgProjects.find((p) =>
             p.name.toLowerCase().includes(projectName.toLowerCase()),
           );
-          targetId = match?.id;
-        }
-
-        if (!targetId) {
+          if (!match) return { error: `Project "${projectName}" not found in current organization.` };
+          targetId = match.id;
+          projName = match.name;
+        } else {
           const [firstProj] = await db
-            .select({ id: project.id })
+            .select({ id: project.id, name: project.name })
             .from(project)
             .where(eq(project.organizationId, organizationId))
             .limit(1);
-          targetId = firstProj?.id;
+          if (!firstProj) return { error: "No projects found in current workspace." };
+          targetId = firstProj.id;
+          projName = firstProj.name;
         }
-
-        if (!targetId) return { error: "No projects found in current workspace." };
-
-        const [proj] = await db
-          .select()
-          .from(project)
-          .where(and(eq(project.id, targetId), eq(project.organizationId, organizationId)));
-
-        if (!proj) return { error: "Project not found." };
 
         const [deliverablesList, recentLogs] = await Promise.all([
           db.select().from(deliverable).where(eq(deliverable.projectId, targetId)),
@@ -345,7 +382,7 @@ export function createTorchTools(organizationId: string) {
         const pending = deliverablesList.filter((d) => d.status === "pending");
 
         return {
-          projectName: proj.name,
+          projectName: projName || "Project",
           deliverablesSummary: {
             approvedCount: approved.length,
             inReviewCount: inReview.length,
@@ -373,17 +410,13 @@ export function createTorchTools(organizationId: string) {
         dueDate: z.string().nullish().describe("ISO date string for due date"),
       }),
       execute: async ({ projectId, title, description, dueDate }) => {
-        const [proj] = await db
-          .select({ name: project.name })
-          .from(project)
-          .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
-
-        if (!proj) return { error: "Project not found." };
+        const resolved = await resolveOrgProject(projectId, organizationId);
+        if (!resolved) return { error: "Project not found in current organization." };
 
         return {
           artifactType: "create_deliverable_confirmation",
-          projectId,
-          projectName: proj.name,
+          projectId: resolved.id,
+          projectName: resolved.name,
           draft: { title, description, dueDate },
           requiresConfirmation: true,
         };
@@ -398,9 +431,23 @@ export function createTorchTools(organizationId: string) {
         projectName: z.string().nullish().describe("Optional project name for fuzzy matching"),
       }),
       execute: async ({ projectId, projectName }) => {
-        let targetId = projectId;
+        let projectIds: string[];
 
-        if (!targetId && projectName) {
+        if (projectId) {
+          const resolved = await resolveOrgProject(projectId, organizationId);
+          if (!resolved) {
+            return {
+              error: "Project not found in current organization.",
+              totalInvoices: 0,
+              summary: { draft: 0, sent: 0, viewed: 0, paid: 0, overdue: 0, void: 0 },
+              totalOutstanding: 0,
+              totalPaid: 0,
+              currency: "USD",
+              invoices: [],
+            };
+          }
+          projectIds = [resolved.id];
+        } else if (projectName) {
           const orgProjects = await db
             .select({ id: project.id, name: project.name })
             .from(project)
@@ -408,17 +455,26 @@ export function createTorchTools(organizationId: string) {
           const match = orgProjects.find((p) =>
             p.name.toLowerCase().includes(projectName.toLowerCase())
           );
-          targetId = match?.id;
+          if (!match) {
+            return {
+              error: `Project "${projectName}" not found in current organization.`,
+              totalInvoices: 0,
+              summary: { draft: 0, sent: 0, viewed: 0, paid: 0, overdue: 0, void: 0 },
+              totalOutstanding: 0,
+              totalPaid: 0,
+              currency: "USD",
+              invoices: [],
+            };
+          }
+          projectIds = [match.id];
+        } else {
+          projectIds = (
+            await db
+              .select({ id: project.id })
+              .from(project)
+              .where(eq(project.organizationId, organizationId))
+          ).map((p) => p.id);
         }
-
-        const projectIds = targetId
-          ? [targetId]
-          : (
-              await db
-                .select({ id: project.id })
-                .from(project)
-                .where(eq(project.organizationId, organizationId))
-            ).map((p) => p.id);
 
         if (projectIds.length === 0) {
           return {
@@ -544,13 +600,9 @@ export function createTorchTools(organizationId: string) {
         notes: z.string().nullish().describe("Optional custom invoice notes or memo"),
       }),
       execute: async ({ projectId, milestoneId, notes }) => {
-        // 1. Verify project exists
-        const [proj] = await db
-          .select()
-          .from(project)
-          .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
-
-        if (!proj) {
+        // 1. Verify project exists in org
+        const resolved = await resolveOrgProject(projectId, organizationId);
+        if (!resolved) {
           return { error: "Project not found in your workspace." };
         }
 
@@ -654,8 +706,8 @@ export function createTorchTools(organizationId: string) {
 
         return {
           artifactType: "draft_invoice_confirmation",
-          projectId,
-          projectName: proj.name,
+          projectId: resolved.id,
+          projectName: resolved.name,
           milestoneId: milestoneRow.id,
           milestoneTitle: milestoneRow.title,
           amount: exactAmount,
