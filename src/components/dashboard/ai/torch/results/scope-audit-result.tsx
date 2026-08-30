@@ -127,18 +127,136 @@ export function ScopeAuditResult({ result }: { result: unknown }) {
       )}
 
       {terms && Object.keys(terms).length > 0 && (
-        <div className="border-t border-border/60 px-4 py-2.5">
-          <div className="mb-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="border-t border-border/60 px-4 py-3 space-y-3">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
             Extracted contract terms
           </div>
-          <dl className="space-y-1">
-            {Object.entries(terms).slice(0, 6).map(([k, v]) => (
-              <div key={k} className="flex gap-2 text-[13px]">
-                <dt className="shrink-0 text-muted-foreground">{humanizeKey(k)}:</dt>
-                <dd className="text-foreground">{formatTerm(v)}</dd>
+          <div className="space-y-3">
+            {/* Scope Items */}
+            {Array.isArray(terms.scopeItems) && terms.scopeItems.length > 0 && (
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Scope Items ({terms.scopeItems.length})
+                </div>
+                <div className="space-y-1.5">
+                  {terms.scopeItems.filter(isRecord).map((item, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-[13px]"
+                    >
+                      <div className="font-medium text-foreground">
+                        {typeof item.title === "string" ? item.title : `Item ${i + 1}`}
+                      </div>
+                      {typeof item.description === "string" && item.description.trim() && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </dl>
+            )}
+
+            {/* Exclusions */}
+            {Array.isArray(terms.exclusions) && terms.exclusions.length > 0 && (
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Exclusions ({terms.exclusions.length})
+                </div>
+                <div className="space-y-1.5">
+                  {terms.exclusions.filter(isRecord).map((item, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[13px]"
+                    >
+                      <div className="font-medium text-amber-700 dark:text-amber-300">
+                        {typeof item.title === "string" ? item.title : `Exclusion ${i + 1}`}
+                      </div>
+                      {typeof item.description === "string" && item.description.trim() && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Revision Limits */}
+            {terms.revisionLimits != null && (
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5">
+                  Revision Limits
+                </div>
+                <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-[13px]">
+                  {isRecord(terms.revisionLimits) ? (
+                    <>
+                      <div className="font-medium text-foreground">
+                        Max revisions:{" "}
+                        {typeof terms.revisionLimits.maxRevisions === "number" ||
+                        typeof terms.revisionLimits.maxRevisions === "string"
+                          ? String(terms.revisionLimits.maxRevisions)
+                          : "Defined in agreement"}
+                      </div>
+                      {typeof terms.revisionLimits.description === "string" && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {terms.revisionLimits.description}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="font-medium text-foreground">
+                      {String(terms.revisionLimits)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Terms */}
+            {Array.isArray(terms.paymentTerms) && terms.paymentTerms.length > 0 && (
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  Payment Terms ({terms.paymentTerms.length})
+                </div>
+                <div className="space-y-1.5">
+                  {terms.paymentTerms.filter(isRecord).map((item, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-[13px]"
+                    >
+                      <div className="font-medium text-foreground">
+                        {typeof item.title === "string" ? item.title : `Term ${i + 1}`}
+                      </div>
+                      {typeof item.description === "string" && item.description.trim() && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom or Unrecognized Terms */}
+            {Object.entries(terms)
+              .filter(
+                ([k]) =>
+                  !["scopeItems", "exclusions", "revisionLimits", "paymentTerms"].includes(k)
+              )
+              .map(([k, v]) => (
+                <div key={k} className="text-[13px] rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                  <span className="font-medium text-foreground">{humanizeKey(k)}: </span>
+                  <span className="text-muted-foreground">{formatTerm(v)}</span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </motion.div>
@@ -179,12 +297,23 @@ function formatTerm(v: unknown): string {
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
     return String(v);
   }
-  if (Array.isArray(v)) {
-    return v.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(", ");
+  if (isRecord(v)) {
+    if (typeof v.title === "string" && typeof v.description === "string") {
+      return `${v.title}: ${v.description}`;
+    }
+    if (typeof v.title === "string") return v.title;
+    if (typeof v.description === "string") return v.description;
+    return Object.entries(v)
+      .map(([subK, subV]) => `${humanizeKey(subK)}: ${formatTerm(subV)}`)
+      .join("; ");
   }
-  return JSON.stringify(v);
+  if (Array.isArray(v)) {
+    return v.map(formatTerm).join(", ");
+  }
+  return String(v);
 }
 
 function toNum(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
+
