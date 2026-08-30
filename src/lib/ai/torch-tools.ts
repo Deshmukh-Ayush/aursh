@@ -777,9 +777,9 @@ export function createTorchTools(organizationId: string, userId?: string | null)
 
     webSearch: tool({
       description:
-        "Searches the web using a licensed search API for up-to-date information, market rates, technical documentation, company lookups, and industry benchmarks. Use 1-2 targeted queries and then synthesize findings directly into your response.",
+        "Searches the public web using a licensed search API for external internet information, market rate benchmarks, technical documentation, and public company background. CRITICAL: Do NOT use this tool for internal workspace projects, deliverables, contracts, scope audits, invoices, or @ProjectName references.",
       inputSchema: z.object({
-        query: z.string().describe("The search query to look up on the web"),
+        query: z.string().describe("The external search query to look up on the web"),
       }),
       execute: async ({ query }) => {
         // 0a. Platform Technical Circuit Breaker (Always enforced)

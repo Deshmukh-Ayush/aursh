@@ -181,6 +181,8 @@ export function TorchMessages() {
                 <TorchReasoning toolCalls={msg.toolCalls} />
               )}
 
+              <TorchToolResults toolCalls={msg.toolCalls} />
+
               {msg.content && (
                 <MessageBubble variant="ghost" align="start">
                   <MessageBubbleContent className="text-base leading-7 text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_table]:my-2 [&_th]:px-2 [&_td]:px-2 [&_pre]:my-2 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm">
@@ -188,8 +190,6 @@ export function TorchMessages() {
                   </MessageBubbleContent>
                 </MessageBubble>
               )}
-
-              <TorchToolResults toolCalls={msg.toolCalls} />
 
               {msg.artifact && <TorchArtifact message={msg} />}
 
