@@ -177,40 +177,37 @@ export default async function DocsPage() {
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1.5 list-disc">
             <li><strong className="text-foreground font-medium">Compound Architecture (<Code>&lt;Torch.Root&gt;</Code>):</strong> Coordinates <Code>&lt;Torch.Messages&gt;</Code>, <Code>&lt;Torch.Input&gt;</Code>, and <Code>&lt;Torch.Artifact&gt;</Code> through a unified <Code>TorchProvider</Code> context parsing JSON event streams.</li>
-            <li><strong className="text-foreground font-medium">Streaming Agent Route (<Code>/api/ai/torch</Code>):</strong> Executes multi-step tool calling loops using Groq (<Code>openai/gpt-oss-120b</Code>) with automated fallback to <Code>openai/gpt-oss-20b</Code>. Streams partial results over SSE with live tool status.</li>
+            <li><strong className="text-foreground font-medium">Streaming Agent Route (<Code>/api/ai/torch</Code>):</strong> Executes multi-step tool calling loops using Groq (<Code>openai/gpt-oss-120b</Code>) with automated fallback to <Code>openai/gpt-oss-20b</Code>. Streams partial results over SSE with live tool status and date-sanitized ISO payloads.</li>
             <li><strong className="text-foreground font-medium">Centralized Tool Registry (<Code>src/lib/ai/torch-tools.ts</Code>):</strong>
               <ul className="pl-5 pt-1 space-y-1 list-circle text-xs">
-                <li><Code>getWorkspaceOverview</Code> — Fetches active projects, pending deliverables, and financial totals.</li>
-                <li><Code>auditProjectScope</Code> — Inspects SOW revision limits against deliverable counts.</li>
-                <li><Code>getFinancialSummary</Code> — Aggregates collected vs outstanding milestone cashflow.</li>
-                <li><Code>generateClientDigest</Code> — Compiles weekly progress digest per project.</li>
+                <li><Code>queryWorkspaceOverview</Code> — Fetches active projects, pending deliverables, and financial totals.</li>
+                <li><Code>auditProjectScope</Code> — Inspects SOW revision limits against deliverable counts and renders structured contract terms.</li>
+                <li><Code>analyzeFinancials</Code> — Aggregates collected vs outstanding milestone cashflows.</li>
+                <li><Code>generateClientDigest</Code> — Compiles weekly progress digest per project with deliverable status breakdown.</li>
+                <li><Code>queryInvoiceStatus</Code> — Queries invoice counts by status, outstanding balance, and overdue days.</li>
+                <li><Code>draftInvoiceForMilestone</Code> — Drafts compliant invoices for verified milestones requiring human confirmation.</li>
                 <li><Code>generateAddendumDraft</Code> — Generates Change Order SOW addendum with itemized price delta.</li>
                 <li><Code>createDeliverableDraft</Code> — Prepares actionable deliverable submission drafts.</li>
+                <li><Code>webSearch</Code> — Licensed external web search (Firecrawl /v2/search with fallback chain) for market rates and benchmarks. Strictly barred from querying internal workspace projects.</li>
               </ul>
             </li>
+            <li><strong className="text-foreground font-medium">Structured Result Cards:</strong> Dedicated visual components for informational tools (<Code>ScopeAuditResult</Code>, <Code>ClientDigestResult</Code>, <Code>InvoiceStatusResult</Code>, <Code>FinancialsResult</Code>, <Code>WorkspaceOverviewResult</Code>) rendered before synthesized text summaries.</li>
             <li><strong className="text-foreground font-medium">Human-in-the-Loop Actions (<Code>ApprovalCard</Code>):</strong> Draft-creating tools return interactive proposal and deliverable cards. Agency owners can approve or reject with one click, dispatching to <Code>/api/ai/torch/confirm</Code> to execute DB mutations safely.</li>
-            <li><strong className="text-foreground font-medium">Timeline &amp; Motion Details:</strong>
-              <ul className="pl-5 pt-1 space-y-1 list-circle text-xs">
-                <li>Two-column dashed timeline connector (<Code>border-dashed border-border/50</Code>) linking per-tool icon badges.</li>
-                <li>400ms minimum visible duration floor (<Code>useMinVisibleSteps</Code>) preventing fast query tools from flickering.</li>
-                <li>In-progress reasoning narration rendered with <Code>ThinkingShimmer</Code>.</li>
-                <li>Strict 13px typography floor across all result components and badge labels.</li>
-              </ul>
-            </li>
             <li><strong className="text-foreground font-medium">Lexical Rich Input (<Code>LexicalAIInput</Code>):</strong> Centered <Code>max-w-3xl</Code> input container with floating <Code>/</Code> slash command menu and <Code>@</Code> project mention context injection.</li>
           </ul>
         </Section>
 
         {/* ─── BILLING & SUBSCRIPTION OS ─── */}
-        <Section id="billing" title="Billing & Subscription OS">
+        <Section id="billing" title="Billing, Invoicing & Pooled Credit Engine">
           <P>
-            Scrunity provides automated subscription billing, seat management, and invoice tracking:
+            Scrunity provides automated subscription billing, organization-level pooled credit tracking, and invoice management:
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1.5 list-disc">
-            <li><strong className="text-foreground font-medium">Subscription Tiers:</strong> Free Tier (1 project, basic scope tracking), Pro Tier (unlimited projects, full AI Scope Guardian, Torch Co-Pilot), and Agency Enterprise Tier (custom seats, dedicated SLA).</li>
-            <li><strong className="text-foreground font-medium">Checkout Flow (<Code>/api/billing/checkout</Code>):</strong> Initiates hosted checkout sessions with automated organization ID metadata binding, plan selection, and fallback country configuration.</li>
-            <li><strong className="text-foreground font-medium">Customer Portal (<Code>/api/billing/portal</Code>):</strong> Auth-gated redirect allowing agency owners to manage payment methods, download VAT/tax invoices, and update plan tiers.</li>
-            <li><strong className="text-foreground font-medium">Idempotent Webhook Processor (<Code>/api/billing/webhook</Code>):</strong> Cryptographically verifies webhook payloads and syncs subscription state (<Code>active</Code>, <Code>past_due</Code>, <Code>canceled</Code>) directly to the <Code>organization</Code> table.</li>
+            <li><strong className="text-foreground font-medium">Organization Pooled Credits:</strong> AI tool executions and web search credits are pooled at the organization level, sized by plan tier (Free: 50 AI / 10 Search; Freelancer: 300 AI / 50 Search; Agency: 1,500 AI / 250 Search per paid seat capacity).</li>
+            <li><strong className="text-foreground font-medium">Billing Cycle Synchronization:</strong> Credit periods (<Code>organizationCreditPeriod</Code>) synchronize with <Code>organization.currentPeriodEnd</Code> with clock-skew tolerance and instant mid-cycle pool expansion on upgrades.</li>
+            <li><strong className="text-foreground font-medium">Soft-Cap &amp; Circuit Breaker:</strong> Soft-cap enforcement (<Code>ENFORCE_CREDIT_LIMITS = false</Code>) logs all usage to <Code>usageEvent</Code> without blocking client work. A 60 request/hour sliding-window circuit breaker protects external search APIs.</li>
+            <li><strong className="text-foreground font-medium">Professional Invoicing OS:</strong> Vercel-inspired monochrome invoice document view (<Code>InvoiceDocumentView</Code>) with automated tax/discount calculations, PDF generation, and UTR payment verification.</li>
+            <li><strong className="text-foreground font-medium">Checkout Flow &amp; Webhooks:</strong> Dodo Payments Merchant of Record integration with cryptographic webhook validation and self-service Customer Portal.</li>
           </ul>
         </Section>
 
@@ -306,14 +303,14 @@ export default async function DocsPage() {
         </Section>
 
         {/* ─── MULTI-CURRENCY ENGINE ─── */}
-        <Section id="currency" title="Multi-Currency Engine (INR / USD)">
+        <Section id="currency" title="Multi-Currency Engine (INR / USD / EUR / GBP)">
           <P>
-            Scrunity supports dual currencies (<Code>INR ₹</Code> and <Code>USD $</Code>) seamlessly:
+            Scrunity supports global multi-currency operations across milestones and invoices:
           </P>
           <ul className="my-2 pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 list-disc">
-            <li><strong className="text-foreground font-medium">Exchange Rate Conversion:</strong> Real-time USD to INR rates fetched dynamically from live FX providers (<Code>open.er-api.com</Code> with <Code>api.frankfurter.dev</Code> fallback) with 24-hour caching and automatic failure fallback in <Code>src/lib/currency.ts</Code>. Converted values are displayed accurately across Overview KPI cards, Analytics pipeline metrics, and Projects table rows.</li>
-            <li><strong className="text-foreground font-medium">Single Currency Formatting:</strong> Formats INR as <Code>₹1,00,000</Code> and USD as <Code>$2,500</Code> using locale rules.</li>
-            <li><strong className="text-foreground font-medium">Mixed-Currency Portfolio Totals:</strong> When a project contains milestones or proposals in both INR and USD, totals are formatted as <Code>₹1,00,000 + $2,000</Code> or converted via global currency settings.</li>
+            <li><strong className="text-foreground font-medium">Exchange Rate Conversion:</strong> Real-time FX rates fetched dynamically from live providers (<Code>api.frankfurter.dev</Code> with caching and fallback chains) in <Code>src/lib/currency.ts</Code>. Converted values display across Overview KPI cards, Analytics pipeline metrics, and Projects table rows.</li>
+            <li><strong className="text-foreground font-medium">Single Currency Formatting:</strong> Formats INR as <Code>₹1,00,000</Code>, USD as <Code>$2,500</Code>, EUR as <Code>€2,500</Code>, and GBP as <Code>£2,000</Code>.</li>
+            <li><strong className="text-foreground font-medium">Mixed-Currency Portfolio Totals:</strong> When a project contains milestones in multiple currencies, totals format cleanly or convert via global currency preferences.</li>
           </ul>
         </Section>
 
@@ -321,19 +318,24 @@ export default async function DocsPage() {
         <Section id="schema" title="Database Schema">
           <P>All tables are defined in <Code>src/db/schema.ts</Code> using Drizzle&apos;s <Code>pgTable</Code>.</P>
 
-          <H3>Organization &amp; Billing Tables</H3>
+          <H3>Organization, Billing &amp; Credit Tables</H3>
           <Table
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
-              ['organization', 'id, name, slug, plan, logoUrl, subscriptionId, billingEmail, planPeriodEnd', 'Manages organization tenant and active subscription status'],
+              ['organization', 'id, name, slug, plan, logoUrl, subscriptionId, billingEmail, currentPeriodEnd', 'Manages organization tenant, subscription tier, and billing cycle dates'],
+              ['organization_credit_period', 'organizationId, aiCreditsAllotted, aiCreditsUsed, searchCreditsAllotted, searchCreditsUsed, periodStart, periodEnd', 'Tracks pooled AI actions and web search usage per billing cycle'],
+              ['usage_event', 'organizationId, userId, type, toolName, metadata, createdAt', 'Granular audit log recording every AI and search execution'],
               ['member', 'organizationId, userId, role', 'Organization membership (owner, agency, member, client)'],
             ]}
           />
 
-          <H3>Payment &amp; Financial Tables</H3>
+          <H3>Invoicing &amp; Payment Tables</H3>
           <Table
             headers={['Table', 'Key Columns', 'Purpose']}
             rows={[
+              ['invoice', 'organizationId, projectId, invoiceNumber, status, issueDate, dueDate, total, currency, clientSnapshot', 'Full invoice lifecycle: draft | sent | viewed | paid | overdue | void'],
+              ['invoice_item', 'invoiceId, title, description, quantity, unitPrice, amount', 'Itemized billable line items'],
+              ['invoice_defaults', 'organizationId, currency, paymentTermsDays, companySnapshot', 'Organization default invoice templates & terms'],
               ['payment_milestone', 'projectId, title, amount, currency, triggerType, status, deliverableId', 'Milestone statuses: upcoming | due | overdue | paid | waived'],
               ['payment', 'milestoneId, projectId, amount, currency, paymentMethod, referenceNote, status, paidAt', 'Stores payment verification & UTR reference notes'],
             ]}
@@ -373,6 +375,9 @@ export default async function DocsPage() {
             rows={[
               ['/api/ai/torch', 'POST', 'Streaming SSE agent endpoint with multi-step tool loops & live reasoning'],
               ['/api/ai/torch/confirm', 'POST', 'Human-in-the-loop confirmation handler executing approved drafts'],
+              ['/api/organizations/credits', 'GET', 'Fetch organization pooled AI and search credit usage summary'],
+              ['/api/invoices', 'GET/POST', 'Fetch workspace invoices or create new invoice draft'],
+              ['/api/invoices/[id]', 'GET/PATCH/DELETE', 'Fetch invoice document view, update status, or record payment'],
               ['/api/ai/extract-contract', 'GET/POST', 'Extract scope clauses from contract PDF via Groq AI & persist in DB'],
               ['/api/ai/check-scope', 'POST', 'Evaluate deliverable revision count against AI scope terms'],
               ['/api/ai/generate-addendum', 'POST', 'Draft itemized SOW Change Order addendum with pricing'],
@@ -403,11 +408,14 @@ export default async function DocsPage() {
             rows={[
               ['DATABASE_URL', 'Yes', 'Neon Serverless Postgres connection string'],
               ['GROQ_API_KEY', 'Yes', 'Groq API Key for LLM model processing (gpt-oss-120b & gpt-oss-20b)'],
+              ['FIRECRAWL_API_KEY', 'Yes', 'Firecrawl API Key for Torch live web search (/v2/search)'],
+              ['UPSTASH_REDIS_REST_URL', 'Yes', 'Upstash Redis REST URL for caching and rate limits'],
               ['GOOGLE_CLIENT_ID', 'Yes', 'Google OAuth client ID'],
               ['GOOGLE_CLIENT_SECRET', 'Yes', 'Google OAuth client secret'],
               ['BETTER_AUTH_SECRET', 'Yes', 'Session encryption secret'],
               ['BLOB_READ_WRITE_TOKEN', 'Yes', 'Vercel Blob private storage token'],
               ['RESEND_API_KEY', 'Yes', 'Resend transactional email API key'],
+              ['DODO_PAYMENTS_API_KEY', 'Yes', 'Dodo Payments Merchant of Record API key'],
             ]}
           />
         </Section>

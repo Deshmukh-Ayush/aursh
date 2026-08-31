@@ -226,31 +226,33 @@ export default async function ExecutionDocsPage() {
                    └─► Inserts proposal row for Change Order SOW with pricing`}</CodeBlock>
         </Section>
 
-        {/* ─── FUNNEL 4: FINANCIALS & MULTI-CURRENCY ─── */}
-        <Section id="funnel-financials" title="5. Funnel: Payment Milestones & Multi-Currency Engine">
+        {/* ─── FUNNEL 4: FINANCIALS, INVOICING & MULTI-CURRENCY ─── */}
+        <Section id="funnel-financials" title="5. Funnel: Invoicing, Payment Milestones & Multi-Currency Engine">
           <P>
-            How payment milestones are created, verified with reference notes, and converted between USD and INR:
+            How invoices and payment milestones are created, verified with reference notes, and converted dynamically across global currencies:
           </P>
 
-          <CodeBlock>{`[Milestone Created] (e.g. $2,500 USD or ₹1,00,000 INR)
+          <CodeBlock>{`[Milestone Completed or Invoice Drafted] (e.g. $2,500 USD, ₹1,00,000 INR, €2,000 EUR)
        │
-       ▼ (POST /api/milestones) -> Inserts payment_milestone row
-[Status: "upcoming" | "due"]
+       ├─► Path A: Milestone Flow (POST /api/milestones) -> Inserts payment_milestone row
+       │     └─► Client Makes Transfer & Agency Verifies Payment (POST /api/milestones/mark-paid)
+       │     └─► Inserts payment row (referenceNote, paymentMethod: "bank_transfer" / "upi")
        │
-       ▼ (Client Makes Transfer & Agency Verifies Payment)
-[POST /api/milestones/mark-paid]
-       │  ├─► Inserts payment row (referenceNote, paymentMethod: "bank_transfer" / "upi")
-       │  └─► Updates payment_milestone status to "paid"
+       └─► Path B: Direct Invoicing Flow (POST /api/invoices)
+             ├─► Inserts invoice & invoice_item rows (status: "draft" | "sent")
+             ├─► Agency sends invoice link to client -> Client views document view (status: "viewed")
+             ├─► Agency records payment with UTR / reference -> PATCH /api/invoices/[id] (status: "paid")
+             └─► Renders Vercel-inspired document view (InvoiceDocumentView) with real-time PDF generation
        │
-        ▼ (Multi-Currency Conversion Engine: src/lib/currency.ts)
-[Live 24h-Cached FX Rate: getUsdToInrRate()]
-        │  ├─► USD contract/proposal values converted to INR for organization totals
-        │  ├─► Formats currency dynamically via formatCurrency(value, currency, targetCurrency, rate)
-        │  └─► Updates PaymentsRadialChart, DashboardKpiRow, & Analytics Hero Velocity`}</CodeBlock>
+       ▼ (Multi-Currency Conversion Engine: src/lib/currency.ts)
+[Live 24h-Cached FX Rate: Frankfurter & Open Exchange APIs]
+       ├─► Converts international currencies dynamically for organization dashboard KPI cards
+       ├─► Formats currency dynamically via formatCurrency(value, currency, targetCurrency, rate)
+       └─► Updates PaymentsRadialChart, DashboardKpiRow, & Analytics Hero Velocity`}</CodeBlock>
         </Section>
 
         {/* ─── FUNNEL 5: TORCH AI AGENT ─── */}
-        <Section id="funnel-ai" title="6. Funnel: Torch AI Co-Pilot & Streaming Tool Loop">
+        <Section id="funnel-ai" title="6. Funnel: Torch AI Co-Pilot & Streaming Multi-Tool Loop">
           <P>
             How prompts typed in Meta Lexical input stream multi-step tool calls, render live reasoning, and execute human-in-the-loop actions:
           </P>
@@ -264,44 +266,49 @@ export default async function ExecutionDocsPage() {
        │
        ▼ (Multi-Step Tool Loop Execution: src/lib/ai/torch-tools.ts)
 [Tool Invocation Step]
-       │  ├─► Query Tools: getWorkspaceOverview, auditProjectScope, getFinancialSummary, generateClientDigest
-       │  │     └─► Client executes useMinVisibleSteps (400ms duration floor) to avoid UI flicker
-       │  │     └─► Dashed timeline connector renders per-tool icons with ThinkingShimmer
+       │  ├─► Query Tools: queryWorkspaceOverview, auditProjectScope, analyzeFinancials, generateClientDigest, queryInvoiceStatus
+       │  │     └─► DB Date serialization via toIsoDate ensures strict JSON schema compliance
+       │  │     └─► Structured result cards render in strict hierarchy: Reasoning -> Cards -> Text Response
        │  │
-       │  └─► Draft Tools: generateAddendumDraft, createDeliverableDraft
+       │  ├─► External Search Tool: webSearch (Firecrawl /v2/search + fallbacks)
+       │  │     └─► Strictly reserved for external web lookups; internal projects execute internal DB tools
+       │  │     └─► Rate-limited by 60 req/hr sliding-window circuit breaker
+       │  │
+       │  └─► Draft Tools: generateAddendumDraft, createDeliverableDraft, draftInvoiceForMilestone
        │        └─► Renders interactive ApprovalCard in message stream
        │
        ▼ (Human-in-the-Loop Action)
 [User Clicks "Approve" on ApprovalCard]
        │
        ▼ (POST /api/ai/torch/confirm)
-[Executes DB Mutation: Inserts proposal / deliverable row atomically]
+[Executes DB Mutation: Inserts proposal / deliverable / invoice row atomically]
        │
        └─► Updates ApprovalCard status to "applied" with check confirmation`}</CodeBlock>
         </Section>
 
-        {/* ─── FUNNEL 6: BILLING & SUBSCRIPTIONS ─── */}
-        <Section id="funnel-billing" title="7. Funnel: Billing, Invoicing & Subscription Lifecycle">
+        {/* ─── FUNNEL 6: BILLING, POOLED CREDITS & SUBSCRIPTIONS ─── */}
+        <Section id="funnel-billing" title="7. Funnel: Billing, Organization Pooled Credits & Circuit Breakers">
           <P>
-            How agency owners upgrade plans, access customer billing portals, and process automated webhook events:
+            How agency organizations draw from pooled AI and web search credits aligned to billing cycles:
           </P>
 
-          <CodeBlock>{`[Agency Owner Selects Plan in /dashboard/billing]
+          <CodeBlock>{`[Agency Executes Torch AI Action or Web Search]
        │
-       ▼ (POST /api/billing/checkout)
-[Creates Hosted Checkout Session with organizationId metadata]
+       ▼ (checkCreditAllowance: src/lib/ai/credits.ts)
+[Queries organizationCreditPeriod for current billing cycle]
+       │  ├─► Aligns with organization.currentPeriodEnd with clock-skew tolerance (+60s)
+       │  ├─► Resets pool automatically on cycle expiration (Zero-Rollover)
+       │  └─► Soft-Cap Mode: ENFORCE_CREDIT_LIMITS = false tracks usage without blocking client work
        │
-       ▼ (Redirects to Hosted Checkout Provider)
-[User Enters Payment Details & Completes Transaction]
+       ▼ (IF Tool is webSearch -> checkSearchCircuitBreaker)
+[Sliding-Window Rate Limiter: src/lib/ai/search-circuit-breaker.ts]
+       │  └─► Enforces 60 requests/hour limit per organization protecting external search APIs
        │
-       ▼ (Webhook Dispatch)
-[POST /api/billing/webhook]
-       │  ├─► Verifies cryptographic webhook signature
-       │  ├─► Parses event: "subscription.created" | "subscription.updated"
-       │  └─► Atomically updates organization table (plan: "pro", subscriptionId, periodEnd)
+       ▼ (recordCreditUsage: src/lib/ai/credits.ts)
+[Atomically increments aiCreditsUsed / searchCreditsUsed & logs to usage_event table]
        │
-       ▼ (Customer Portal Management)
-[POST /api/billing/portal] -> Generates secure self-service portal URL for invoices`}</CodeBlock>
+       ▼ (Billing & Usage UI: /dashboard/settings?tab=billing)
+[GET /api/organizations/credits -> Renders CreditUsageCard with progress meters]`}</CodeBlock>
         </Section>
 
         {/* ─── MASTER MATRIX ─── */}
@@ -314,11 +321,14 @@ export default async function ExecutionDocsPage() {
             headers={['User Action / Event', 'Trigger Component', 'API Endpoint & Method', 'Auth Policy', 'Database Mutations', 'Async Background Worker (after())']}
             rows={[
               ['Sign in with Google', 'SignInButton', 'POST /api/auth/sign-in/social', 'Better Auth', 'Selects user, session, account tables', 'Sets session token cookie'],
-              ['Execute Torch AI Prompt', 'LexicalAIInput', 'POST /api/ai/torch', 'getTenantContext', 'Streams tool outputs over SSE', 'Live token analytics'],
-              ['Confirm Torch Draft', 'ApprovalCard', 'POST /api/ai/torch/confirm', 'canManageProject', 'Inserts proposal or deliverable row', 'Logs activity_log entry'],
+              ['Execute Torch AI Prompt', 'LexicalAIInput', 'POST /api/ai/torch', 'getTenantContext', 'Streams tool outputs over SSE', 'Logs usage_event & increments credits'],
+              ['Confirm Torch Draft', 'ApprovalCard', 'POST /api/ai/torch/confirm', 'canManageProject', 'Inserts proposal, deliverable, or invoice row', 'Logs activity_log entry'],
+              ['Fetch Credit Summary', 'CreditUsageCard', 'GET /api/organizations/credits', 'getTenantContext', 'Queries organization_credit_period', 'None'],
+              ['Create Invoice Draft', 'InvoiceCreateModal', 'POST /api/invoices', 'canManageProject', 'Inserts invoice & invoice_item rows', 'Logs activity_log entry'],
+              ['Mark Invoice Paid', 'InvoiceDetailView', 'PATCH /api/invoices/[id]', 'canManageProject', 'Updates invoice status to paid, records payment', 'Dispatches payment confirmation email'],
               ['Initiate Plan Upgrade', 'PricingCard', 'POST /api/billing/checkout', 'auth.api.getSession', 'Selects organization plan', 'Generates checkout redirect'],
               ['Open Billing Portal', 'BillingPortalButton', 'POST /api/billing/portal', 'auth.api.getSession', 'Selects organization subscription', 'Generates portal redirect'],
-              ['Process Plan Webhook', 'WebhookReceiver', 'POST /api/billing/webhook', 'Signature Seal', 'Updates organization (plan, status, periodEnd)', 'Syncs customer email'],
+              ['Process Plan Webhook', 'WebhookReceiver', 'POST /api/billing/webhook', 'Signature Seal', 'Updates organization (plan, status, periodEnd)', 'Expands credit period pool'],
               ['Create New Project', 'CreateProjectModal', 'POST /api/projects', 'getTenantContext', 'Inserts project, project_member (role: owner)', 'Logs activity_log entry'],
               ['Update Project Details', 'ProjectSettingsForm', 'PATCH /api/projects', 'canManageProject', 'Updates project (name, description, status)', 'Logs activity_log entry'],
               ['Delete Project', 'ProjectSettingsForm', 'DELETE /api/projects', 'canManageProject', 'Deletes project & cascades to all related tables', 'Purges project files from Blob'],
