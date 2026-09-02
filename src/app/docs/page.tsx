@@ -429,9 +429,14 @@ export default async function DocsPage() {
               ['npm run build', 'Build production bundle'],
               ['npm run typecheck', 'Execute tsc --noEmit type verification (0 errors constraint)'],
               ['npm run lint', 'Run ESLint linting check'],
-              ['npm run db:push', 'Push Drizzle schema changes directly to Neon Postgres'],
+              ['npm run db:generate', 'Generate versioned SQL migration from src/db/schema.ts'],
+              ['npm run db:migrate', 'Execute pending migrations against Neon Postgres via __drizzle_migrations'],
+              ['npm run db:studio', 'Open Drizzle Studio local database viewer'],
             ]}
           />
+          <div className="mt-3 p-3 rounded-md bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+            <strong className="text-foreground">Schema Change Protocol:</strong> Never use <code className="text-xs bg-muted px-1 py-0.5 rounded">db:push</code> in production. All database modifications must be generated via <code className="text-xs bg-muted px-1 py-0.5 rounded">npm run db:generate</code> and applied via <code className="text-xs bg-muted px-1 py-0.5 rounded">npm run db:migrate</code>.
+          </div>
         </Section>
 
         {/* Footer */}

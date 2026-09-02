@@ -126,10 +126,16 @@ NEXT_PUBLIC_DODO_AGENCY_PRICE_ID="pdt_..."
 NEXT_PUBLIC_BYPASS_BILLING=false
 ```
 
-### 3. Push Database Schema
+### 3. Run Database Migrations
 ```bash
-npm run db:push
+npm run db:migrate
 ```
+
+> **Database Schema Protocol:**  
+> All schema modifications must be versioned. Do NOT use `db:push` in production.  
+> 1. Update `src/db/schema.ts`  
+> 2. Run `npm run db:generate` to produce a numbered SQL migration  
+> 3. Run `npm run db:migrate` to safely apply migrations via `__drizzle_migrations`
 
 ### 4. Start Development Server
 ```bash
@@ -148,8 +154,10 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 | `npm run start` | Runs the production Next.js server |
 | `npm run typecheck` | Validates TypeScript with `tsc --noEmit` |
 | `npm run lint` | Runs ESLint analysis |
-| `npm run db:push` | Pushes Drizzle schema directly to Postgres |
+| `npm run db:generate` | Generates a versioned SQL migration from `src/db/schema.ts` |
+| `npm run db:migrate` | Safely applies pending SQL migrations via Drizzle migrator |
 | `npm run db:studio` | Opens Drizzle Studio database viewer |
+| `npm run db:push` | *(Dev only)* Direct schema push (avoid in production) |
 
 ---
 
