@@ -35,17 +35,37 @@ const toIsoDate = (d: unknown): string | null => {
 /**
  * Shared Tenant Resolver
  * Validates that a project exists and strictly belongs to the caller's organization.
+ * Resolves by project ID, @mention, or project name within the organization.
  */
 async function resolveOrgProject(
-  projectId: string,
+  projectIdentifier: string,
   organizationId: string
 ): Promise<{ id: string; name: string } | null> {
-  if (!projectId || !organizationId) return null;
-  const [proj] = await db
+  if (!projectIdentifier || !organizationId) return null;
+  const clean = projectIdentifier.trim().replace(/^@/, "").trim();
+  if (!clean) return null;
+
+  // 1. Try exact UUID / ID match
+  const [byId] = await db
     .select({ id: project.id, name: project.name })
     .from(project)
-    .where(and(eq(project.id, projectId), eq(project.organizationId, organizationId)));
-  return proj || null;
+    .where(and(eq(project.id, clean), eq(project.organizationId, organizationId)));
+  if (byId) return byId;
+
+  // 2. Try exact or case-insensitive name match within caller's organization
+  const orgProjects = await db
+    .select({ id: project.id, name: project.name })
+    .from(project)
+    .where(eq(project.organizationId, organizationId));
+
+  const lower = clean.toLowerCase();
+  const exactName = orgProjects.find((p) => p.name.toLowerCase() === lower);
+  if (exactName) return exactName;
+
+  const partialName = orgProjects.find((p) => p.name.toLowerCase().includes(lower));
+  if (partialName) return partialName;
+
+  return null;
 }
 
 /**
@@ -55,6 +75,8 @@ async function resolveOrgProject(
  * proposal estimation, and financial analytics directly to Torch agent.
  */
 export function createTorchTools(organizationId: string, userId?: string | null) {
+  let turnWebSearchCount = 0;
+
   const trackUsage = async (toolName: string, metadata?: Record<string, unknown>) => {
     try {
       await recordCreditUsage({
@@ -299,22 +321,25 @@ export function createTorchTools(organizationId: string, userId?: string | null)
 
     analyzeFinancials: tool({
       description:
-        "Analyzes payment milestones, outstanding cashflow, and collected revenue across projects.",
+        "Analyzes payment milestones, revenue collected, due amounts, outstanding cashflow, and payment status across workspace projects or for a specific project.",
       inputSchema: z.object({
-        projectId: z.string().nullish().describe("Optional project ID to filter financials"),
+        projectId: z.string().nullish().describe("Optional project ID or @ProjectName to filter financials"),
+        projectName: z.string().nullish().describe("Optional project name (e.g. 'Reveega Website')"),
       }),
-      execute: async ({ projectId }) => {
+      execute: async ({ projectId, projectName }) => {
         const allowance = await checkCreditAllowance(organizationId, "ai");
         if (!allowance.allowed) return { error: allowance.reason || "AI credit limit reached." };
-        await trackUsage("analyzeFinancials", { projectId });
+        await trackUsage("analyzeFinancials", { projectId, projectName });
 
+        const target = (projectId || projectName)?.trim();
         let projectIds: string[];
+        let projectNameResolved: string | undefined;
 
-        if (projectId && projectId.trim().length > 0) {
-          const resolved = await resolveOrgProject(projectId.trim(), organizationId);
+        if (target && target.length > 0) {
+          const resolved = await resolveOrgProject(target, organizationId);
           if (!resolved) {
             return {
-              error: "Project not found in current organization.",
+              error: `Project "${target}" not found in current organization.`,
               collected: 0,
               due: 0,
               overdue: 0,
@@ -323,6 +348,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             };
           }
           projectIds = [resolved.id];
+          projectNameResolved = resolved.name;
         } else {
           const orgProjects = await db
             .select({ id: project.id, name: project.name })
@@ -353,6 +379,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
         }
 
         return {
+          projectName: projectNameResolved || (projectIds.length === 1 ? "Selected Project" : "Workspace Portfolio"),
           currency: milestones[0]?.currency || "USD",
           summary: { collected, due, overdue, upcoming },
           milestonesCount: milestones.length,
@@ -777,11 +804,22 @@ export function createTorchTools(organizationId: string, userId?: string | null)
 
     webSearch: tool({
       description:
-        "Searches the public web using a licensed search API for external internet information, market rate benchmarks, technical documentation, and public company background. CRITICAL: Do NOT use this tool for internal workspace projects, deliverables, contracts, scope audits, invoices, or @ProjectName references.",
+        "Searches the public web using a licensed search API for external internet information, market rate benchmarks, technical documentation, and public company background. CRITICAL: Follow the Internal-First Principle. Never call this tool for internal projects, @ProjectName references, workspace financials, revenue, deliverables, contracts, scope, or invoices.",
       inputSchema: z.object({
         query: z.string().describe("The external search query to look up on the web"),
       }),
       execute: async ({ query }) => {
+        // Per-turn search burst guard: Prevents model from issuing runaway multi-search loops in a single turn
+        if (turnWebSearchCount >= 2) {
+          return {
+            query,
+            source: "search_budget_exceeded",
+            results: [],
+            note: "Per-turn search budget limit (2 searches) reached. Stop searching and immediately synthesize your final response from the information already gathered.",
+          };
+        }
+        turnWebSearchCount++;
+
         // 0a. Platform Technical Circuit Breaker (Always enforced)
         const breaker = checkSearchCircuitBreaker(organizationId);
         if (!breaker.allowed) {
