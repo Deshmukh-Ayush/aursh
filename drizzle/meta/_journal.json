@@ -15,6 +15,13 @@
       "when": 1785578711439,
       "tag": "0001_groovy_penance",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788000000000,
+      "tag": "0002_reconcile_live_schema",
+      "breakpoints": true
     }
   ]
 }
