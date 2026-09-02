@@ -217,11 +217,11 @@ export function TorchMessages() {
       {loading && (
         <div className="flex items-center gap-2.5 pl-9 text-base text-muted-foreground">
           <Image
-            src="/Torch.png"
+            src="/logo/scrunity_logo_svg.svg"
             alt="Torch is working"
             width={20}
             height={20}
-            className="h-5 w-5 object-contain"
+            className="h-5 w-5 object-contain dark:invert animate-pulse"
           />
           <span>Torch is reasoning workspace insights…</span>
         </div>
