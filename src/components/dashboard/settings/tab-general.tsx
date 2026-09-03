@@ -2,9 +2,12 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
-import { Sun, Moon, Monitor, ShieldCheck, User } from "lucide-react"
+import { Sun, Moon, Monitor, ShieldCheck, User, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
+import axios from "axios"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface TabGeneralProps {
   user: {
@@ -13,12 +16,40 @@ interface TabGeneralProps {
     email: string
     image: string | null
   }
+  org?: {
+    id: string
+    globalCurrency?: string
+  }
 }
 
-export function TabGeneral({ user }: TabGeneralProps) {
+export function TabGeneral({ user, org }: TabGeneralProps) {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [name, setName] = React.useState(user.name || "")
   const [saved, setSaved] = React.useState(false)
+  const [globalCurrency, setGlobalCurrency] = React.useState<"USD" | "INR">(
+    (org?.globalCurrency as "USD" | "INR") || "USD"
+  )
+  const [isUpdatingCurrency, setIsUpdatingCurrency] = React.useState(false)
+
+  const handleUpdateCurrency = async (newCurrency: "USD" | "INR") => {
+    if (!org?.id || isUpdatingCurrency || newCurrency === globalCurrency) return
+    try {
+      setIsUpdatingCurrency(true)
+      setGlobalCurrency(newCurrency)
+      await axios.patch("/api/organizations", {
+        orgId: org.id,
+        globalCurrency: newCurrency,
+      })
+      toast.success(`Global reporting currency updated to ${newCurrency}`)
+      router.refresh()
+    } catch (err: any) {
+      setGlobalCurrency(globalCurrency)
+      toast.error(err.response?.data?.error || "Failed to update currency")
+    } finally {
+      setIsUpdatingCurrency(false)
+    }
+  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,6 +107,64 @@ export function TabGeneral({ user }: TabGeneralProps) {
             </button>
           </div>
         </form>
+      </ConcentricCard>
+
+      {/* Global Reporting Currency */}
+      <ConcentricCard
+        label="Organization Reporting Currency"
+        icon={Globe}
+        innerClassName="p-6 gap-4"
+      >
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+            Global Reporting Currency
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sets the currency used to aggregate KPIs across all projects on your agency dashboard. Individual projects retain their own native currencies.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-1 sm:max-w-md">
+          <button
+            type="button"
+            disabled={isUpdatingCurrency}
+            onClick={() => handleUpdateCurrency("USD")}
+            className={cn(
+              "flex items-center justify-between gap-2 rounded-xl border p-4 text-xs font-semibold transition-all active:scale-[0.96]",
+              globalCurrency === "USD"
+                ? "border-brand bg-brand/5 text-brand shadow-xs ring-1 ring-brand"
+                : "border-border/60 hover:bg-muted/40 text-muted-foreground"
+            )}
+          >
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-bold text-foreground">USD ($)</span>
+              <span className="text-[11px] text-muted-foreground font-normal">United States Dollar</span>
+            </div>
+            {globalCurrency === "USD" && (
+              <span className="h-2 w-2 rounded-full bg-brand" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            disabled={isUpdatingCurrency}
+            onClick={() => handleUpdateCurrency("INR")}
+            className={cn(
+              "flex items-center justify-between gap-2 rounded-xl border p-4 text-xs font-semibold transition-all active:scale-[0.96]",
+              globalCurrency === "INR"
+                ? "border-brand bg-brand/5 text-brand shadow-xs ring-1 ring-brand"
+                : "border-border/60 hover:bg-muted/40 text-muted-foreground"
+            )}
+          >
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-bold text-foreground">INR (₹)</span>
+              <span className="text-[11px] text-muted-foreground font-normal">Indian Rupee</span>
+            </div>
+            {globalCurrency === "INR" && (
+              <span className="h-2 w-2 rounded-full bg-brand" />
+            )}
+          </button>
+        </div>
       </ConcentricCard>
 
       {/* Theme Preference */}

@@ -20,6 +20,7 @@ interface SettingsClientContainerProps {
     name: string
     logoUrl: string | null
     plan: string
+    globalCurrency?: string
   }
   orgMembers: {
     id: string
@@ -47,7 +48,7 @@ export function SettingsClientContainer({
 
       {/* Tab Panels */}
       <div className="pt-2">
-        {activeTab === "general" && <TabGeneral user={user} />}
+        {activeTab === "general" && <TabGeneral user={user} org={{ id: org.id, globalCurrency: org.globalCurrency }} />}
         {activeTab === "team" && <TabTeam org={{ id: org.id, plan: org.plan }} orgMembers={orgMembers} />}
         {activeTab === "branding" && <TabBranding org={org} />}
         {activeTab === "billing" && <TabBilling orgId={org.id} currentPlan={org.plan} />}

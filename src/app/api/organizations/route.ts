@@ -81,7 +81,8 @@ export async function PATCH(req: NextRequest) {
 
       const patchSchema = z.object({
         orgId: z.string().min(1, "Organization ID is required"),
-        plan: z.enum(["free", "freelancer", "agency"]),
+        plan: z.enum(["free", "freelancer", "agency"]).optional(),
+        globalCurrency: z.enum(["USD", "INR"]).optional(),
       });
 
       const validationResult = patchSchema.safeParse(payload);
@@ -89,7 +90,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: validationResult.error.issues[0].message }, { status: 400 });
       }
 
-      const { orgId, plan } = validationResult.data;
+      const { orgId, plan, globalCurrency } = validationResult.data;
 
       const [orgMember] = await db
         .select()
@@ -97,11 +98,17 @@ export async function PATCH(req: NextRequest) {
         .where(and(eq(member.organizationId, orgId), eq(member.userId, session.user.id)));
 
       if (!orgMember || orgMember.role !== "owner") {
-        return NextResponse.json({ error: "Only organization owners can change the plan." }, { status: 403 });
+        return NextResponse.json({ error: "Only organization owners can change settings." }, { status: 403 });
       }
 
+      const updates: { plan?: "free" | "freelancer" | "agency"; globalCurrency?: "USD" | "INR"; updatedAt: Date } = {
+        updatedAt: new Date(),
+      };
+      if (plan) updates.plan = plan;
+      if (globalCurrency) updates.globalCurrency = globalCurrency;
+
       await db.update(organization)
-        .set({ plan, updatedAt: new Date() })
+        .set(updates)
         .where(eq(organization.id, orgId));
 
       revalidatePath("/dashboard/settings");

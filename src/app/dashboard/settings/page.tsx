@@ -54,6 +54,7 @@ async function SettingsData() {
         name: org.name,
         logoUrl: org.logoUrl,
         plan: org.plan,
+        globalCurrency: org.globalCurrency || "USD",
       }}
       orgMembers={orgMembers}
     />
