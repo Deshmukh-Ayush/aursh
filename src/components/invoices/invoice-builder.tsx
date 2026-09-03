@@ -97,8 +97,26 @@ export function InvoiceBuilder({
     setOpenSection((prev) => (prev === key ? "" : key));
   };
 
-  // Add Item Modal State
+  // Add Item Modal State with Smooth Enter & Exit
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isAddItemVisible, setIsAddItemVisible] = useState(false);
+
+  const openAddItemModal = () => {
+    setIsAddItemOpen(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsAddItemVisible(true);
+      });
+    });
+  };
+
+  const closeAddItemModal = () => {
+    setIsAddItemVisible(false);
+    setTimeout(() => {
+      setIsAddItemOpen(false);
+    }, 180);
+  };
+
   const [newItemName, setNewItemName] = useState("");
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemQty, setNewItemQty] = useState(1);
@@ -395,7 +413,7 @@ export function InvoiceBuilder({
     setNewItemDesc("");
     setNewItemQty(1);
     setNewItemPrice("");
-    setIsAddItemOpen(false);
+    closeAddItemModal();
   };
 
   const removeItem = (id?: string) => {
@@ -597,7 +615,7 @@ export function InvoiceBuilder({
               onClick={() => setViewMode("form")}
               aria-pressed={viewMode === "form"}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+                "ps-2 pe-2.5 py-1 rounded-md font-medium transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.96] flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                 viewMode === "form"
                   ? "bg-background text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -611,7 +629,7 @@ export function InvoiceBuilder({
               onClick={() => setViewMode("both")}
               aria-pressed={viewMode === "both"}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+                "ps-2 pe-2.5 py-1 rounded-md font-medium transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.96] flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                 viewMode === "both"
                   ? "bg-background text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -625,7 +643,7 @@ export function InvoiceBuilder({
               onClick={() => setViewMode("preview")}
               aria-pressed={viewMode === "preview"}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+                "ps-2 pe-2.5 py-1 rounded-md font-medium transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.96] flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                 viewMode === "preview"
                   ? "bg-background text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -641,7 +659,7 @@ export function InvoiceBuilder({
             type="button"
             onClick={handleDirectPdfDownload}
             disabled={isDownloadingPdf}
-            className="active:scale-[0.96] transition-transform h-9 px-3.5 rounded-xl border border-border/70 bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+            className="active:scale-[0.96] transition-transform duration-150 ease-out h-9 px-3.5 rounded-xl border border-border/70 bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
           >
             {isDownloadingPdf ? (
               <SpinnerGap size={14} className="animate-spin" aria-hidden="true" />
@@ -656,7 +674,7 @@ export function InvoiceBuilder({
             type="button"
             onClick={() => handleSubmit("send")}
             disabled={isSubmitting}
-            className="active:scale-[0.96] transition-transform h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+            className="active:scale-[0.96] transition-transform duration-150 ease-out h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             style={{ backgroundColor: themeColor, color: primaryTextColor }}
           >
             {isSubmitting ? (
@@ -672,7 +690,7 @@ export function InvoiceBuilder({
               type="button"
               onClick={onClose}
               aria-label="Close invoice builder"
-              className="h-9 w-9 rounded-xl hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors ml-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+              className="h-9 w-9 rounded-xl hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.96] transition-transform duration-150 ease-out ml-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
             >
               <X size={16} aria-hidden="true" />
             </button>
@@ -721,10 +739,10 @@ export function InvoiceBuilder({
                 aria-label={`Select ${c.label} color theme`}
                 aria-pressed={themeColor === c.value}
                 className={cn(
-                  "w-4 h-4 rounded-full transition-transform active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+                  "w-4 h-4 rounded-full transition-all duration-150 ease-out active:scale-[0.90] focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
                   themeColor === c.value
-                    ? "ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                    : "opacity-60 hover:opacity-100"
+                    ? "ring-2 ring-foreground ring-offset-2 ring-offset-background scale-110"
+                    : "opacity-60 hover:opacity-100 hover:scale-105"
                 )}
                 style={{ backgroundColor: c.value }}
               />
@@ -785,23 +803,32 @@ export function InvoiceBuilder({
                   >
                     Company Details
                   </span>
-                  {openSection === "company" ? (
-                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
-                  ) : (
-                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
-                  )}
+                  <CaretDown
+                    size={16}
+                    className={cn(
+                      "text-muted-foreground transition-transform duration-200 ease-out",
+                      openSection === "company" && "rotate-180 text-brand"
+                    )}
+                    aria-hidden="true"
+                  />
                 </button>
 
-                {openSection === "company" && (
-                  <div className="p-4 sm:p-5 pt-0 space-y-4 border-t border-border/20 text-xs">
-                    {/* Two Equal Upload Cards: Company Logo & Company Signature (Invoicely Style) */}
-                    <div className="grid grid-cols-2 gap-3 pt-3">
-                      {/* Company Logo Card */}
-                      <div className="space-y-1.5">
-                        <span className="text-[11px] font-semibold text-foreground block">
-                          Company Logo
-                        </span>
-                        <div className="h-32 border-2 border-dashed border-border/70 hover:border-brand/60 rounded-xl p-3 flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-all relative">
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    openSection === "company" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="p-4 sm:p-5 pt-0 space-y-4 border-t border-border/20 text-xs">
+                      {/* Two Equal Upload Cards: Company Logo & Company Signature (Invoicely Style) */}
+                      <div className="grid grid-cols-2 gap-3 pt-3">
+                        {/* Company Logo Card */}
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-semibold text-foreground block">
+                            Company Logo
+                          </span>
+                          <div className="h-32 border-2 border-dashed border-border/70 hover:border-brand/60 rounded-xl p-3 flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-[border-color,background-color] duration-150 ease-out relative">
                           {logoUrl ? (
                             <div className="flex flex-col items-center gap-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -848,7 +875,7 @@ export function InvoiceBuilder({
                         <span className="text-[11px] font-semibold text-foreground block">
                           Company Signature
                         </span>
-                        <div className="h-32 border-2 border-dashed border-border/70 hover:border-brand/60 rounded-xl p-3 flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-all relative">
+                        <div className="h-32 border-2 border-dashed border-border/70 hover:border-brand/60 rounded-xl p-3 flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-[border-color,background-color] duration-150 ease-out relative">
                           {signatureUrl ? (
                             <div className="flex flex-col items-center gap-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1007,8 +1034,9 @@ export function InvoiceBuilder({
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
+            </div>
 
               {/* ACCORDION 2: Client Details */}
               <div className="border border-border/50 rounded-xl overflow-hidden bg-background shadow-2xs">
@@ -1026,126 +1054,136 @@ export function InvoiceBuilder({
                   >
                     Client Details
                   </span>
-                  {openSection === "client" ? (
-                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
-                  ) : (
-                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
-                  )}
+                  <CaretDown
+                    size={16}
+                    className={cn(
+                      "text-muted-foreground transition-transform duration-200 ease-out",
+                      openSection === "client" && "rotate-180 text-brand"
+                    )}
+                    aria-hidden="true"
+                  />
                 </button>
 
-                {openSection === "client" && (
-                  <div className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-border/20 text-xs">
-                    <div className="pt-2">
-                      <label htmlFor="client-name-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                        Client Name *
-                      </label>
-                      <input
-                        id="client-name-input"
-                        type="text"
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        placeholder="John Doe / Client Company"
-                        className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="client-address-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                        Client Address
-                      </label>
-                      <textarea
-                        id="client-address-input"
-                        rows={2}
-                        value={clientAddress}
-                        onChange={(e) => setClientAddress(e.target.value)}
-                        placeholder="456 Second St, Anytown, USA"
-                        className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label htmlFor="client-email-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                          Email
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    openSection === "client" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-border/20 text-xs">
+                      <div className="pt-2">
+                        <label htmlFor="client-name-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                          Client Name *
                         </label>
                         <input
-                          id="client-email-input"
-                          type="email"
-                          value={clientEmail}
-                          onChange={(e) => setClientEmail(e.target.value)}
-                          placeholder="client@domain.com"
-                          className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="client-phone-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                          Phone
-                        </label>
-                        <input
-                          id="client-phone-input"
+                          id="client-name-input"
                           type="text"
-                          value={clientPhone}
-                          onChange={(e) => setClientPhone(e.target.value)}
-                          placeholder="+1 (555) 999-9999"
-                          className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                          value={clientName}
+                          onChange={(e) => setClientName(e.target.value)}
+                          placeholder="John Doe / Client Company"
+                          className="w-full h-9 px-3 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
                         />
                       </div>
-                    </div>
 
-                    {/* Client Custom Fields */}
-                    <div className="space-y-2 pt-2">
-                      {clientCustomFields.map((field) => (
-                        <div key={field.id} className="flex items-center gap-1.5">
+                      <div>
+                        <label htmlFor="client-address-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                          Client Address
+                        </label>
+                        <textarea
+                          id="client-address-input"
+                          rows={2}
+                          value={clientAddress}
+                          onChange={(e) => setClientAddress(e.target.value)}
+                          placeholder="456 Second St, Anytown, USA"
+                          className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label htmlFor="client-email-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                            Email
+                          </label>
                           <input
-                            type="text"
-                            value={field.label}
-                            onChange={(e) =>
-                              setClientCustomFields((prev) =>
-                                prev.map((f) =>
-                                  f.id === field.id ? { ...f, label: e.target.value } : f
-                                )
-                              )
-                            }
-                            placeholder="Label"
-                            aria-label="Client custom field label"
-                            className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                            id="client-email-input"
+                            type="email"
+                            value={clientEmail}
+                            onChange={(e) => setClientEmail(e.target.value)}
+                            placeholder="client@domain.com"
+                            className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           />
-                          <input
-                            type="text"
-                            value={field.value}
-                            onChange={(e) =>
-                              setClientCustomFields((prev) =>
-                                prev.map((f) =>
-                                  f.id === field.id ? { ...f, value: e.target.value } : f
-                                )
-                              )
-                            }
-                            placeholder="Value"
-                            aria-label="Client custom field value"
-                            className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeClientCustomField(field.id)}
-                            aria-label="Remove client field"
-                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
-                          >
-                            <Trash size={14} aria-hidden="true" />
-                          </button>
                         </div>
-                      ))}
+                        <div>
+                          <label htmlFor="client-phone-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                            Phone
+                          </label>
+                          <input
+                            id="client-phone-input"
+                            type="text"
+                            value={clientPhone}
+                            onChange={(e) => setClientPhone(e.target.value)}
+                            placeholder="+1 (555) 999-9999"
+                            className="w-full h-8.5 px-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                          />
+                        </div>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={addClientCustomField}
-                        className="w-full py-2 rounded-xl border border-dashed border-border/80 hover:border-brand/60 text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
-                      >
-                        <Plus size={14} className="text-brand" aria-hidden="true" />
-                        <span>Add New Field</span>
-                      </button>
+                      {/* Client Custom Fields */}
+                      <div className="space-y-2 pt-2">
+                        {clientCustomFields.map((field) => (
+                          <div key={field.id} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={field.label}
+                              onChange={(e) =>
+                                setClientCustomFields((prev) =>
+                                  prev.map((f) =>
+                                    f.id === field.id ? { ...f, label: e.target.value } : f
+                                  )
+                                )
+                              }
+                              placeholder="Label"
+                              aria-label="Client custom field label"
+                              className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                            />
+                            <input
+                              type="text"
+                              value={field.value}
+                              onChange={(e) =>
+                                setClientCustomFields((prev) =>
+                                  prev.map((f) =>
+                                    f.id === field.id ? { ...f, value: e.target.value } : f
+                                  )
+                                )
+                              }
+                              placeholder="Value"
+                              aria-label="Client custom field value"
+                              className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeClientCustomField(field.id)}
+                              aria-label="Remove client field"
+                              className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
+                            >
+                              <Trash size={14} aria-hidden="true" />
+                            </button>
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={addClientCustomField}
+                          className="w-full py-2 rounded-xl border border-dashed border-border/80 hover:border-brand/60 text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                        >
+                          <Plus size={14} className="text-brand" aria-hidden="true" />
+                          <span>Add New Field</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* ACCORDION 3: Invoice Details */}
@@ -1164,15 +1202,24 @@ export function InvoiceBuilder({
                   >
                     Invoice Details
                   </span>
-                  {openSection === "details" ? (
-                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
-                  ) : (
-                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
-                  )}
+                  <CaretDown
+                    size={16}
+                    className={cn(
+                      "text-muted-foreground transition-transform duration-200 ease-out",
+                      openSection === "details" && "rotate-180 text-brand"
+                    )}
+                    aria-hidden="true"
+                  />
                 </button>
 
-                {openSection === "details" && (
-                  <div className="p-4 sm:p-5 pt-0 space-y-4 border-t border-border/20 text-xs">
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    openSection === "details" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="p-4 sm:p-5 pt-0 space-y-4 border-t border-border/20 text-xs">
                     {/* Currency & Serial Number */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div>
@@ -1370,8 +1417,9 @@ export function InvoiceBuilder({
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
+            </div>
 
               {/* ACCORDION 4: Invoice Items */}
               <div className="border border-border/50 rounded-xl overflow-hidden bg-background shadow-2xs">
@@ -1394,8 +1442,8 @@ export function InvoiceBuilder({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setIsAddItemOpen(true)}
-                      className="active:scale-[0.96] transition-transform h-7 px-2.5 text-[11px] font-bold rounded-lg flex items-center gap-1 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                      onClick={openAddItemModal}
+                      className="active:scale-[0.96] transition-transform duration-150 ease-out h-7 px-2.5 text-[11px] font-bold rounded-lg flex items-center gap-1 shadow-2xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                       style={{ backgroundColor: themeColor, color: primaryTextColor }}
                     >
                       <Plus size={12} weight="bold" aria-hidden="true" /> Add Item
@@ -1406,58 +1454,68 @@ export function InvoiceBuilder({
                       aria-label="Toggle invoice items section"
                       className="focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                     >
-                      {openSection === "items" ? (
-                        <CaretUp size={16} className="text-brand" aria-hidden="true" />
-                      ) : (
-                        <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
-                      )}
+                      <CaretDown
+                        size={16}
+                        className={cn(
+                          "text-muted-foreground transition-transform duration-200 ease-out",
+                          openSection === "items" && "rotate-180 text-brand"
+                        )}
+                        aria-hidden="true"
+                      />
                     </button>
                   </div>
                 </div>
 
-                {openSection === "items" && (
-                  <div className="p-4 sm:p-5 pt-0 space-y-2.5 border-t border-border/20 text-xs">
-                    {lineItems.length === 0 ? (
-                      <p className="text-center py-5 text-muted-foreground italic text-[11px]">
-                        No items added yet. Click &quot;Add Item&quot; to add billable services.
-                      </p>
-                    ) : (
-                      lineItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-start justify-between gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 hover:border-border transition-all"
-                        >
-                          <div className="space-y-0.5 flex-1 min-w-0">
-                            <p className="font-bold text-foreground truncate">
-                              {item.itemName}
-                            </p>
-                            {item.description && (
-                              <p className="text-[11px] text-muted-foreground truncate text-pretty">
-                                {item.description}
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    openSection === "items" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="p-4 sm:p-5 pt-0 space-y-2.5 border-t border-border/20 text-xs">
+                      {lineItems.length === 0 ? (
+                        <p className="text-center py-5 text-muted-foreground italic text-[11px]">
+                          No items added yet. Click &quot;Add Item&quot; to add billable services.
+                        </p>
+                      ) : (
+                        lineItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-start justify-between gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 hover:border-border transition-colors duration-150 ease-out"
+                          >
+                            <div className="space-y-0.5 flex-1 min-w-0">
+                              <p className="font-bold text-foreground truncate">
+                                {item.itemName}
                               </p>
-                            )}
-                            <p className="text-[10px] text-muted-foreground font-mono tabular-nums">
-                              {item.quantity} × {formatInvoiceMoney(item.unitPrice, currency)}
-                            </p>
+                              {item.description && (
+                                <p className="text-[11px] text-muted-foreground truncate text-pretty">
+                                  {item.description}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-muted-foreground font-mono tabular-nums">
+                                {item.quantity} × {formatInvoiceMoney(item.unitPrice, currency)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="font-bold text-foreground font-mono tabular-nums">
+                                {formatInvoiceMoney(item.lineTotal, currency)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeItem(item.id)}
+                                aria-label={`Remove ${item.itemName}`}
+                                className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
+                              >
+                                <Trash size={14} aria-hidden="true" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2.5">
-                            <span className="font-bold text-foreground font-mono tabular-nums">
-                              {formatInvoiceMoney(item.lineTotal, currency)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removeItem(item.id)}
-                              aria-label={`Remove ${item.itemName}`}
-                              className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
-                            >
-                              <Trash size={14} aria-hidden="true" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* ACCORDION 5: Additional Information */}
@@ -1476,101 +1534,111 @@ export function InvoiceBuilder({
                   >
                     Additional Information
                   </span>
-                  {openSection === "additional" ? (
-                    <CaretUp size={16} className="text-brand" aria-hidden="true" />
-                  ) : (
-                    <CaretDown size={16} className="text-muted-foreground" aria-hidden="true" />
-                  )}
+                  <CaretDown
+                    size={16}
+                    className={cn(
+                      "text-muted-foreground transition-transform duration-200 ease-out",
+                      openSection === "additional" && "rotate-180 text-brand"
+                    )}
+                    aria-hidden="true"
+                  />
                 </button>
 
-                {openSection === "additional" && (
-                  <div className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-border/20 text-xs">
-                    {/* Payment Information */}
-                    <div className="space-y-2 pt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-foreground">
-                          Payment Information
-                        </span>
-                        <button
-                          type="button"
-                          onClick={addPaymentInfoRow}
-                          className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
-                        >
-                          <Plus size={12} aria-hidden="true" /> Add Detail
-                        </button>
-                      </div>
-
-                      {paymentInformation.map((info) => (
-                        <div key={info.id} className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={info.label}
-                            onChange={(e) =>
-                              setPaymentInformation((prev) =>
-                                prev.map((i) =>
-                                  i.id === info.id ? { ...i, label: e.target.value } : i
-                                )
-                              )
-                            }
-                            placeholder="Label (e.g. Bank / UPI)"
-                            aria-label="Payment detail label"
-                            className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
-                          />
-                          <input
-                            type="text"
-                            value={info.value}
-                            onChange={(e) =>
-                              setPaymentInformation((prev) =>
-                                prev.map((i) =>
-                                  i.id === info.id ? { ...i, value: e.target.value } : i
-                                )
-                              )
-                            }
-                            placeholder="Value"
-                            aria-label="Payment detail value"
-                            className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
-                          />
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    openSection === "additional" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="p-4 sm:p-5 pt-0 space-y-3.5 border-t border-border/20 text-xs">
+                      {/* Payment Information */}
+                      <div className="space-y-2 pt-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-foreground">
+                            Payment Information
+                          </span>
                           <button
                             type="button"
-                            onClick={() => removePaymentInfoRow(info.id)}
-                            aria-label="Remove payment detail"
-                            className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
+                            onClick={addPaymentInfoRow}
+                            className="text-[10px] text-brand hover:underline font-semibold flex items-center gap-0.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                           >
-                            <Trash size={14} aria-hidden="true" />
+                            <Plus size={12} aria-hidden="true" /> Add Detail
                           </button>
                         </div>
-                      ))}
-                    </div>
 
-                    <div>
-                      <label htmlFor="invoice-notes-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                        Invoice Notes
-                      </label>
-                      <textarea
-                        id="invoice-notes-input"
-                        rows={2}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Thank you for your business..."
-                        className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none text-pretty focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
-                      />
-                    </div>
+                        {paymentInformation.map((info) => (
+                          <div key={info.id} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={info.label}
+                              onChange={(e) =>
+                                setPaymentInformation((prev) =>
+                                  prev.map((i) =>
+                                    i.id === info.id ? { ...i, label: e.target.value } : i
+                                  )
+                                )
+                              }
+                              placeholder="Label (e.g. Bank / UPI)"
+                              aria-label="Payment detail label"
+                              className="w-1/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                            />
+                            <input
+                              type="text"
+                              value={info.value}
+                              onChange={(e) =>
+                                setPaymentInformation((prev) =>
+                                  prev.map((i) =>
+                                    i.id === info.id ? { ...i, value: e.target.value } : i
+                                  )
+                                )
+                              }
+                              placeholder="Value"
+                              aria-label="Payment detail value"
+                              className="w-2/3 h-8 px-2.5 text-base sm:text-xs rounded-lg bg-muted/20 border border-border/70 font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removePaymentInfoRow(info.id)}
+                              aria-label="Remove payment detail"
+                              className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-destructive focus-visible:outline-hidden"
+                            >
+                              <Trash size={14} aria-hidden="true" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
 
-                    <div>
-                      <label htmlFor="additional-terms-input" className="text-[11px] font-semibold text-foreground block mb-1">
-                        Terms & Conditions
-                      </label>
-                      <textarea
-                        id="additional-terms-input"
-                        rows={2}
-                        value={additionalTerms}
-                        onChange={(e) => setAdditionalTerms(e.target.value)}
-                        placeholder="Late payment penalty or jurisdiction terms..."
-                        className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none text-pretty focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
-                      />
+                      <div>
+                        <label htmlFor="invoice-notes-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                          Invoice Notes
+                        </label>
+                        <textarea
+                          id="invoice-notes-input"
+                          rows={2}
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Thank you for your business..."
+                          className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none text-pretty focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="additional-terms-input" className="text-[11px] font-semibold text-foreground block mb-1">
+                          Terms & Conditions
+                        </label>
+                        <textarea
+                          id="additional-terms-input"
+                          rows={2}
+                          value={additionalTerms}
+                          onChange={(e) => setAdditionalTerms(e.target.value)}
+                          placeholder="Late payment penalty or jurisdiction terms..."
+                          className="w-full p-2.5 text-base sm:text-xs rounded-xl bg-muted/20 border border-border/70 text-foreground resize-none text-pretty focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:outline-hidden"
+                        />
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -1580,7 +1648,7 @@ export function InvoiceBuilder({
                 type="button"
                 onClick={() => handleSubmit("save_draft")}
                 disabled={isSubmitting}
-                className="flex-1 h-9 px-3 rounded-xl border border-border/70 hover:bg-muted text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                className="flex-1 active:scale-[0.96] transition-transform duration-150 ease-out h-9 px-3 rounded-xl border border-border/70 hover:bg-muted text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
               >
                 <FloppyDisk size={14} aria-hidden="true" />
                 <span>Save Draft</span>
@@ -1590,7 +1658,7 @@ export function InvoiceBuilder({
                 type="button"
                 onClick={() => handleSubmit("send")}
                 disabled={isSubmitting}
-                className="flex-1 h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                className="flex-1 active:scale-[0.96] transition-transform duration-150 ease-out h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 style={{ backgroundColor: themeColor, color: primaryTextColor }}
               >
                 {isSubmitting ? (
@@ -1622,18 +1690,30 @@ export function InvoiceBuilder({
           role="dialog"
           aria-modal="true"
           aria-labelledby="add-item-modal-title"
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          className={cn(
+            "fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4",
+            "transition-opacity duration-200 ease-out",
+            isAddItemVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
         >
-          <div className="bg-background border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div
+            className={cn(
+              "bg-background border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4",
+              "transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              isAddItemVisible
+                ? "opacity-100 scale-100 translate-y-0"
+                : "opacity-0 scale-[0.96] translate-y-2"
+            )}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
               <h2 id="add-item-modal-title" className="text-sm font-bold text-foreground">
                 Add Invoice Item
               </h2>
               <button
                 type="button"
-                onClick={() => setIsAddItemOpen(false)}
+                onClick={closeAddItemModal}
                 aria-label="Close add item dialog"
-                className="text-muted-foreground hover:text-foreground p-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted active:scale-[0.96] transition-transform duration-150 ease-out focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -1704,14 +1784,14 @@ export function InvoiceBuilder({
               <div className="flex items-center justify-end gap-2 pt-3">
                 <button
                   type="button"
-                  onClick={() => setIsAddItemOpen(false)}
-                  className="h-8.5 px-3.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-semibold focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                  onClick={closeAddItemModal}
+                  className="h-8.5 px-3.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-semibold active:scale-[0.96] transition-transform duration-150 ease-out focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="active:scale-[0.96] transition-transform h-8.5 px-4 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
+                  className="active:scale-[0.96] transition-transform duration-150 ease-out h-8.5 px-4 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                   style={{ backgroundColor: themeColor, color: primaryTextColor }}
                 >
                   Add Item
