@@ -68,6 +68,12 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
         Icon = Clock;
         iconColor = "text-blue-500";
         break;
+      case "payment_submitted":
+        dotColor = "bg-amber-500";
+        statusText = "PAYMENT SUBMITTED";
+        Icon = Clock;
+        iconColor = "text-amber-500";
+        break;
       case "overdue":
         dotColor = "bg-rose-500";
         statusText = "OVERDUE";
