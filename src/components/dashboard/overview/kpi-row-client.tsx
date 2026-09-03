@@ -1,12 +1,13 @@
 "use client"
 
-import { CurrencyInrIcon, FolderIcon } from "@phosphor-icons/react"
+import { CurrencyInrIcon, CurrencyDollarIcon, FolderIcon } from "@phosphor-icons/react"
 import { EChartsAreaChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-area-chart"
 import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
 
 interface DashboardKpiRowUIProps {
   totalIncome: number
   activeProjectsCount: number
+  currency?: "USD" | "INR"
   trendData1: { day: number; value: number; [key: string]: unknown }[]
   trendData2: { day: number; value: number; [key: string]: unknown }[]
 }
@@ -14,6 +15,7 @@ interface DashboardKpiRowUIProps {
 export function DashboardKpiRowUI({
   totalIncome,
   activeProjectsCount,
+  currency = "USD",
   trendData1,
   trendData2,
 }: DashboardKpiRowUIProps) {
@@ -25,6 +27,12 @@ export function DashboardKpiRowUI({
     value: { label: "Projects", colors: { light: ["#0284C7"], dark: ["#0284C7"] } },
   } satisfies ChartConfig
 
+  const Icon = currency === "INR" ? CurrencyInrIcon : CurrencyDollarIcon
+  const formattedIncome =
+    currency === "INR"
+      ? `₹${totalIncome.toLocaleString("en-IN")}`
+      : `$${totalIncome.toLocaleString("en-US")}`
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {/* KPI 1: Total Income */}
@@ -32,7 +40,7 @@ export function DashboardKpiRowUI({
         headerExtra={
           <div className="flex items-center justify-between w-full">
             <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              <CurrencyInrIcon className="h-4 w-4 text-emerald-500" /> Total Income
+              <Icon className="h-4 w-4 text-emerald-500" /> Total Income
             </span>
             <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold tracking-wider text-emerald-600 uppercase dark:text-emerald-400 tabular-nums">
               From signed contracts
@@ -43,7 +51,7 @@ export function DashboardKpiRowUI({
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="text-[32px] leading-none font-semibold tracking-tight text-foreground tabular-nums">
-              ₹{totalIncome.toLocaleString("en-IN")}
+              {formattedIncome}
             </div>
             <p className="text-xs leading-relaxed text-pretty text-muted-foreground">
               Accepted proposals value

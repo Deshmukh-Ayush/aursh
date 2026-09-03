@@ -1,12 +1,12 @@
 import { getTenantContext } from "@/lib/tenant-context"
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { inArray } from "drizzle-orm"
-import { proposal, activityLog } from "@/db/schema"
+import { inArray, eq } from "drizzle-orm"
+import { proposal, activityLog, organization } from "@/db/schema"
 import { getAccessibleProjectIds } from "@/lib/project-queries"
 import { DashboardKpiRowUI } from "./kpi-row-client"
 import { subDays, isSameDay } from "date-fns"
-import { convertToINR, getUsdToInrRate } from "@/lib/currency"
+import { convertAndAggregate, getUsdToInrRate } from "@/lib/currency"
 
 export async function DashboardKpiRow() {
   const reqHeaders = await headers()
@@ -20,11 +20,23 @@ export async function DashboardKpiRow() {
   const projectIds = await getAccessibleProjectIds(ctx.user.id, ctx.organizationId)
   const activeProjectsCount = projectIds.length
 
+  let targetCurrency: "USD" | "INR" = "USD";
+  if (ctx.organizationId) {
+    const [org] = await db
+      .select({ globalCurrency: organization.globalCurrency })
+      .from(organization)
+      .where(eq(organization.id, ctx.organizationId));
+    if (org?.globalCurrency === "INR" || org?.globalCurrency === "USD") {
+      targetCurrency = org.globalCurrency;
+    }
+  }
+
   if (projectIds.length === 0) {
     return (
       <DashboardKpiRowUI
         totalIncome={0}
         activeProjectsCount={0}
+        currency={targetCurrency}
         trendData1={[]}
         trendData2={[]}
       />
@@ -51,10 +63,12 @@ export async function DashboardKpiRow() {
     getUsdToInrRate(),
   ])
 
-  // Convert USD proposals to INR at live exchange rate for accurate totals
-  const totalIncome = proposalsList
+  // Convert proposals to targetCurrency at live exchange rate for accurate totals
+  const acceptedItems = proposalsList
     .filter((p) => p.status === "accepted")
-    .reduce((sum, p) => sum + convertToINR(p.price, p.currency, usdToInrRate), 0)
+    .map((p) => ({ amount: p.price, currency: p.currency }));
+
+  const { total: totalIncome } = convertAndAggregate(acceptedItems, targetCurrency, usdToInrRate);
 
   // Generate 7-day trend micro sparklines
   const days = Array.from({ length: 7 }, (_, i) => subDays(today, 6 - i))
@@ -83,6 +97,7 @@ export async function DashboardKpiRow() {
     <DashboardKpiRowUI
       totalIncome={totalIncome}
       activeProjectsCount={activeProjectsCount}
+      currency={targetCurrency}
       trendData1={trendData1}
       trendData2={trendData2}
     />
