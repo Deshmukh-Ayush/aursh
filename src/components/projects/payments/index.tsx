@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, FileText, DownloadSimple, CheckCircle, PaperPlaneTilt, Clock, Eye } from "@phosphor-icons/react";
+import { Plus, FileText, DownloadSimple, CheckCircle, PaperPlaneTilt, Clock, Eye, ShieldCheck } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import { MilestonesEmptyState } from "./milestones-empty-state";
 import { MilestoneItem } from "./milestone-item";
 import { PaymentConfirmModal } from "./payment-confirm-modal";
 import { CreateMilestoneModal } from "./create-milestone-modal";
-import { InvoiceBuilderModal } from "@/components/invoices/invoice-builder-modal";
+import { PaymentProofReviewModal, type PaymentProofItem } from "./payment-proof-review-modal";
 import { InvoicePreviewModal } from "@/components/invoices/invoice-preview-modal";
 import { useUIStore } from "@/store/ui-store";
 import { usePaymentStore } from "@/store/payment-store";
@@ -29,6 +29,7 @@ export function PaymentsViewClient({
   milestones,
   payments,
   invoices = [],
+  paymentProofs = [],
   userRole,
   deliverablesList,
 }: PaymentsViewClientProps) {
@@ -39,16 +40,27 @@ export function PaymentsViewClient({
   const setSelectedMethod = usePaymentStore((state) => state.setSelectedMethod);
   const setReferenceNote = usePaymentStore((state) => state.setReferenceNote);
 
-  // Invoices Modals & Active Tab
+  // Invoices & Review Modals
   const [activeTab, setActiveTab] = useState<"milestones" | "invoices">("milestones");
-  const [isInvoiceBuilderOpen, setIsInvoiceBuilderOpen] = useState(false);
-  const [builderMilestone, setBuilderMilestone] = useState<MilestoneWithDetails | null>(null);
   const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
+  const [reviewProof, setReviewProof] = useState<PaymentProofItem | null>(null);
 
   const isAgency = userRole === "owner" || userRole === "agency";
   const paymentRecordMap = new Map(payments.map((p) => [p.milestoneId, p]));
   const milestoneInvoiceMap = new Map(
     invoices.filter((inv) => inv.milestoneId).map((inv) => [inv.milestoneId!, inv])
+  );
+
+  const pendingProofByMilestone = new Map(
+    paymentProofs
+      .filter((p) => p.status === "pending_review")
+      .map((p) => [p.milestoneId, p])
+  );
+
+  const pendingProofByInvoice = new Map(
+    paymentProofs
+      .filter((p) => p.status === "pending_review" && p.invoiceId)
+      .map((p) => [p.invoiceId!, p])
   );
 
   const formatMoney = (amountInUnits: number, curr: string = "INR") => {
@@ -82,8 +94,10 @@ export function PaymentsViewClient({
   };
 
   const handleOpenInvoiceBuilder = (milestone?: MilestoneWithDetails) => {
-    setBuilderMilestone(milestone || null);
-    setIsInvoiceBuilderOpen(true);
+    const url = `/projects/${projectId}/payments/invoices/new${
+      milestone ? `?milestoneId=${milestone.id}` : ""
+    }`;
+    router.push(url);
   };
 
   const handleDownloadInvoicePdf = (inv: InvoiceData) => {
@@ -145,16 +159,13 @@ export function PaymentsViewClient({
           aria-controls="panel-milestones"
           onClick={() => setActiveTab("milestones")}
           className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+            "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
             activeTab === "milestones"
-              ? "bg-background text-foreground shadow-xs"
+              ? "bg-background text-foreground shadow-2xs border border-border/60"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <span>Milestones</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-mono tabular-nums">
-            {milestones.length}
-          </span>
+          Milestones ({milestones.length})
         </button>
 
         <button
@@ -165,17 +176,16 @@ export function PaymentsViewClient({
           aria-controls="panel-invoices"
           onClick={() => setActiveTab("invoices")}
           className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+            "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden flex items-center gap-1.5",
             activeTab === "invoices"
-              ? "bg-background text-foreground shadow-xs"
+              ? "bg-background text-foreground shadow-2xs border border-border/60"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <FileText size={14} className="text-brand" aria-hidden="true" />
-          <span>Invoices</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-mono tabular-nums">
-            {invoices.length}
-          </span>
+          <span>Invoices ({invoices.length})</span>
+          {invoices.some((i) => i.status === "payment_submitted") && (
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          )}
         </button>
       </div>
 
@@ -206,12 +216,14 @@ export function PaymentsViewClient({
                   milestone={milestone}
                   paymentRecord={paymentRecordMap.get(milestone.id)}
                   linkedInvoice={milestoneInvoiceMap.get(milestone.id)}
+                  pendingProof={pendingProofByMilestone.get(milestone.id)}
                   isAgency={isAgency}
                   formatMoney={formatMoney}
                   onMarkPaid={handleOpenPaymentModal}
                   onDeleteMilestone={handleDeleteMilestone}
                   onGenerateInvoice={handleOpenInvoiceBuilder}
-                  onViewInvoice={(inv) => setPreviewInvoice(inv)}
+                  onViewInvoice={(inv) => router.push(`/projects/${projectId}/payments/invoices/${inv.id}`)}
+                  onReviewProof={(proof) => setReviewProof(proof)}
                   index={index}
                 />
               ))}
@@ -232,11 +244,11 @@ export function PaymentsViewClient({
             <h2 className="text-[16px] font-semibold tracking-tight text-foreground">
               All Project Invoices ({invoices.length})
             </h2>
-            {isAgency && (
+            {isAgency && invoices.length > 0 && (
               <button
                 type="button"
                 onClick={() => handleOpenInvoiceBuilder()}
-                className="text-xs text-brand hover:underline flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden rounded"
+                className="h-8 px-3 rounded-lg border border-border/60 hover:bg-muted text-xs font-semibold inline-flex items-center gap-1.5 text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
               >
                 <Plus size={14} aria-hidden="true" />
                 <span>New Invoice</span>
@@ -245,8 +257,10 @@ export function PaymentsViewClient({
           </div>
 
           {invoices.length === 0 ? (
-            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-border/60 bg-card/20 space-y-3">
-              <FileText size={32} className="text-muted-foreground/40 mx-auto" aria-hidden="true" />
+            <div className="p-8 rounded-xl border border-dashed border-border/80 text-center space-y-3 bg-muted/10">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+                <FileText size={20} aria-hidden="true" />
+              </div>
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">
                   No invoices created yet
@@ -270,6 +284,7 @@ export function PaymentsViewClient({
             <div className="divide-y divide-border/40 border border-border/40 rounded-xl overflow-hidden bg-card/20">
               {invoices.map((inv) => {
                 const isPaid = inv.status === "paid";
+                const isPaymentSubmitted = inv.status === "payment_submitted";
                 return (
                   <div
                     key={inv.id}
@@ -286,7 +301,7 @@ export function PaymentsViewClient({
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setPreviewInvoice(inv)}
+                            onClick={() => router.push(`/projects/${projectId}/payments/invoices/${inv.id}`)}
                             className="text-sm font-bold text-foreground font-mono hover:text-brand transition-colors truncate focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden rounded"
                           >
                             {inv.invoiceNumber}
@@ -296,6 +311,8 @@ export function PaymentsViewClient({
                               "px-2 py-0.2 rounded text-[10px] font-semibold tracking-wide uppercase shrink-0",
                               isPaid
                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : isPaymentSubmitted
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                                 : inv.status === "sent" || inv.status === "viewed"
                                 ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                                 : inv.status === "overdue"
@@ -303,7 +320,7 @@ export function PaymentsViewClient({
                                 : "bg-muted text-muted-foreground"
                             )}
                           >
-                            {inv.status}
+                            {isPaymentSubmitted ? "Payment Submitted" : inv.status}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground truncate">
@@ -326,9 +343,25 @@ export function PaymentsViewClient({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {isAgency && isPaymentSubmitted && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const p =
+                                pendingProofByInvoice.get(inv.id) ||
+                                (inv.milestoneId ? pendingProofByMilestone.get(inv.milestoneId) : null);
+                              if (p) setReviewProof(p);
+                              else toast.info("No pending proof attached.");
+                            }}
+                            className="h-7 px-2.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-500/30 flex items-center gap-1 transition-colors"
+                          >
+                            <ShieldCheck size={14} weight="bold" />
+                            <span>Review Proof</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => setPreviewInvoice(inv)}
+                          onClick={() => router.push(`/projects/${projectId}/payments/invoices/${inv.id}`)}
                           aria-label={`View invoice ${inv.invoiceNumber}`}
                           className="h-7 px-2.5 rounded-md border border-border/60 hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden"
                         >
@@ -355,21 +388,17 @@ export function PaymentsViewClient({
       )}
 
       {/* Confirm Payment Drawer */}
-      <PaymentConfirmModal formatMoney={formatMoney} />
+      <PaymentConfirmModal formatMoney={formatMoney} isAgency={isAgency} />
 
       {/* Create Milestone Drawer */}
       <CreateMilestoneModal projectId={projectId} deliverablesList={deliverablesList} />
 
-      {/* Invoice Split-Pane Builder Modal */}
-      <InvoiceBuilderModal
-        isOpen={isInvoiceBuilderOpen}
-        onClose={() => {
-          setIsInvoiceBuilderOpen(false);
-          setBuilderMilestone(null);
-        }}
-        projectId={projectId}
-        initialMilestoneId={builderMilestone?.id}
-        initialMilestone={builderMilestone}
+      {/* Agency Payment Proof Review Modal */}
+      <PaymentProofReviewModal
+        proof={reviewProof}
+        isOpen={!!reviewProof}
+        onClose={() => setReviewProof(null)}
+        formatMoney={formatMoney}
       />
 
       {/* Invoice Document Preview Modal */}

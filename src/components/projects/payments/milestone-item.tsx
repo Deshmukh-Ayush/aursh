@@ -6,17 +6,20 @@ import type { MilestoneWithDetails, PaymentRecord } from "@/store/types";
 import type { InvoiceData } from "@/lib/invoices/types";
 import { SealCheckIcon } from "@phosphor-icons/react";
 import { FileText } from "lucide-react";
+import type { PaymentProofItem } from "./payment-proof-review-modal";
 
 type MilestoneItemProps = {
   milestone: MilestoneWithDetails;
   paymentRecord: PaymentRecord | undefined;
   linkedInvoice?: InvoiceData;
+  pendingProof?: PaymentProofItem;
   isAgency: boolean;
   formatMoney: (amountInUnits: number, curr?: string) => string;
   onMarkPaid: (milestone: MilestoneWithDetails) => void;
   onDeleteMilestone: (milestoneId: string) => void;
   onGenerateInvoice?: (milestone: MilestoneWithDetails) => void;
   onViewInvoice?: (invoice: InvoiceData) => void;
+  onReviewProof?: (proof: PaymentProofItem) => void;
   index: number;
 };
 
@@ -24,12 +27,14 @@ export function MilestoneItem({
   milestone,
   paymentRecord,
   linkedInvoice,
+  pendingProof,
   isAgency,
   formatMoney,
   onMarkPaid,
   onDeleteMilestone,
   onGenerateInvoice,
   onViewInvoice,
+  onReviewProof,
   index,
 }: MilestoneItemProps) {
   const getStatusConfig = () => {
@@ -141,12 +146,28 @@ export function MilestoneItem({
             ) : (
               <SealCheckIcon className="w-5 h-5 text-emerald-500" />
             )
+          ) : pendingProof ? (
+            isAgency ? (
+              <button
+                type="button"
+                onClick={() => onReviewProof?.(pendingProof)}
+                className="flex items-center gap-1 h-7 px-2.5 text-[11px] font-semibold rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors"
+                title="Review client's uploaded payment proof"
+              >
+                Review Proof
+              </button>
+            ) : (
+              <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                In Review
+              </span>
+            )
           ) : (
             <button
+              type="button"
               onClick={() => onMarkPaid(milestone)}
               className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-medium rounded-full bg-brand text-white hover:bg-brand-hover hover:text-white transition-colors"
             >
-              Pay <ArrowRight className="w-4 h-4" />
+              {isAgency ? "Record Payment" : "Pay"} <ArrowRight className="w-4 h-4" />
             </button>
           )}
 

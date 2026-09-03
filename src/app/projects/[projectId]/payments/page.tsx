@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/utils/db";
-import { paymentMilestone, payment, deliverable, invoice } from "@/db/schema";
+import { paymentMilestone, payment, deliverable, invoice, paymentProof } from "@/db/schema";
 import { eq, asc, desc } from "drizzle-orm";
 import { PaymentsViewClient, MilestoneWithDetails } from "@/components/projects/payments";
 import { getProjectAccess } from "@/lib/project-auth";
 import { getCachedSession } from "@/utils/cached-session";
 import { InvoiceData } from "@/lib/invoices/types";
+import { PaymentProofItem } from "@/components/projects/payments/payment-proof-review-modal";
 
 export const metadata: Metadata = {
   title: "Payments & Invoices",
@@ -18,7 +19,7 @@ async function PaymentsData({ projectId }: { projectId: string }) {
   const session = await getCachedSession();
   const { role } = await getProjectAccess(projectId, session.user.id);
 
-  const [milestonesData, paymentsData, deliverablesData, invoicesData] = await Promise.all([
+  const [milestonesData, paymentsData, deliverablesData, invoicesData, paymentProofsData] = await Promise.all([
     db.select().from(paymentMilestone).where(eq(paymentMilestone.projectId, projectId)).orderBy(asc(paymentMilestone.sortOrder), asc(paymentMilestone.createdAt)),
     db.select().from(payment).where(eq(payment.projectId, projectId)).orderBy(desc(payment.createdAt)),
     db.select().from(deliverable).where(eq(deliverable.projectId, projectId)).orderBy(asc(deliverable.createdAt)),
@@ -26,6 +27,10 @@ async function PaymentsData({ projectId }: { projectId: string }) {
       where: eq(invoice.projectId, projectId),
       with: { lineItems: true },
       orderBy: [desc(invoice.createdAt)],
+    }),
+    db.query.paymentProof.findMany({
+      where: eq(paymentProof.projectId, projectId),
+      orderBy: [desc(paymentProof.createdAt)],
     }),
   ]);
 
@@ -101,12 +106,35 @@ async function PaymentsData({ projectId }: { projectId: string }) {
     title: d.title,
   }));
 
+  const serializedPaymentProofs: PaymentProofItem[] = paymentProofsData.map((proof) => {
+    const matchedMilestone = milestonesData.find((m) => m.id === proof.milestoneId);
+    return {
+      id: proof.id,
+      invoiceId: proof.invoiceId,
+      milestoneId: proof.milestoneId,
+      projectId: proof.projectId,
+      fileUrl: proof.fileUrl,
+      fileName: proof.fileName,
+      fileType: proof.fileType,
+      fileSize: proof.fileSize,
+      extractedData: (proof.extractedData as any) || null,
+      status: proof.status as any,
+      rejectionReason: proof.rejectionReason,
+      submittedBy: proof.submittedBy,
+      createdAt: proof.createdAt.toISOString(),
+      milestoneTitle: matchedMilestone?.title,
+      milestoneAmount: matchedMilestone?.amount,
+      currency: matchedMilestone?.currency,
+    };
+  });
+
   return (
     <PaymentsViewClient
       projectId={projectId}
       milestones={serializedMilestones}
       payments={serializedPayments}
       invoices={serializedInvoices}
+      paymentProofs={serializedPaymentProofs}
       currentUserId={session.user.id}
       userRole={role!}
       deliverablesList={deliverablesList}
