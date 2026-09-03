@@ -160,3 +160,84 @@ export function convertToINR(
   return amount
 }
 
+export interface ConvertibleFinancialItem {
+  amount: number;
+  currency: string;
+  fxRateAtPayment?: number | string | null;
+  isPaid?: boolean;
+}
+
+/**
+ * Converts an individual monetary amount between USD and INR.
+ * Uses fxRateAtPayment if provided (historical lock), otherwise falls back to liveRate.
+ */
+export function convertAmount(
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+  options?: {
+    fxRateAtPayment?: number | string | null;
+    liveRate?: number;
+  }
+): number {
+  const normFrom = (fromCurrency || "USD").toUpperCase()
+  const normTo = (toCurrency || "USD").toUpperCase()
+
+  if (normFrom === normTo) {
+    return amount
+  }
+
+  const rate = options?.fxRateAtPayment
+    ? Number(options.fxRateAtPayment)
+    : (options?.liveRate ?? getUsdToInrRateSync())
+
+  if (rate <= 0) return amount
+
+  // USD -> INR
+  if ((normFrom === "USD" || normFrom === "$") && normTo === "INR") {
+    return Math.round(amount * rate)
+  }
+
+  // INR -> USD
+  if ((normFrom === "INR" || normFrom === "₹") && normTo === "USD") {
+    return Math.round(amount / rate)
+  }
+
+  return amount
+}
+
+/**
+ * Converts each item in a list to targetCurrency individually (convert-then-sum),
+ * preserving locked historical FX rates for completed money while using live rate
+ * for upcoming/pending figures.
+ */
+export function convertAndAggregate(
+  items: ConvertibleFinancialItem[],
+  targetCurrency: "USD" | "INR" | string = "USD",
+  liveRate?: number
+): {
+  total: number;
+  items: Array<ConvertibleFinancialItem & { convertedAmount: number }>;
+} {
+  const normTarget = (targetCurrency || "USD").toUpperCase()
+  const currentLiveRate = liveRate ?? getUsdToInrRateSync()
+
+  const convertedItems = items.map((item) => {
+    const convertedAmount = convertAmount(item.amount, item.currency, normTarget, {
+      fxRateAtPayment: item.fxRateAtPayment,
+      liveRate: currentLiveRate,
+    })
+    return {
+      ...item,
+      convertedAmount,
+    }
+  })
+
+  const total = convertedItems.reduce((sum, item) => sum + item.convertedAmount, 0)
+
+  return {
+    total,
+    items: convertedItems,
+  }
+}
+
