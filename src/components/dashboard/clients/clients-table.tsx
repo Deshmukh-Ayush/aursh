@@ -1,11 +1,11 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { projectMember, user, invitation, proposal } from "@/db/schema"
+import { projectMember, user, invitation, proposal, organization } from "@/db/schema"
 import { eq, and, inArray } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { ClientsTableClient, ClientTableItem } from "./clients-table-client"
-import { convertToINR, getUsdToInrRate } from "@/lib/currency"
+import { convertAndAggregate, getUsdToInrRate } from "@/lib/currency"
 
 export async function ClientsTable() {
   const reqHeaders = await headers()
@@ -17,6 +17,12 @@ export async function ClientsTable() {
 
   // Fetch workspace projects (cached across sibling components)
   const orgProjects = await getCachedOrgProjects(ctx.organizationId)
+
+  const [org] = await db
+    .select({ globalCurrency: organization.globalCurrency })
+    .from(organization)
+    .where(eq(organization.id, ctx.organizationId))
+  const targetCurrency = (org?.globalCurrency as "USD" | "INR") || "USD"
 
   const projectIds = orgProjects.map((p) => p.id)
 
@@ -30,7 +36,6 @@ export async function ClientsTable() {
             userEmail: user.email,
             userImage: user.image,
             projectId: projectMember.projectId,
-            role: projectMember.role,
             createdAt: projectMember.createdAt,
           })
           .from(projectMember)
@@ -38,7 +43,11 @@ export async function ClientsTable() {
           .where(and(inArray(projectMember.projectId, projectIds), eq(projectMember.role, "client")))
       : [],
     db
-      .select()
+      .select({
+        id: invitation.id,
+        email: invitation.email,
+        createdAt: invitation.createdAt,
+      })
       .from(invitation)
       .where(and(eq(invitation.organizationId, ctx.organizationId), eq(invitation.status, "pending"))),
     projectIds.length > 0
@@ -62,9 +71,10 @@ export async function ClientsTable() {
   clientMembers.forEach((m) => {
     const existing = clientMap.get(m.userEmail)
     const projectProposals = proposalsList.filter((p) => p.projectId === m.projectId)
-    const acceptedVal = projectProposals
+    const acceptedItems = projectProposals
       .filter((p) => p.status === "accepted")
-      .reduce((sum, p) => sum + convertToINR(p.price, p.currency, usdToInrRate), 0)
+      .map((p) => ({ amount: p.price, currency: p.currency }))
+    const { total: acceptedVal } = convertAndAggregate(acceptedItems, targetCurrency, usdToInrRate)
 
     if (existing) {
       existing.activeProjectsCount += 1
@@ -78,6 +88,7 @@ export async function ClientsTable() {
         status: "active",
         activeProjectsCount: 1,
         totalContractValue: acceptedVal,
+        currency: targetCurrency,
         joinedDate: m.createdAt.toISOString(),
         projectId: m.projectId,
       })
@@ -95,6 +106,7 @@ export async function ClientsTable() {
         status: "invited",
         activeProjectsCount: 0,
         totalContractValue: 0,
+        currency: targetCurrency,
         joinedDate: inv.createdAt.toISOString(),
         projectId: null,
       })

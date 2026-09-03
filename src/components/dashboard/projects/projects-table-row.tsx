@@ -40,7 +40,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
 
       {/* Financial Value */}
       <td className="px-4 py-3.5 whitespace-nowrap font-medium text-foreground tabular-nums">
-        {project.contractValue ? formatCurrency(project.contractValue) : "--"}
+        {project.contractValue !== null && project.contractValue !== undefined ? formatCurrency(project.contractValue, project.currency || "USD") : "--"}
       </td>
 
       {/* Deliverables Progress */}

@@ -12,6 +12,7 @@ export interface ProjectTableItem {
     image: string | null
   }[]
   contractValue: number | null
+  currency?: string
   contractStatus: string | null
   deliverableStats: {
     total: number

@@ -6,6 +6,7 @@ export interface ClientTableItem {
   status: "active" | "invited"
   activeProjectsCount: number
   totalContractValue: number
+  currency?: string
   joinedDate: string | Date
   projectId: string | null
 }

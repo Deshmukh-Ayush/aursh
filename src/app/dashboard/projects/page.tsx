@@ -4,11 +4,25 @@ import { getCachedTenant } from "@/utils/cached-tenant"
 import { getAccessibleProjects } from "@/lib/project-queries"
 import { ProjectsTableClient, ProjectTableItem } from "@/components/dashboard/projects/projects-table-client"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
-import { convertToINR, getUsdToInrRate } from "@/lib/currency"
+import { db } from "@/utils/db"
+import { organization } from "@/db/schema"
+import { eq } from "drizzle-orm"
+import { convertAmount, getUsdToInrRate } from "@/lib/currency"
 
 async function ProjectsData() {
   const { user, organizationId } = await getCachedTenant()
   if (!user) return null
+
+  let targetCurrency: "USD" | "INR" = "USD"
+  if (organizationId) {
+    const [org] = await db
+      .select({ globalCurrency: organization.globalCurrency })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+    if (org?.globalCurrency === "INR" || org?.globalCurrency === "USD") {
+      targetCurrency = org.globalCurrency
+    }
+  }
 
   const [rawProjects, usdToInrRate] = await Promise.all([
     getAccessibleProjects(user.id, organizationId),
@@ -33,8 +47,9 @@ async function ProjectsData() {
         image: m.user.image,
       })),
       contractValue: acceptedProposal
-        ? convertToINR(acceptedProposal.price, acceptedProposal.currency, usdToInrRate)
+        ? convertAmount(acceptedProposal.price, acceptedProposal.currency, targetCurrency, { liveRate: usdToInrRate })
         : null,
+      currency: targetCurrency,
       contractStatus: latestContract ? latestContract.status : null,
       deliverableStats: {
         total: p.deliverables.length,

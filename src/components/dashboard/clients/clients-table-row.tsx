@@ -10,8 +10,9 @@ interface ClientsTableRowProps {
   client: ClientTableItem
 }
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString("en-IN")}`
+function formatCurrency(amount: number, currency: string = "USD") {
+  if (currency === "INR") return `₹${amount.toLocaleString("en-IN")}`
+  return `$${amount.toLocaleString("en-US")}`
 }
 
 export function ClientsTableRow({ client }: ClientsTableRowProps) {
@@ -60,7 +61,7 @@ export function ClientsTableRow({ client }: ClientsTableRowProps) {
 
       {/* Total Contract Value */}
       <td className="px-4 py-3.5 whitespace-nowrap font-medium text-foreground tabular-nums">
-        {client.totalContractValue > 0 ? formatCurrency(client.totalContractValue) : "--"}
+        {client.totalContractValue > 0 ? formatCurrency(client.totalContractValue, client.currency || "USD") : "--"}
       </td>
 
       {/* Joined/Invited Date */}
