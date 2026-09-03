@@ -22,6 +22,27 @@
       "when": 1788000000000,
       "tag": "0002_reconcile_live_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788341808717,
+      "tag": "0003_torch_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788421373654,
+      "tag": "0004_payment_proof_and_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788427840151,
+      "tag": "0005_pretty_glorian",
+      "breakpoints": true
     }
   ]
 }

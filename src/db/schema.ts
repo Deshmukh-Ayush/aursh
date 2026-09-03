@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, integer, index, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index, jsonb, uniqueIndex, numeric } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -101,6 +101,7 @@ export const organization = pgTable("organization", {
   logo: text("logo"),
 
   plan: text("plan", { enum: ["free", "freelancer", "agency", "enterprise"] }).default("free").notNull(),
+  globalCurrency: text("global_currency", { enum: ["USD", "INR"] }).default("USD").notNull(),
   logoUrl: text("logo_url"),
 
   // Billing & Subscription Fields
@@ -284,6 +285,7 @@ export const project = pgTable("project", {
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
   status: text("status", { enum: ["active", "completed", "archived"] }).notNull().default("active"),
+  currency: text("currency", { enum: ["USD", "INR"] }).notNull().default("USD"),
   createdBy: text("created_by")
     .references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -629,6 +631,7 @@ export const payment = pgTable("payment", {
   currency: text("currency").default("INR").notNull(),
   paymentMethod: text("payment_method").default("upi"),
   referenceNote: text("reference_note"),
+  fxRateAtPayment: numeric("fx_rate_at_payment", { precision: 10, scale: 4 }),
   dodoPaymentId: text("dodo_payment_id"),
   dodoCheckoutId: text("dodo_checkout_id"),
   status: text("status", { enum: ["pending", "succeeded", "failed"] }).notNull().default("succeeded"),
@@ -737,7 +740,7 @@ export const invoice = pgTable("invoice", {
   paymentInformation: jsonb("payment_information").$type<Array<{ id: string; label: string; value: string }>>().default([]).notNull(),
   subtotal: integer("subtotal").notNull().default(0),
   total: integer("total").notNull().default(0),
-  status: text("status", { enum: ["draft", "sent", "viewed", "paid", "overdue", "void"] }).notNull().default("draft"),
+  status: text("status", { enum: ["draft", "sent", "viewed", "payment_submitted", "paid", "overdue", "void"] }).notNull().default("draft"),
   sentAt: timestamp("sent_at"),
   viewedAt: timestamp("viewed_at"),
   paidAt: timestamp("paid_at"),
@@ -859,4 +862,90 @@ export const usageEventRelations = relations(usageEvent, ({ one }) => ({
   organization: one(organization, { fields: [usageEvent.organizationId], references: [organization.id] }),
   user: one(user, { fields: [usageEvent.userId], references: [user.id] }),
 }));
+
+export const torchConversation = pgTable("torch_conversation", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  title: text("title"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  index("torch_conv_org_idx").on(table.organizationId),
+  index("torch_conv_user_idx").on(table.userId),
+  index("torch_conv_updated_idx").on(table.updatedAt),
+]);
+
+export const torchMessage = pgTable("torch_message", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => torchConversation.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  reasoningSteps: jsonb("reasoning_steps"),
+  artifact: jsonb("artifact"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("torch_msg_conv_idx").on(table.conversationId),
+  index("torch_msg_created_idx").on(table.createdAt),
+]);
+
+export const torchConversationRelations = relations(torchConversation, ({ one, many }) => ({
+  organization: one(organization, { fields: [torchConversation.organizationId], references: [organization.id] }),
+  user: one(user, { fields: [torchConversation.userId], references: [user.id] }),
+  messages: many(torchMessage),
+}));
+
+export const torchMessageRelations = relations(torchMessage, ({ one }) => ({
+  conversation: one(torchConversation, { fields: [torchMessage.conversationId], references: [torchConversation.id] }),
+}));
+
+export const paymentProof = pgTable("payment_proof", {
+  id: text("id").primaryKey(),
+  invoiceId: text("invoice_id")
+    .references(() => invoice.id, { onDelete: "cascade" }),
+  milestoneId: text("milestone_id")
+    .notNull()
+    .references(() => paymentMilestone.id, { onDelete: "cascade" }),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  extractedData: jsonb("extracted_data"),
+  status: text("status", { enum: ["pending_review", "confirmed", "rejected"] }).notNull().default("pending_review"),
+  rejectionReason: text("rejection_reason"),
+  submittedBy: text("submitted_by")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  reviewedBy: text("reviewed_by")
+    .references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+}, (table) => [
+  index("payment_proof_invoice_idx").on(table.invoiceId),
+  index("payment_proof_milestone_idx").on(table.milestoneId),
+  index("payment_proof_status_idx").on(table.status),
+  index("payment_proof_project_idx").on(table.projectId),
+]);
+
+export const paymentProofRelations = relations(paymentProof, ({ one }) => ({
+  invoice: one(invoice, { fields: [paymentProof.invoiceId], references: [invoice.id] }),
+  milestone: one(paymentMilestone, { fields: [paymentProof.milestoneId], references: [paymentMilestone.id] }),
+  project: one(project, { fields: [paymentProof.projectId], references: [project.id] }),
+  submittedByUser: one(user, { fields: [paymentProof.submittedBy], references: [user.id] }),
+  reviewedByUser: one(user, { fields: [paymentProof.reviewedBy], references: [user.id] }),
+}));
+
+
 
