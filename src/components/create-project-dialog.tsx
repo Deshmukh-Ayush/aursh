@@ -18,9 +18,15 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 
 import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function CreateProjectDialog() {
+interface CreateProjectDialogProps {
+  defaultCurrency?: "USD" | "INR";
+}
+
+export function CreateProjectDialog({ defaultCurrency = "USD" }: CreateProjectDialogProps = {}) {
   const [open, setOpen] = useState(false);
+  const [currency, setCurrency] = useState<"USD" | "INR">(defaultCurrency);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -91,6 +97,41 @@ export function CreateProjectDialog() {
                 required
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="currency" className="text-right text-xs">
+                Currency
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input type="hidden" name="currency" value={currency} />
+                <button
+                  type="button"
+                  onClick={() => setCurrency("USD")}
+                  className={cn(
+                    "flex-1 py-1.5 px-3 text-xs font-medium rounded-md border transition-all text-center",
+                    currency === "USD"
+                      ? "bg-foreground text-background border-foreground shadow-xs font-semibold"
+                      : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted"
+                  )}
+                >
+                  USD ($)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrency("INR")}
+                  className={cn(
+                    "flex-1 py-1.5 px-3 text-xs font-medium rounded-md border transition-all text-center",
+                    currency === "INR"
+                      ? "bg-foreground text-background border-foreground shadow-xs font-semibold"
+                      : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted"
+                  )}
+                >
+                  INR (₹)
+                </button>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground col-span-4 pl-[calc(25%+1rem)] -mt-1">
+              All proposals, milestones, and invoices in this project will use this currency.
+            </p>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isLoading}>

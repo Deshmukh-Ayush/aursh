@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const name = formData.get("name") as string;
     const clientEmail = formData.get("clientEmail") as string;
+    const rawCurrency = (formData.get("currency") as string)?.toUpperCase();
 
     if (!name || !clientEmail) {
       return NextResponse.json({ error: "Name and Client Email are required." }, { status: 400 });
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
+    const projectCurrency = (rawCurrency === "INR" || rawCurrency === "USD") ? rawCurrency : (org.globalCurrency || "USD");
+
     await db.batch([
       db.insert(project).values({
         id: projectId,
@@ -70,6 +73,7 @@ export async function POST(req: NextRequest) {
         organizationId: orgId,
         createdBy: userId,
         status: "active",
+        currency: projectCurrency,
       }),
       db.insert(projectMember).values({
         id: crypto.randomUUID(),
