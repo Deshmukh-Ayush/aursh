@@ -9,6 +9,7 @@ import { logActivity } from "@/lib/activity";
 import crypto from "crypto";
 import { z } from "zod";
 import { canManageProject, getProjectAccess } from "@/lib/project-auth";
+import { getUsdToInrRate } from "@/lib/currency";
 
 const paymentConfirmationSchema = z.object({
   milestoneId: z.string().min(1),
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
       .returning({ id: paymentMilestone.id });
     if (changed.length === 0) return NextResponse.json({ error: "Payment state changed; refresh and try again" }, { status: 409 });
 
+    const liveFxRate = await getUsdToInrRate();
+
     await db.insert(payment).values({
       id: newPaymentId,
       milestoneId,
@@ -59,6 +62,7 @@ export async function POST(req: NextRequest) {
       currency: milestone.currency,
       paymentMethod,
       referenceNote: referenceNote || null,
+      fxRateAtPayment: liveFxRate.toFixed(4),
       status: "succeeded",
       paidAt: now,
     });

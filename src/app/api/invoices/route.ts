@@ -23,6 +23,7 @@ import { generateInvoicePdf } from "@/lib/invoices/pdf-generator";
 import { calculateInvoiceTotals, InvoiceData } from "@/lib/invoices/types";
 import { createNotification } from "@/lib/notifications";
 import { sendInvoiceEmail } from "@/lib/email";
+import { getUsdToInrRate } from "@/lib/currency";
 import { logActivity } from "@/lib/activity";
 import crypto from "crypto";
 import { z } from "zod";
@@ -280,7 +281,7 @@ export async function POST(req: NextRequest) {
       invoiceNumber,
       prefix: cleanPrefix,
       serialNumber: data.serialNumber,
-      currency: data.currency,
+      currency: (access.proj.currency as "USD" | "INR") || data.currency || "USD",
       themeColor: data.themeColor,
       invoiceDate: new Date(data.invoiceDate),
       dueDate: new Date(data.dueDate),
@@ -531,6 +532,8 @@ export async function PATCH(req: NextRequest) {
             : `Paid via Invoice ${inv.invoiceNumber}`;
 
           const newPaymentId = crypto.randomUUID();
+          const liveFxRate = await getUsdToInrRate();
+
           await db.insert(payment).values({
             id: newPaymentId,
             milestoneId: milestone.id,
@@ -539,6 +542,7 @@ export async function PATCH(req: NextRequest) {
             currency: inv.currency,
             paymentMethod,
             referenceNote,
+            fxRateAtPayment: liveFxRate.toFixed(4),
             status: "succeeded",
             paidAt: now,
           });

@@ -73,14 +73,15 @@ export async function POST(req: NextRequest) {
     }
 
     const milestoneId = crypto.randomUUID();
+    const milestoneCurrency = (access.proj?.currency as "USD" | "INR") || input.data.currency || "USD";
     await db.insert(paymentMilestone).values({
       id: milestoneId, projectId: input.data.projectId, title: input.data.title,
       description: input.data.description ?? null, amount: input.data.amount,
-      currency: input.data.currency, triggerType: input.data.triggerType,
+      currency: milestoneCurrency, triggerType: input.data.triggerType,
       dueDate: input.data.dueDate ?? null, deliverableId: input.data.deliverableId ?? null,
       status: input.data.triggerType === "upfront" ? "due" : "upcoming", createdBy: session.user.id,
     });
-    await logActivity({ projectId: input.data.projectId, userId: session.user.id, type: "milestone_created", metadata: { milestoneTitle: input.data.title, amount: input.data.amount, currency: input.data.currency } });
+    await logActivity({ projectId: input.data.projectId, userId: session.user.id, type: "milestone_created", metadata: { milestoneTitle: input.data.title, amount: input.data.amount, currency: milestoneCurrency } });
     revalidatePath(`/projects/${input.data.projectId}`);
     revalidatePath(`/projects/${input.data.projectId}/payments`);
     return NextResponse.json({ success: true, milestoneId }, { status: 201 });
