@@ -6,6 +6,7 @@ import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
 export interface AnalyticsKpiData {
   wonRevenue: number
   pipelineValue: number
+  currency?: "USD" | "INR"
   winRate: number
   acceptedProposalsCount: number
   totalClosedProposalsCount: number
@@ -14,11 +15,14 @@ export interface AnalyticsKpiData {
   totalDeliverablesCount: number
 }
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString("en-IN")}`
+function formatCurrency(amount: number, currency: string = "USD") {
+  if (currency === "INR") return `₹${amount.toLocaleString("en-IN")}`
+  return `$${amount.toLocaleString("en-US")}`
 }
 
 export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
+  const curr = data.currency || "USD"
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* KPI 1: Won Revenue */}
@@ -37,7 +41,7 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
       >
         <div>
           <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-            {formatCurrency(data.wonRevenue)}
+            {formatCurrency(data.wonRevenue, curr)}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             From {data.acceptedProposalsCount} accepted proposals
@@ -61,7 +65,7 @@ export function AnalyticsKpiRowClient({ data }: { data: AnalyticsKpiData }) {
       >
         <div>
           <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-            {formatCurrency(data.pipelineValue)}
+            {formatCurrency(data.pipelineValue, curr)}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Proposals sent awaiting sign-off

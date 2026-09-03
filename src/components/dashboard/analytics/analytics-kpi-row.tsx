@@ -1,11 +1,11 @@
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { proposal, deliverable } from "@/db/schema"
-import { inArray } from "drizzle-orm"
+import { proposal, deliverable, organization } from "@/db/schema"
+import { inArray, eq } from "drizzle-orm"
 import { getTenantContext } from "@/lib/tenant-context"
 import { getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { AnalyticsKpiRowClient, AnalyticsKpiData } from "./analytics-kpi-row-client"
-import { convertToINR, getUsdToInrRate } from "@/lib/currency"
+import { convertAndAggregate, getUsdToInrRate } from "@/lib/currency"
 
 export async function AnalyticsKpiRow() {
   const reqHeaders = await headers()
@@ -18,12 +18,19 @@ export async function AnalyticsKpiRow() {
   // Fetch workspace project IDs first (cached across sibling components)
   const orgProjects = await getCachedOrgProjects(ctx.organizationId)
 
+  const [org] = await db
+    .select({ globalCurrency: organization.globalCurrency })
+    .from(organization)
+    .where(eq(organization.id, ctx.organizationId));
+  const targetCurrency = (org?.globalCurrency as "USD" | "INR") || "USD";
+
   const projectIds = orgProjects.map((p) => p.id)
 
   if (projectIds.length === 0) {
     const emptyData: AnalyticsKpiData = {
       wonRevenue: 0,
       pipelineValue: 0,
+      currency: targetCurrency,
       winRate: 0,
       acceptedProposalsCount: 0,
       totalClosedProposalsCount: 0,
@@ -53,21 +60,23 @@ export async function AnalyticsKpiRow() {
     getUsdToInrRate(),
   ])
 
-  // Single-pass calculation for proposals with live USD -> INR conversion
-  let wonRevenue = 0
-  let pipelineValue = 0
+  const acceptedItems = proposalsList
+    .filter((p) => p.status === "accepted")
+    .map((p) => ({ amount: p.price, currency: p.currency }));
+  const { total: wonRevenue } = convertAndAggregate(acceptedItems, targetCurrency, usdToInrRate);
+
+  const sentItems = proposalsList
+    .filter((p) => p.status === "sent")
+    .map((p) => ({ amount: p.price, currency: p.currency }));
+  const { total: pipelineValue } = convertAndAggregate(sentItems, targetCurrency, usdToInrRate);
+
   let acceptedProposalsCount = 0
   let closedProposalsCount = 0
 
   proposalsList.forEach((p) => {
-    const inrValue = convertToINR(p.price, p.currency, usdToInrRate)
-
     if (p.status === "accepted") {
-      wonRevenue += inrValue
       acceptedProposalsCount++
       closedProposalsCount++
-    } else if (p.status === "sent") {
-      pipelineValue += inrValue
     } else if (p.status === "declined") {
       closedProposalsCount++
     }
