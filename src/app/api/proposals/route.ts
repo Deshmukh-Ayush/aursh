@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         title: input.data.title,
         scopeSummary: input.data.scopeSummary ?? null,
         price: input.data.price,
-        currency: input.data.currency,
+        currency: (access.proj?.currency as "USD" | "INR") || input.data.currency || "USD",
         validUntil: input.data.validUntil ?? null,
         createdBy: session.user.id,
         status: "draft",
@@ -180,7 +180,7 @@ export async function PATCH(req: NextRequest) {
     const milestoneRows = lineItems.map((item, index) => ({
       id: crypto.randomUUID(), projectId: existing.projectId, proposalId: existing.id,
       deliverableId: deliverableRows[index].id, title: `${item.description} Payment`,
-      description: `Payment released upon approval of \"${item.description}\"`, amount: item.total,
+      description: `Payment released upon approval of "${item.description}"`, amount: Math.round(item.total * 100),
       currency: existing.currency, triggerType: "on_approval" as const, status: "upcoming" as const,
       sortOrder: item.sortOrder, createdBy: session.user.id,
     }));
