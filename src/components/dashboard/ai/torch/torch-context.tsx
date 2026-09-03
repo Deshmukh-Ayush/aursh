@@ -125,6 +125,9 @@ export interface WorkspaceSummary {
 export interface TorchContextValue {
   messages: TorchMessage[];
   loading: boolean;
+  initialLoading: boolean;
+  conversationId: string | null;
+  startNewConversation: () => Promise<void>;
   orgName: string;
   userName?: string;
   projects: LexicalProjectOption[];
@@ -167,7 +170,54 @@ export function TorchProvider({
 }: TorchProviderProps) {
   const [messages, setMessages] = React.useState<TorchMessage[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [initialLoading, setInitialLoading] = React.useState(true);
+  const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadRecentConversation() {
+      try {
+        setInitialLoading(true);
+        const res = await fetch("/api/ai/torch/conversations");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data?.conversation?.id) {
+          setConversationId(data.conversation.id);
+          if (Array.isArray(data.messages)) {
+            setMessages(data.messages);
+          }
+        }
+      } catch (err) {
+        console.error("[Torch Context] Failed to load conversation:", err);
+      } finally {
+        if (isMounted) setInitialLoading(false);
+      }
+    }
+    loadRecentConversation();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const startNewConversation = React.useCallback(async () => {
+    try {
+      setMessages([]);
+      setConversationId(null);
+      const res = await fetch("/api/ai/torch/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data?.conversation?.id) {
+        setConversationId(data.conversation.id);
+      }
+      toast.info("Started a new conversation.");
+    } catch (err) {
+      console.error("[Torch Context] Failed to create new conversation:", err);
+    }
+  }, []);
 
   const isRecord = (value: unknown): value is JsonObject =>
     typeof value === "object" && value !== null;
@@ -249,6 +299,37 @@ export function TorchProvider({
 
     setMessages((prev) => [...prev, initialAssistantMessage]);
 
+    let activeConvId = conversationId;
+    if (!activeConvId) {
+      try {
+        const convRes = await fetch("/api/ai/torch/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: promptText.trim().slice(0, 60) }),
+        });
+        const convData = await convRes.json();
+        if (convData?.conversation?.id) {
+          activeConvId = convData.conversation.id;
+          setConversationId(activeConvId);
+        }
+      } catch (err) {
+        console.error("[Torch Context] Failed to start conversation:", err);
+      }
+    }
+
+    if (activeConvId) {
+      fetch("/api/ai/torch/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConvId,
+          id: userMessage.id,
+          role: "user",
+          content: userMessage.content,
+        }),
+      }).catch((e) => console.error("[Torch Save User Message Error]:", e));
+    }
+
     try {
       const response = await fetch("/api/ai/torch", {
         method: "POST",
@@ -266,10 +347,6 @@ export function TorchProvider({
       }
 
       // AI SDK v7 UI message stream is SSE: each event is a `data:` JSON frame.
-      // The previous client parsed the removed `0:`/`9:`/`a:` line-prefix
-      // protocol and never matched any v7 part, so nothing streamed through.
-      // Use the SDK's own SSE parser so partial frames split across read
-      // boundaries are handled correctly.
       const chunkStream = parseJsonEventStream({
         stream: response.body,
         schema: uiMessageChunkSchema,
@@ -286,9 +363,6 @@ export function TorchProvider({
         const { value, done: streamDone } = await reader.read();
         done = streamDone;
         if (!value) continue;
-        // parseJsonEventStream yields ParseResult<T>; a failed parse (e.g. an
-        // unmapped custom data part) is surfaced as { success: false }, which
-        // we skip rather than crashing the whole stream.
         if (!value.success) continue;
         const part = value.value;
         if (!isRecord(part)) continue;
@@ -323,8 +397,6 @@ export function TorchProvider({
           }
           case "tool-output-available": {
             const result = part.output;
-            // v7 keys tool results by toolCallId (the tool-output-available
-            // chunk carries no toolName). Match the registered step exactly.
             const matchIndex =
               typeof part.toolCallId === "string"
                 ? toolSteps.findIndex((t) => t.toolCallId === part.toolCallId)
@@ -388,37 +460,71 @@ export function TorchProvider({
         );
       }
 
-      // Guarantee the agent always leaves a visible message. If the model
-      // produced no text (e.g. a tool errored and the model went silent, or
-      // the stream ended early), surface what happened instead of a blank turn.
+      // Guarantee the agent always leaves a visible message.
+      let finalContent = accumulatedContent;
+      if (!finalContent.trim()) {
+        const erroredTool = toolSteps.find((t) => t.status !== "complete");
+        finalContent = streamError
+          ? `I ran into a problem: ${streamError}`
+          : erroredTool
+            ? `I tried to run \`${erroredTool.toolName}\` but didn't get a result back. Please try rephrasing or check the project details.`
+            : "I wasn't able to produce a response. Please try again.";
+      }
+
       setMessages((prev) =>
         prev.map((msg) => {
           if (msg.id !== assistantId) return msg;
-          if (msg.content.trim()) return msg;
-
-          const erroredTool = toolSteps.find((t) => t.status !== "complete");
-          const fallback = streamError
-            ? `I ran into a problem: ${streamError}`
-            : erroredTool
-              ? `I tried to run \`${erroredTool.toolName}\` but didn't get a result back. Please try rephrasing or check the project details.`
-              : "I wasn't able to produce a response. Please try again.";
-          return { ...msg, content: fallback };
+          return {
+            ...msg,
+            content: finalContent,
+            toolCalls: [...toolSteps],
+            artifact: detectedArtifact || msg.artifact,
+          };
         }),
       );
+
+      // Persist completed assistant turn
+      if (activeConvId) {
+        fetch("/api/ai/torch/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId: activeConvId,
+            id: assistantId,
+            role: "assistant",
+            content: finalContent,
+            toolCalls: toolSteps.length > 0 ? toolSteps : undefined,
+            artifact: detectedArtifact,
+          }),
+        }).catch((e) => console.error("[Torch Save Assistant Message Error]:", e));
+      }
     } catch (err) {
       console.error("[Torch Chat Error]:", err);
       toast.error("Torch execution failed. Please retry.");
+      const errorFallback = "I ran into an issue connecting to the workspace engine. Please try again.";
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantId
             ? {
                 ...msg,
-                content:
-                  msg.content || "I ran into an issue connecting to the workspace engine. Please try again.",
+                content: msg.content || errorFallback,
               }
             : msg,
         ),
       );
+
+      if (activeConvId) {
+        fetch("/api/ai/torch/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId: activeConvId,
+            id: assistantId,
+            role: "assistant",
+            content: errorFallback,
+          }),
+        }).catch((e) => console.error("[Torch Save Error Fallback Message]:", e));
+      }
     } finally {
       setLoading(false);
     }
@@ -446,6 +552,16 @@ export function TorchProvider({
               : msg,
           ),
         );
+
+        // Sync approved status to database
+        fetch("/api/ai/torch/messages", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messageId,
+            status: "approved",
+          }),
+        }).catch((e) => console.error("[Torch Sync Approved Artifact Error]:", e));
       } else {
         toast.error(data.error || "Failed to apply action.");
       }
@@ -463,6 +579,16 @@ export function TorchProvider({
           : msg,
       ),
     );
+    // Sync rejected status to database
+    fetch("/api/ai/torch/messages", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messageId,
+        status: "rejected",
+      }),
+    }).catch((e) => console.error("[Torch Sync Rejected Artifact Error]:", e));
+
     toast.info("Action cancelled.");
   };
 
@@ -471,6 +597,9 @@ export function TorchProvider({
       value={{
         messages,
         loading,
+        initialLoading,
+        conversationId,
+        startNewConversation,
         orgName,
         userName,
         projects,

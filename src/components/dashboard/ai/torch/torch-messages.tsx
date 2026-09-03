@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { useTorch, WorkspaceSummary } from "./torch-context";
-import { User, Copy, Check, Sparkles } from "lucide-react";
+import { User, Copy, Check, Sparkles, Plus } from "lucide-react";
 import Image from "next/image";
 import { TorchReasoning } from "./torch-reasoning";
 import { TorchArtifact } from "./torch-artifact";
@@ -125,7 +125,15 @@ function TorchEmptyState({ summary }: { summary?: WorkspaceSummary }) {
 }
 
 export function TorchMessages() {
-  const { messages, loading, workspaceSummary, copiedId, copyMessage } = useTorch();
+  const {
+    messages,
+    loading,
+    initialLoading,
+    startNewConversation,
+    workspaceSummary,
+    copiedId,
+    copyMessage,
+  } = useTorch();
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -136,12 +144,40 @@ export function TorchMessages() {
     scrollToBottom();
   }, [messages, loading]);
 
+  if (initialLoading) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center p-8 space-y-3">
+        <Image
+          src="/logo/scrunity_logo_svg.svg"
+          alt="Torch loading"
+          width={28}
+          height={28}
+          className="animate-pulse dark:invert opacity-70"
+        />
+        <span className="text-xs text-muted-foreground">Resuming conversation…</span>
+      </div>
+    );
+  }
+
   if (messages.length === 0) {
     return <TorchEmptyState summary={workspaceSummary} />;
   }
 
   return (
-    <MessageGroup spacing="default" className="px-1 pb-4">
+    <div className="flex flex-col flex-1 w-full">
+      <div className="flex justify-end items-center px-2 pb-2">
+        <button
+          onClick={startNewConversation}
+          disabled={loading}
+          type="button"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground border border-border/50 hover:border-border rounded-lg bg-background/80 hover:bg-muted transition-all disabled:opacity-50"
+          title="Start a new conversation"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span>New Chat</span>
+        </button>
+      </div>
+      <MessageGroup spacing="default" className="px-1 pb-4">
       {messages.map((msg) => {
         const isUser = msg.role === "user";
 
@@ -228,5 +264,6 @@ export function TorchMessages() {
       )}
       <div ref={messagesEndRef} />
     </MessageGroup>
+    </div>
   );
 }
