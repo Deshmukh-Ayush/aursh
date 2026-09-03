@@ -46,7 +46,7 @@ export type InvoiceLineItemData = {
   sortOrder?: number;
 };
 
-export type InvoiceStatus = "draft" | "sent" | "viewed" | "paid" | "overdue" | "void";
+export type InvoiceStatus = "draft" | "sent" | "viewed" | "payment_submitted" | "paid" | "overdue" | "void";
 
 export type InvoiceData = {
   id: string;

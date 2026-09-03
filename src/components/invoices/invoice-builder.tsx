@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 interface InvoiceBuilderProps {
   projectId: string;
   projectName?: string;
+  projectCurrency?: "USD" | "INR";
   initialMilestoneId?: string | null;
   initialMilestone?: {
     id: string;
@@ -71,6 +72,7 @@ const FONT_OPTIONS = [
 export function InvoiceBuilder({
   projectId,
   projectName,
+  projectCurrency,
   initialMilestoneId,
   initialMilestone,
   onSuccess,
@@ -105,7 +107,9 @@ export function InvoiceBuilder({
   // Invoice Form State
   const [prefix, setPrefix] = useState("INV-");
   const [serialNumber, setSerialNumber] = useState<number>(1);
-  const [currency, setCurrency] = useState<"USD" | "INR">("INR");
+  const [currency, setCurrency] = useState<"USD" | "INR">(
+    projectCurrency || (initialMilestone?.currency as "USD" | "INR") || "USD"
+  );
   const [themeColor, setThemeColor] = useState("#4F46E5");
   const [fontFamily, setFontFamily] = useState<string>("sans");
   const [invoiceDate, setInvoiceDate] = useState<string>(
@@ -1175,34 +1179,45 @@ export function InvoiceBuilder({
                         <span className="text-[11px] font-semibold text-foreground block mb-1">
                           Currency
                         </span>
-                        <div className="flex rounded-xl bg-muted/40 p-0.5 border border-border/70" role="group" aria-label="Invoice currency">
-                          <button
-                            type="button"
-                            onClick={() => setCurrency("USD")}
-                            aria-pressed={currency === "USD"}
-                            className={cn(
-                              "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
-                              currency === "USD"
-                                ? "bg-background text-foreground shadow-2xs"
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            USD ($)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCurrency("INR")}
-                            aria-pressed={currency === "INR"}
-                            className={cn(
-                              "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
-                              currency === "INR"
-                                ? "bg-background text-foreground shadow-2xs"
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            INR (₹)
-                          </button>
-                        </div>
+                        {projectCurrency ? (
+                          <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted/40 border border-border/70">
+                            <span className="text-xs font-bold text-foreground">
+                              {currency === "USD" ? "USD ($)" : "INR (₹)"}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                              Project Currency
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex rounded-xl bg-muted/40 p-0.5 border border-border/70" role="group" aria-label="Invoice currency">
+                            <button
+                              type="button"
+                              onClick={() => setCurrency("USD")}
+                              aria-pressed={currency === "USD"}
+                              className={cn(
+                                "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+                                currency === "USD"
+                                  ? "bg-background text-foreground shadow-2xs"
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              USD ($)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCurrency("INR")}
+                              aria-pressed={currency === "INR"}
+                              className={cn(
+                                "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-hidden",
+                                currency === "INR"
+                                  ? "bg-background text-foreground shadow-2xs"
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              INR (₹)
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-1.5">
