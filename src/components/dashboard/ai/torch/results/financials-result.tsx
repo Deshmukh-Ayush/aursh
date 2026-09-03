@@ -117,10 +117,11 @@ function toNum(v: unknown): number {
 }
 
 function formatMoney(amount: number, currency: string): string {
+  const mainUnits = amount / 100;
   const formatted = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(mainUnits);
   return formatted;
 }
