@@ -13,6 +13,8 @@ import {
   projectMember,
   projectInvitation,
   user as userTable,
+  organization,
+  payment,
 } from "@/db/schema";
 import { eq, inArray, desc, and } from "drizzle-orm";
 import { evaluateScopeStatus, getProjectRevisionCount } from "./scope-guardian";
@@ -20,6 +22,7 @@ import { generateChangeOrderAddendum } from "./addendum-generator";
 import { getContractScopeFromDb } from "./contract-parser";
 import { recordCreditUsage, checkCreditAllowance } from "./credits";
 import { checkSearchCircuitBreaker } from "./search-circuit-breaker";
+import { convertAmount, convertAndAggregate, getUsdToInrRate } from "@/lib/currency";
 import crypto from "crypto";
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -40,30 +43,30 @@ const toIsoDate = (d: unknown): string | null => {
 async function resolveOrgProject(
   projectIdentifier: string,
   organizationId: string
-): Promise<{ id: string; name: string } | null> {
+): Promise<{ id: string; name: string; currency: "USD" | "INR" } | null> {
   if (!projectIdentifier || !organizationId) return null;
   const clean = projectIdentifier.trim().replace(/^@/, "").trim();
   if (!clean) return null;
 
   // 1. Try exact UUID / ID match
   const [byId] = await db
-    .select({ id: project.id, name: project.name })
+    .select({ id: project.id, name: project.name, currency: project.currency })
     .from(project)
     .where(and(eq(project.id, clean), eq(project.organizationId, organizationId)));
-  if (byId) return byId;
+  if (byId) return byId as { id: string; name: string; currency: "USD" | "INR" };
 
   // 2. Try exact or case-insensitive name match within caller's organization
   const orgProjects = await db
-    .select({ id: project.id, name: project.name })
+    .select({ id: project.id, name: project.name, currency: project.currency })
     .from(project)
     .where(eq(project.organizationId, organizationId));
 
   const lower = clean.toLowerCase();
   const exactName = orgProjects.find((p) => p.name.toLowerCase() === lower);
-  if (exactName) return exactName;
+  if (exactName) return exactName as { id: string; name: string; currency: "USD" | "INR" };
 
   const partialName = orgProjects.find((p) => p.name.toLowerCase().includes(lower));
-  if (partialName) return partialName;
+  if (partialName) return partialName as { id: string; name: string; currency: "USD" | "INR" };
 
   return null;
 }
@@ -156,12 +159,20 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             .where(inArray(contract.projectId, projectIds)),
         ]);
 
+        const [org] = await db
+          .select({ globalCurrency: organization.globalCurrency })
+          .from(organization)
+          .where(eq(organization.id, organizationId));
+        const targetCurrency = (org?.globalCurrency as "USD" | "INR") || "USD";
+        const usdToInrRate = await getUsdToInrRate();
+
         const inReview = deliverablesList.filter(
           (d) => d.status === "in_review" || d.status === "revision_requested",
         );
-        const acceptedValue = proposalsList
+        const acceptedItems = proposalsList
           .filter((p) => p.status === "accepted")
-          .reduce((sum, p) => sum + p.price, 0);
+          .map((p) => ({ amount: p.price, currency: p.currency }));
+        const { total: acceptedValue } = convertAndAggregate(acceptedItems, targetCurrency, usdToInrRate);
 
         return {
           totalProjects: orgProjects.length,
@@ -183,6 +194,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             projectId: d.projectId,
           })),
           totalProposalPipeline: acceptedValue,
+          currency: targetCurrency,
         };
       },
     }),
@@ -335,6 +347,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
         let projectIds: string[];
         let projectNameResolved: string | undefined;
 
+        let targetCurrency: "USD" | "INR" = "USD";
         if (target && target.length > 0) {
           const resolved = await resolveOrgProject(target, organizationId);
           if (!resolved) {
@@ -349,22 +362,51 @@ export function createTorchTools(organizationId: string, userId?: string | null)
           }
           projectIds = [resolved.id];
           projectNameResolved = resolved.name;
+          targetCurrency = resolved.currency || "USD";
         } else {
-          const orgProjects = await db
-            .select({ id: project.id, name: project.name })
-            .from(project)
-            .where(eq(project.organizationId, organizationId));
+          const [orgProjects, [org]] = await Promise.all([
+            db
+              .select({ id: project.id, name: project.name })
+              .from(project)
+              .where(eq(project.organizationId, organizationId)),
+            db
+              .select({ globalCurrency: organization.globalCurrency })
+              .from(organization)
+              .where(eq(organization.id, organizationId)),
+          ]);
           projectIds = orgProjects.map((p) => p.id);
+          targetCurrency = (org?.globalCurrency as "USD" | "INR") || "USD";
         }
 
         if (projectIds.length === 0) {
-          return { collected: 0, due: 0, overdue: 0, upcoming: 0, milestones: [] };
+          return { collected: 0, due: 0, overdue: 0, upcoming: 0, milestones: [], currency: targetCurrency };
         }
 
-        const milestones = await db
-          .select()
-          .from(paymentMilestone)
-          .where(inArray(paymentMilestone.projectId, projectIds));
+        const [milestones, usdToInrRate] = await Promise.all([
+          db
+            .select()
+            .from(paymentMilestone)
+            .where(inArray(paymentMilestone.projectId, projectIds)),
+          getUsdToInrRate(),
+        ]);
+
+        const paidMilestoneIds = milestones
+          .filter((m) => m.status === "paid")
+          .map((m) => m.id);
+
+        const payments = paidMilestoneIds.length > 0
+          ? await db
+              .select({
+                milestoneId: payment.milestoneId,
+                fxRateAtPayment: payment.fxRateAtPayment,
+              })
+              .from(payment)
+              .where(inArray(payment.milestoneId, paidMilestoneIds))
+          : [];
+
+        const paymentFxMap = new Map(
+          payments.filter((p) => p.milestoneId).map((p) => [p.milestoneId!, p.fxRateAtPayment])
+        );
 
         let collected = 0;
         let due = 0;
@@ -372,15 +414,20 @@ export function createTorchTools(organizationId: string, userId?: string | null)
         let upcoming = 0;
 
         for (const m of milestones) {
-          if (m.status === "paid") collected += m.amount;
-          else if (m.status === "due") due += m.amount;
-          else if (m.status === "overdue") overdue += m.amount;
-          else if (m.status === "upcoming") upcoming += m.amount;
+          const converted = convertAmount(m.amount, m.currency, targetCurrency, {
+            fxRateAtPayment: m.status === "paid" ? paymentFxMap.get(m.id) : null,
+            liveRate: usdToInrRate,
+          });
+
+          if (m.status === "paid") collected += converted;
+          else if (m.status === "due") due += converted;
+          else if (m.status === "overdue") overdue += converted;
+          else if (m.status === "upcoming") upcoming += converted;
         }
 
         return {
           projectName: projectNameResolved || (projectIds.length === 1 ? "Selected Project" : "Workspace Portfolio"),
-          currency: milestones[0]?.currency || "USD",
+          currency: targetCurrency,
           summary: { collected, due, overdue, upcoming },
           milestonesCount: milestones.length,
           milestones: milestones.map((m) => ({
@@ -512,6 +559,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
         await trackUsage("queryInvoiceStatus", { projectId, projectName });
 
         let projectIds: string[];
+        let targetCurrency: "USD" | "INR" = "USD";
 
         if (projectId) {
           const resolved = await resolveOrgProject(projectId, organizationId);
@@ -527,9 +575,10 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             };
           }
           projectIds = [resolved.id];
+          targetCurrency = resolved.currency || "USD";
         } else if (projectName) {
           const orgProjects = await db
-            .select({ id: project.id, name: project.name })
+            .select({ id: project.id, name: project.name, currency: project.currency })
             .from(project)
             .where(eq(project.organizationId, organizationId));
           const match = orgProjects.find((p) =>
@@ -547,13 +596,20 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             };
           }
           projectIds = [match.id];
+          targetCurrency = (match.currency as "USD" | "INR") || "USD";
         } else {
-          projectIds = (
-            await db
+          const [orgProjects, [org]] = await Promise.all([
+            db
               .select({ id: project.id })
               .from(project)
-              .where(eq(project.organizationId, organizationId))
-          ).map((p) => p.id);
+              .where(eq(project.organizationId, organizationId)),
+            db
+              .select({ globalCurrency: organization.globalCurrency })
+              .from(organization)
+              .where(eq(organization.id, organizationId)),
+          ]);
+          projectIds = orgProjects.map((p) => p.id);
+          targetCurrency = (org?.globalCurrency as "USD" | "INR") || "USD";
         }
 
         if (projectIds.length === 0) {
@@ -569,12 +625,12 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             },
             totalOutstanding: 0,
             totalPaid: 0,
-            currency: "USD",
+            currency: targetCurrency,
             invoices: [],
           };
         }
 
-        const [invoicesList, projectsList] = await Promise.all([
+        const [invoicesList, projectsList, usdToInrRate] = await Promise.all([
           db
             .select()
             .from(invoice)
@@ -589,7 +645,26 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             .select({ id: project.id, name: project.name })
             .from(project)
             .where(inArray(project.id, projectIds)),
+          getUsdToInrRate(),
         ]);
+
+        const paidMilestoneIds = invoicesList
+          .filter((i) => i.status === "paid" && i.milestoneId)
+          .map((i) => i.milestoneId as string);
+
+        const payments = paidMilestoneIds.length > 0
+          ? await db
+              .select({
+                milestoneId: payment.milestoneId,
+                fxRateAtPayment: payment.fxRateAtPayment,
+              })
+              .from(payment)
+              .where(inArray(payment.milestoneId, paidMilestoneIds))
+          : [];
+
+        const paymentFxMap = new Map(
+          payments.filter((p) => p.milestoneId).map((p) => [p.milestoneId, p.fxRateAtPayment])
+        );
 
         const projectMap = new Map(projectsList.map((p) => [p.id, p.name]));
         const now = Date.now();
@@ -614,23 +689,32 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             ? Math.max(1, Math.floor((now - dueTime) / (1000 * 60 * 60 * 24)))
             : 0;
 
+          const fxRateAtPayment = (inv.status === "paid" && inv.milestoneId)
+            ? paymentFxMap.get(inv.milestoneId)
+            : null;
+
+          const converted = convertAmount(inv.total, inv.currency, targetCurrency, {
+            fxRateAtPayment,
+            liveRate: usdToInrRate,
+          });
+
           if (inv.status === "paid") {
             paidCount++;
-            totalPaid += inv.total;
+            totalPaid += converted;
           } else if (inv.status === "void") {
             voidCount++;
           } else if (inv.status === "draft") {
             draftCount++;
-            totalDraft += inv.total;
+            totalDraft += converted;
           } else if (isOverdue) {
             overdueCount++;
-            totalOutstanding += inv.total;
+            totalOutstanding += converted;
           } else if (inv.status === "viewed") {
             viewedCount++;
-            totalOutstanding += inv.total;
+            totalOutstanding += converted;
           } else {
             sentCount++;
-            totalOutstanding += inv.total;
+            totalOutstanding += converted;
           }
 
           const clientSnap = inv.clientSnapshot as { name?: string; email?: string } | null;
@@ -654,7 +738,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
 
         return {
           totalInvoices: invoicesList.length,
-          currency: invoicesList[0]?.currency || "USD",
+          currency: targetCurrency,
           summary: {
             draft: draftCount,
             sent: sentCount,
