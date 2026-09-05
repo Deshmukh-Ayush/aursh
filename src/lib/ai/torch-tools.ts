@@ -77,7 +77,12 @@ async function resolveOrgProject(
  * Exposes workspace intelligence, scope guardian audits, change order addenda,
  * proposal estimation, and financial analytics directly to Torch agent.
  */
-export function createTorchTools(organizationId: string, userId?: string | null) {
+export function createTorchTools(
+  organizationId: string,
+  userId?: string | null,
+  options?: { enableWebSearch?: boolean }
+) {
+  const enableWebSearch = options?.enableWebSearch ?? false;
   let turnWebSearchCount = 0;
 
   const trackUsage = async (toolName: string, metadata?: Record<string, unknown>) => {
@@ -94,7 +99,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
     }
   };
 
-  return {
+  const baseTools = {
     queryWorkspaceOverview: tool({
       description:
         "Fetches a high-level summary of active projects, deliverables in review, proposals, and contracts in the workspace.",
@@ -382,40 +387,60 @@ export function createTorchTools(organizationId: string, userId?: string | null)
           return { collected: 0, due: 0, overdue: 0, upcoming: 0, milestones: [], currency: targetCurrency };
         }
 
-        const [milestones, usdToInrRate] = await Promise.all([
+        const [milestones, projectPayments, allInvoices, usdToInrRate] = await Promise.all([
           db
             .select()
             .from(paymentMilestone)
             .where(inArray(paymentMilestone.projectId, projectIds)),
+          db
+            .select({
+              id: payment.id,
+              milestoneId: payment.milestoneId,
+              invoiceId: payment.invoiceId,
+              amount: payment.amount,
+              currency: payment.currency,
+              fxRateAtPayment: payment.fxRateAtPayment,
+              status: payment.status,
+            })
+            .from(payment)
+            .where(and(inArray(payment.projectId, projectIds), eq(payment.status, "succeeded"))),
+          db
+            .select({
+              id: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              total: invoice.total,
+              currency: invoice.currency,
+              status: invoice.status,
+              dueDate: invoice.dueDate,
+              milestoneId: invoice.milestoneId,
+            })
+            .from(invoice)
+            .where(inArray(invoice.projectId, projectIds)),
           getUsdToInrRate(),
         ]);
 
-        const paidMilestoneIds = milestones
-          .filter((m) => m.status === "paid")
-          .map((m) => m.id);
+        const paymentFxByMilestone = new Map<string, string | null>();
+        const paymentFxByInvoice = new Map<string, string | null>();
 
-        const payments = paidMilestoneIds.length > 0
-          ? await db
-              .select({
-                milestoneId: payment.milestoneId,
-                fxRateAtPayment: payment.fxRateAtPayment,
-              })
-              .from(payment)
-              .where(inArray(payment.milestoneId, paidMilestoneIds))
-          : [];
-
-        const paymentFxMap = new Map(
-          payments.filter((p) => p.milestoneId).map((p) => [p.milestoneId!, p.fxRateAtPayment])
-        );
+        for (const p of projectPayments) {
+          if (p.milestoneId) {
+            paymentFxByMilestone.set(p.milestoneId, p.fxRateAtPayment);
+          }
+          if (p.invoiceId) {
+            paymentFxByInvoice.set(p.invoiceId, p.fxRateAtPayment);
+          }
+        }
 
         let collected = 0;
         let due = 0;
         let overdue = 0;
         let upcoming = 0;
 
+        // 1. Process scheduled milestones
         for (const m of milestones) {
+          const fxRateAtPayment = m.status === "paid" ? paymentFxByMilestone.get(m.id) || null : null;
           const converted = convertAmount(m.amount, m.currency, targetCurrency, {
-            fxRateAtPayment: m.status === "paid" ? paymentFxMap.get(m.id) : null,
+            fxRateAtPayment,
             liveRate: usdToInrRate,
           });
 
@@ -425,12 +450,42 @@ export function createTorchTools(organizationId: string, userId?: string | null)
           else if (m.status === "upcoming") upcoming += converted;
         }
 
-        return {
-          projectName: projectNameResolved || (projectIds.length === 1 ? "Selected Project" : "Workspace Portfolio"),
-          currency: targetCurrency,
-          summary: { collected, due, overdue, upcoming },
-          milestonesCount: milestones.length,
-          milestones: milestones.map((m) => ({
+        // 2. Include milestone-less payments into collected
+        const milestoneIdSet = new Set(milestones.map((m) => m.id));
+        const standalonePayments = projectPayments.filter(
+          (p) => !p.milestoneId || !milestoneIdSet.has(p.milestoneId)
+        );
+
+        for (const p of standalonePayments) {
+          const converted = convertAmount(p.amount, p.currency, targetCurrency, {
+            fxRateAtPayment: p.fxRateAtPayment,
+            liveRate: usdToInrRate,
+          });
+          collected += converted;
+        }
+
+        // 3. Include standalone (milestone-less) invoices that are unpaid into due/overdue
+        const standaloneInvoices = allInvoices.filter(
+          (inv) => !inv.milestoneId || !milestoneIdSet.has(inv.milestoneId)
+        );
+        const now = Date.now();
+
+        for (const inv of standaloneInvoices) {
+          if (inv.status === "paid" || inv.status === "void" || inv.status === "draft") {
+            continue;
+          }
+          const dueTime = new Date(inv.dueDate).getTime();
+          const isOverdue = inv.status === "overdue" || dueTime < now;
+          const converted = convertAmount(inv.total, inv.currency, targetCurrency, {
+            liveRate: usdToInrRate,
+          });
+          if (isOverdue) overdue += converted;
+          else due += converted;
+        }
+
+        // Build composite item list for reporting
+        const reportedItems = [
+          ...milestones.map((m) => ({
             id: m.id,
             title: m.title,
             amount: m.amount,
@@ -439,6 +494,30 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             triggerType: m.triggerType,
             dueDate: toIsoDate(m.dueDate),
           })),
+          ...standaloneInvoices
+            .filter((inv) => inv.status !== "void" && inv.status !== "draft")
+            .map((inv) => {
+              const dueTime = new Date(inv.dueDate).getTime();
+              const isOverdue =
+                inv.status === "overdue" || (dueTime < now && inv.status !== "paid");
+              return {
+                id: inv.id,
+                title: `Invoice ${inv.invoiceNumber}`,
+                amount: inv.total,
+                currency: inv.currency,
+                status: inv.status === "paid" ? "paid" : isOverdue ? "overdue" : "due",
+                triggerType: "manual" as const,
+                dueDate: toIsoDate(inv.dueDate),
+              };
+            }),
+        ];
+
+        return {
+          projectName: projectNameResolved || (projectIds.length === 1 ? "Selected Project" : "Workspace Portfolio"),
+          currency: targetCurrency,
+          summary: { collected, due, overdue, upcoming },
+          milestonesCount: reportedItems.length,
+          milestones: reportedItems,
         };
       },
     }),
@@ -648,23 +727,21 @@ export function createTorchTools(organizationId: string, userId?: string | null)
           getUsdToInrRate(),
         ]);
 
-        const paidMilestoneIds = invoicesList
-          .filter((i) => i.status === "paid" && i.milestoneId)
-          .map((i) => i.milestoneId as string);
+        const payments = await db
+          .select({
+            milestoneId: payment.milestoneId,
+            invoiceId: payment.invoiceId,
+            fxRateAtPayment: payment.fxRateAtPayment,
+          })
+          .from(payment)
+          .where(and(inArray(payment.projectId, projectIds), eq(payment.status, "succeeded")));
 
-        const payments = paidMilestoneIds.length > 0
-          ? await db
-              .select({
-                milestoneId: payment.milestoneId,
-                fxRateAtPayment: payment.fxRateAtPayment,
-              })
-              .from(payment)
-              .where(inArray(payment.milestoneId, paidMilestoneIds))
-          : [];
-
-        const paymentFxMap = new Map(
-          payments.filter((p) => p.milestoneId).map((p) => [p.milestoneId, p.fxRateAtPayment])
-        );
+        const paymentFxByMilestone = new Map<string, string | null>();
+        const paymentFxByInvoice = new Map<string, string | null>();
+        for (const p of payments) {
+          if (p.milestoneId) paymentFxByMilestone.set(p.milestoneId, p.fxRateAtPayment);
+          if (p.invoiceId) paymentFxByInvoice.set(p.invoiceId, p.fxRateAtPayment);
+        }
 
         const projectMap = new Map(projectsList.map((p) => [p.id, p.name]));
         const now = Date.now();
@@ -684,13 +761,13 @@ export function createTorchTools(organizationId: string, userId?: string | null)
           const dueTime = new Date(inv.dueDate).getTime();
           const isOverdue =
             inv.status === "overdue" ||
-            (dueTime < now && inv.status !== "paid" && inv.status !== "void");
+            (dueTime < now && inv.status !== "paid" && inv.status !== "void" && inv.status !== "draft");
           const overdueDays = isOverdue
             ? Math.max(1, Math.floor((now - dueTime) / (1000 * 60 * 60 * 24)))
             : 0;
 
-          const fxRateAtPayment = (inv.status === "paid" && inv.milestoneId)
-            ? paymentFxMap.get(inv.milestoneId)
+          const fxRateAtPayment = inv.status === "paid"
+            ? (inv.milestoneId ? paymentFxByMilestone.get(inv.milestoneId) : null) || paymentFxByInvoice.get(inv.id) || null
             : null;
 
           const converted = convertAmount(inv.total, inv.currency, targetCurrency, {
@@ -728,7 +805,7 @@ export function createTorchTools(organizationId: string, userId?: string | null)
             clientEmail: clientSnap?.email || "",
             amount: inv.total,
             currency: inv.currency,
-            status: isOverdue && inv.status !== "paid" && inv.status !== "void" ? "overdue" : inv.status,
+            status: isOverdue ? "overdue" : inv.status,
             dueDate: toIsoDate(inv.dueDate) || "",
             invoiceDate: toIsoDate(inv.invoiceDate) || "",
             isOverdue,
@@ -885,8 +962,12 @@ export function createTorchTools(organizationId: string, userId?: string | null)
         };
       },
     }),
+  };
 
-    webSearch: tool({
+  if (enableWebSearch) {
+    return {
+      ...baseTools,
+      webSearch: tool({
       description:
         "Searches the public web using a licensed search API for external internet information, market rate benchmarks, technical documentation, and public company background. CRITICAL: Follow the Internal-First Principle. Never call this tool for internal projects, @ProjectName references, workspace financials, revenue, deliverables, contracts, scope, or invoices.",
       inputSchema: z.object({
@@ -1178,5 +1259,9 @@ export function createTorchTools(organizationId: string, userId?: string | null)
         };
       },
     }),
-  };
+    };
+  }
+
+  return baseTools;
 }
+
