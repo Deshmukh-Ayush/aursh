@@ -285,6 +285,14 @@ export function PaymentsViewClient({
               {invoices.map((inv) => {
                 const isPaid = inv.status === "paid";
                 const isPaymentSubmitted = inv.status === "payment_submitted";
+                const isOverdue =
+                  inv.status === "overdue" ||
+                  (Boolean(inv.dueDate) &&
+                    new Date(inv.dueDate).getTime() < Date.now() &&
+                    !isPaid &&
+                    !isPaymentSubmitted &&
+                    inv.status !== "void" &&
+                    inv.status !== "draft");
                 return (
                   <div
                     key={inv.id}
@@ -313,14 +321,14 @@ export function PaymentsViewClient({
                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                                 : isPaymentSubmitted
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                : isOverdue
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                                 : inv.status === "sent" || inv.status === "viewed"
                                 ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                                : inv.status === "overdue"
-                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                                 : "bg-muted text-muted-foreground"
                             )}
                           >
-                            {isPaymentSubmitted ? "Payment Submitted" : inv.status}
+                            {isPaymentSubmitted ? "Payment Submitted" : isOverdue ? "Overdue" : inv.status}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground truncate">
