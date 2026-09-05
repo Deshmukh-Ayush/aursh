@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export type PaymentProofItem = {
   id: string;
   invoiceId?: string | null;
-  milestoneId: string;
+  milestoneId?: string | null;
   projectId: string;
   fileUrl: string;
   fileName: string;
@@ -32,6 +32,8 @@ export type PaymentProofItem = {
   createdAt: string | Date;
   milestoneTitle?: string;
   milestoneAmount?: number;
+  invoiceNumber?: string;
+  invoiceTotal?: number;
   currency?: string;
 };
 
@@ -58,6 +60,8 @@ export function PaymentProofReviewModal({
       ? String(proof.extractedData.amount)
       : proof?.milestoneAmount
       ? String(proof.milestoneAmount / 100)
+      : proof?.invoiceTotal
+      ? String(proof.invoiceTotal / 100)
       : ""
   );
   const [paymentMethod, setPaymentMethod] = useState(
@@ -76,6 +80,8 @@ export function PaymentProofReviewModal({
           ? String(proof.extractedData.amount)
           : proof.milestoneAmount
           ? String(proof.milestoneAmount / 100)
+          : proof.invoiceTotal
+          ? String(proof.invoiceTotal / 100)
           : ""
       );
       setPaymentMethod(proof.extractedData?.paymentMethod || "upi");
@@ -245,6 +251,9 @@ export function PaymentProofReviewModal({
                       Source detected: <strong className="text-foreground">{proof.extractedData.bankOrApp}</strong>
                     </p>
                   )}
+                  <p className="text-[11px] text-muted-foreground pt-0.5 border-t border-border/40">
+                    Target: <strong className="text-foreground">{proof.milestoneTitle || (proof.invoiceNumber ? `Invoice ${proof.invoiceNumber}` : "Invoice")}</strong>
+                  </p>
                 </div>
 
                 {/* Form Fields for Agency to Confirm / Correct */}
