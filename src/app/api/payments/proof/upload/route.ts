@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
     const milestoneId = formData.get("milestoneId") as string | null;
     const invoiceId = formData.get("invoiceId") as string | null;
 
-    if (!file || !milestoneId) {
+    if (!file || (!milestoneId && !invoiceId)) {
       return NextResponse.json(
-        { error: "file and milestoneId are required." },
+        { error: "file and either milestoneId or invoiceId are required." },
         { status: 400 }
       );
     }
@@ -56,28 +56,74 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find milestone
-    const [milestone] = await db
-      .select()
-      .from(paymentMilestone)
-      .where(eq(paymentMilestone.id, milestoneId));
+    let targetProjectId: string;
+    let targetMilestoneId: string | null = milestoneId || null;
+    let targetInvoiceId: string | null = invoiceId || null;
+    let activityTitle = "Payment Proof";
+    let activityAmount = 0;
 
-    if (!milestone) {
-      return NextResponse.json(
-        { error: "Milestone not found." },
-        { status: 404 }
-      );
-    }
+    if (targetMilestoneId) {
+      // Find milestone
+      const [milestone] = await db
+        .select()
+        .from(paymentMilestone)
+        .where(eq(paymentMilestone.id, targetMilestoneId));
 
-    if (milestone.status === "paid") {
-      return NextResponse.json(
-        { error: "This milestone is already marked as paid." },
-        { status: 400 }
-      );
+      if (!milestone) {
+        return NextResponse.json(
+          { error: "Milestone not found." },
+          { status: 404 }
+        );
+      }
+
+      if (milestone.status === "paid") {
+        return NextResponse.json(
+          { error: "This milestone is already marked as paid." },
+          { status: 400 }
+        );
+      }
+
+      targetProjectId = milestone.projectId;
+      activityTitle = milestone.title;
+      activityAmount = milestone.amount;
+
+      // Find linked invoice if invoiceId not provided
+      if (!targetInvoiceId) {
+        const linkedInv = await db.query.invoice.findFirst({
+          where: eq(invoice.milestoneId, targetMilestoneId),
+        });
+        if (linkedInv) {
+          targetInvoiceId = linkedInv.id;
+        }
+      }
+    } else {
+      // Standalone invoice lookup
+      const linkedInv = await db.query.invoice.findFirst({
+        where: eq(invoice.id, targetInvoiceId!),
+      });
+
+      if (!linkedInv) {
+        return NextResponse.json(
+          { error: "Invoice not found." },
+          { status: 404 }
+        );
+      }
+
+      if (linkedInv.status === "paid") {
+        return NextResponse.json(
+          { error: "This invoice is already marked as paid." },
+          { status: 400 }
+        );
+      }
+
+      targetProjectId = linkedInv.projectId;
+      targetMilestoneId = linkedInv.milestoneId || null;
+      activityTitle = `Invoice ${linkedInv.invoiceNumber}`;
+      activityAmount = linkedInv.total;
     }
 
     // Authorization: User must be an authorized member of the project
-    const access = await getProjectAccess(milestone.projectId, session.user.id);
+    const access = await getProjectAccess(targetProjectId, session.user.id);
     if (!access.isAuthorized) {
       return NextResponse.json(
         { error: "Unauthorized access to project." },
@@ -91,7 +137,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Upload raw proof to Vercel Blob store
     const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const blobPathname = `payment-proofs/${milestone.projectId}/${milestoneId}/${crypto.randomUUID()}-${safeFileName}`;
+    const blobPathname = `payment-proofs/${targetProjectId}/${targetMilestoneId || targetInvoiceId}/${crypto.randomUUID()}-${safeFileName}`;
     const blobResult = await putBlob(blobPathname, fileBuffer, {
       contentType: file.type,
       addRandomSuffix: false,
@@ -104,26 +150,15 @@ export async function POST(req: NextRequest) {
       file.name
     );
 
-    // 3. Find linked invoice if invoiceId not provided
-    let targetInvoiceId = invoiceId;
-    if (!targetInvoiceId) {
-      const linkedInv = await db.query.invoice.findFirst({
-        where: eq(invoice.milestoneId, milestoneId),
-      });
-      if (linkedInv) {
-        targetInvoiceId = linkedInv.id;
-      }
-    }
-
-    // 4. Save payment_proof record with status 'pending_review'
+    // 3. Save payment_proof record with status 'pending_review'
     const proofId = crypto.randomUUID();
     const [savedProof] = await db
       .insert(paymentProof)
       .values({
         id: proofId,
         invoiceId: targetInvoiceId || null,
-        milestoneId,
-        projectId: milestone.projectId,
+        milestoneId: targetMilestoneId || null,
+        projectId: targetProjectId,
         fileUrl: blobResult.url,
         fileName: file.name,
         fileType: file.type,
@@ -134,7 +169,7 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // 5. Move linked invoice status to 'payment_submitted' (NOT directly to 'paid')
+    // 4. Move linked invoice status to 'payment_submitted' (NOT directly to 'paid')
     if (targetInvoiceId) {
       await db
         .update(invoice)
@@ -145,21 +180,24 @@ export async function POST(req: NextRequest) {
         .where(eq(invoice.id, targetInvoiceId));
     }
 
-    // 6. Log activity
+    // 5. Log activity
     await logActivity({
-      projectId: milestone.projectId,
+      projectId: targetProjectId,
       userId: session.user.id,
       type: "payment_proof_submitted" as any,
       metadata: {
-        milestoneTitle: milestone.title,
-        amount: milestone.amount,
+        milestoneTitle: activityTitle,
+        amount: activityAmount,
         fileName: file.name,
         referenceId: extractedData.referenceId,
       },
     });
 
-    revalidatePath(`/projects/${milestone.projectId}`);
-    revalidatePath(`/projects/${milestone.projectId}/payments`);
+    revalidatePath(`/projects/${targetProjectId}`);
+    revalidatePath(`/projects/${targetProjectId}/payments`);
+    if (targetInvoiceId) {
+      revalidatePath(`/projects/${targetProjectId}/payments/invoices/${targetInvoiceId}`);
+    }
 
     return NextResponse.json({
       success: true,
