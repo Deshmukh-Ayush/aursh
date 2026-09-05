@@ -27,6 +27,12 @@ export async function AnalyticsProjectTable() {
       ? latestProposal.price
       : null
 
+    const currency = acceptedProposal
+      ? acceptedProposal.currency
+      : latestProposal
+      ? latestProposal.currency
+      : "USD"
+
     const proposalStatus = acceptedProposal
       ? "accepted"
       : latestProposal
@@ -41,6 +47,7 @@ export async function AnalyticsProjectTable() {
       name: p.name,
       description: p.description,
       totalValue,
+      currency,
       proposalStatus,
       approvedDeliverables,
       totalDeliverables: p.deliverables.length,

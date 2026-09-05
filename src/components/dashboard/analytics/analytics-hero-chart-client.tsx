@@ -17,6 +17,8 @@ interface AnalyticsHeroChartUIProps {
   peakMonthLabel: string
   peakMonthRevenue: number
   monthlyAvgRevenue: number
+  totalWon?: number
+  currency?: "USD" | "INR"
 }
 
 export function AnalyticsHeroChartUI({
@@ -24,14 +26,23 @@ export function AnalyticsHeroChartUI({
   peakMonthLabel,
   peakMonthRevenue,
   monthlyAvgRevenue,
+  totalWon,
+  currency = "USD",
 }: AnalyticsHeroChartUIProps) {
+  const sym = currency === "INR" ? "₹" : "$"
+  const locale = currency === "INR" ? "en-IN" : "en-US"
+
+  const formatMoney = (amount: number) => {
+    return `${sym}${amount.toLocaleString(locale)}`
+  }
+
   const chartConfig = {
     revenue: {
-      label: "Won Revenue (₹)",
+      label: `Won Revenue (${sym})`,
       colors: { light: ["#10B981"], dark: ["#10B981"] },
     },
     pipeline: {
-      label: "Active Pipeline (₹)",
+      label: `Active Pipeline (${sym})`,
       colors: { light: ["#00AAF7"], dark: ["#00AAF7"] },
     },
   } satisfies ChartConfig
@@ -49,7 +60,7 @@ export function AnalyticsHeroChartUI({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[32px] leading-none font-bold tracking-tight text-foreground tabular-nums">
-              ₹{(peakMonthRevenue * 2.4).toLocaleString("en-IN")}
+              {formatMoney(totalWon !== undefined ? totalWon : peakMonthRevenue)}
             </span>
             <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
               6-Month Velocity
@@ -64,11 +75,11 @@ export function AnalyticsHeroChartUI({
           <MonospaceMetricStat
             tag="[⬆] Peak Month"
             value={peakMonthLabel}
-            subtext={`(₹${peakMonthRevenue.toLocaleString("en-IN")})`}
+            subtext={`(${formatMoney(peakMonthRevenue)})`}
           />
           <MonospaceMetricStat
             tag="[~] Monthly Avg"
-            value={`₹${monthlyAvgRevenue.toLocaleString("en-IN")}`}
+            value={formatMoney(monthlyAvgRevenue)}
             subtext="won/month"
           />
         </div>
@@ -84,7 +95,13 @@ export function AnalyticsHeroChartUI({
           <EChartsAreaChart.Area dataKey="revenue" />
           <EChartsAreaChart.Area dataKey="pipeline" />
           <EChartsAreaChart.XAxis dataKey="month" />
-          <EChartsAreaChart.YAxis />
+          <EChartsAreaChart.YAxis
+            tickFormatter={(val: number) => {
+              if (val >= 1000000) return `${sym}${(val / 1000000).toFixed(1)}M`
+              if (val >= 1000) return `${sym}${Math.round(val / 1000)}k`
+              return `${sym}${val}`
+            }}
+          />
           <EChartsAreaChart.Tooltip />
         </EChartsAreaChart>
       </div>

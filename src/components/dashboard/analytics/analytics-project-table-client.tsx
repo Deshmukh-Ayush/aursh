@@ -11,6 +11,7 @@ export interface AnalyticsProjectPerformanceItem {
   name: string
   description: string | null
   totalValue: number | null
+  currency?: string
   proposalStatus: string | null
   approvedDeliverables: number
   totalDeliverables: number
@@ -23,8 +24,9 @@ export interface AnalyticsProjectPerformanceItem {
   }[]
 }
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString("en-IN")}`
+function formatCurrency(amount: number, currency: string = "USD") {
+  if (currency === "INR") return `₹${amount.toLocaleString("en-IN")}`
+  return `$${amount.toLocaleString("en-US")}`
 }
 
 const TABLE_HEADERS = ["Project", "Contract Value", "Deal Status", "Deliverables", "Scope Friction", "Team", "Action"]
@@ -75,7 +77,7 @@ export function AnalyticsProjectTableClient({
 
           {/* Value */}
           <td className="px-4 py-3.5 whitespace-nowrap font-medium text-foreground tabular-nums">
-            {p.totalValue ? formatCurrency(p.totalValue) : "--"}
+            {p.totalValue ? formatCurrency(p.totalValue, p.currency) : "--"}
           </td>
 
           {/* Deal Status */}

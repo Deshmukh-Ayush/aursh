@@ -105,6 +105,7 @@ export async function AnalyticsKpiRow() {
   const kpiData: AnalyticsKpiData = {
     wonRevenue,
     pipelineValue,
+    currency: targetCurrency,
     winRate,
     acceptedProposalsCount,
     totalClosedProposalsCount: closedProposalsCount,
