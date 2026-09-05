@@ -28,6 +28,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
     formData.append("orgId", org.id);
+    formData.append("action", "update_branding");
 
     try {
       const res = await axios.patch('/api/organizations', formData, {

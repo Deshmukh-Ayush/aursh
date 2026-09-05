@@ -25,63 +25,70 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const action = formData.get("action");
+    const contentType = req.headers.get("content-type") || "";
 
-    if (action === "update_branding") {
-      const orgId = formData.get("orgId") as string;
-      const file = formData.get("logo") as File | null;
+    if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+      const formData = await req.formData();
+      const action = formData.get("action") || "update_branding";
 
-      if (!orgId) return NextResponse.json({ error: "Org ID is required." }, { status: 400 });
+      if (action === "update_branding" || formData.has("logo")) {
+        const orgId = formData.get("orgId") as string;
+        const file = formData.get("logo") as File | null;
 
-      // Verify user is an owner of this org
-      const [userMembership] = await db.select().from(member).where(
-        and(
-          eq(member.organizationId, orgId),
-          eq(member.userId, session.user.id),
-          eq(member.role, "owner")
-        )
-      );
+        if (!orgId) return NextResponse.json({ error: "Org ID is required." }, { status: 400 });
 
-      if (!userMembership) {
-        return NextResponse.json({ error: "Only organization owners can update branding." }, { status: 403 });
-      }
+        // Verify user is an owner of this org
+        const [userMembership] = await db.select().from(member).where(
+          and(
+            eq(member.organizationId, orgId),
+            eq(member.userId, session.user.id),
+            eq(member.role, "owner")
+          )
+        );
 
-      const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
-      if (!org) return NextResponse.json({ error: "Organization not found." }, { status: 404 });
-
-      let logoUrl = org.logoUrl;
-
-      if (file && file.size > 0) {
-        try {
-          const blob = await putBlob(`logos/${orgId}-${Date.now()}-${file.name}`, file);
-          logoUrl = blob.url;
-        } catch (uploadError) {
-          console.error("Blob upload error:", uploadError);
-          return NextResponse.json({ error: "Failed to upload logo." }, { status: 500 });
+        if (!userMembership) {
+          return NextResponse.json({ error: "Only organization owners can update branding." }, { status: 403 });
         }
+
+        const [org] = await db.select().from(organization).where(eq(organization.id, orgId));
+        if (!org) return NextResponse.json({ error: "Organization not found." }, { status: 404 });
+
+        let logoUrl = org.logoUrl;
+
+        if (file && file.size > 0) {
+          try {
+            const blob = await putBlob(`logos/${orgId}-${Date.now()}-${file.name}`, file);
+            logoUrl = blob.url;
+          } catch (uploadError) {
+            console.error("Blob upload error:", uploadError);
+            return NextResponse.json({ error: "Failed to upload logo." }, { status: 500 });
+          }
+        }
+
+        await db.update(organization)
+          .set({
+            logoUrl: logoUrl,
+            updatedAt: new Date(),
+          })
+          .where(eq(organization.id, orgId));
+
+        revalidatePath("/dashboard/settings");
+        revalidatePath("/dashboard");
+        revalidatePath("/dashboard/analytics");
+        revalidatePath("/projects/[projectId]", "layout");
+
+        return NextResponse.json({ success: true });
       }
 
-      await db.update(organization)
-        .set({
-          logoUrl: logoUrl,
-          updatedAt: new Date(),
-        })
-        .where(eq(organization.id, orgId));
-
-      revalidatePath("/dashboard/settings");
-      revalidatePath("/dashboard");
-      revalidatePath("/projects/[projectId]", "layout");
-
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ error: "Invalid form action." }, { status: 400 });
     } 
-    // Handle plan toggle (application/json)
+    // Handle plan / currency updates (application/json)
     else {
       const payload = await req.json();
 
       const patchSchema = z.object({
         orgId: z.string().min(1, "Organization ID is required"),
-        plan: z.enum(["free", "freelancer", "agency"]).optional(),
+        plan: z.enum(["free", "freelancer", "agency", "enterprise"]).optional(),
         globalCurrency: z.enum(["USD", "INR"]).optional(),
       });
 
@@ -101,7 +108,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Only organization owners can change settings." }, { status: 403 });
       }
 
-      const updates: { plan?: "free" | "freelancer" | "agency"; globalCurrency?: "USD" | "INR"; updatedAt: Date } = {
+      const updates: { plan?: "free" | "freelancer" | "agency" | "enterprise"; globalCurrency?: "USD" | "INR"; updatedAt: Date } = {
         updatedAt: new Date(),
       };
       if (plan) updates.plan = plan;
@@ -113,6 +120,7 @@ export async function PATCH(req: NextRequest) {
 
       revalidatePath("/dashboard/settings");
       revalidatePath("/dashboard");
+      revalidatePath("/dashboard/analytics");
       revalidatePath("/projects/[projectId]", "layout");
 
       return NextResponse.json({ success: true });
