@@ -6,6 +6,7 @@ import { getTenantContext } from "@/lib/tenant-context"
 import { getCachedOrg, getCachedOrgMembers, getCachedOrgProjects } from "@/utils/cached-org-queries"
 import { subDays } from "date-fns"
 import { TeamKpiRowClient, TeamKpiData } from "./team-kpi-row-client"
+import { BILLING_CONFIG, type PlanTier } from "@/config/billing"
 
 export async function TeamKpiRow() {
   const reqHeaders = await headers()
@@ -43,8 +44,9 @@ export async function TeamKpiRow() {
     : [[], []]
 
   // Seat capacity based on plan
-  const plan = org?.plan || "free"
-  const maxSeats = plan === "agency" ? 25 : plan === "freelancer" ? 5 : 3
+  const plan = (org?.plan || "free") as PlanTier
+  const planConfig = BILLING_CONFIG[plan] || BILLING_CONFIG.free
+  const maxSeats = planConfig.maxSeats
   const activeSeats = orgMembers.length
 
   // Role distribution
