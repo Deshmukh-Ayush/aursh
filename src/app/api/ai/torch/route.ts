@@ -60,9 +60,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { messages } = await req.json();
+    const body = await req.json();
+    const messages = body.messages;
+    const enableWebSearch = Boolean(
+      body.enableWebSearch ?? body.webSearchEnabled ?? body.webSearch ?? false
+    );
 
-    const tools = createTorchTools(organizationId, user.id);
+    const tools = createTorchTools(organizationId, user.id, { enableWebSearch });
 
     const result = streamText({
       model: primaryModel,
