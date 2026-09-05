@@ -12,6 +12,10 @@ import { AcceptOrgInviteButton } from "@/components/invite/accept-org-invite-but
 export const metadata: Metadata = {
   title: "Organization Invitation",
   description: "You've been invited to join an organization on Scrunity.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default async function OrgInvitePage({ params }: { params: Promise<{ inviteId: string }> }) {

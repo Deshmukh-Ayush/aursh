@@ -1,5 +1,24 @@
+import type { Metadata } from "next"
 import { SignInComp } from "@/components/auth/sign-in"
 import React from "react"
+
+export const metadata: Metadata = {
+  title: "Sign In",
+  description: "Sign in to your Scrunity account to manage your client workspace, contracts, and deliverables.",
+  alternates: {
+    canonical: "/sign-in",
+  },
+  openGraph: {
+    title: "Sign In | Scrunity",
+    description: "Sign in to your Scrunity account to manage your client workspace, contracts, and deliverables.",
+    url: "/sign-in",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sign In | Scrunity",
+    description: "Sign in to your Scrunity account to manage your client workspace, contracts, and deliverables.",
+  },
+}
 
 export default function SignInPage() {
   return (

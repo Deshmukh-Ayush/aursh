@@ -4,6 +4,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Service | Scrunity",
   description: "Read Scrunity's terms of service governing subscription plans, payment milestones, e-signatures, acceptable use, and platform usage.",
+  alternates: {
+    canonical: "/terms",
+  },
+  openGraph: {
+    title: "Terms of Service | Scrunity",
+    description: "Read Scrunity's terms of service governing subscription plans, payment milestones, e-signatures, acceptable use, and platform usage.",
+    url: "/terms",
+  },
 };
 
 export default function TermsPage() {

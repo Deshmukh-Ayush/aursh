@@ -12,6 +12,14 @@ import { Badge } from "@/components/ui/badge";
 export const metadata: Metadata = {
   title: "Scrunity — Client Collaboration & Workspace",
   description: "Seamless client workspace for modern agencies and freelancers.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Scrunity — Client Collaboration & Workspace",
+    description: "Seamless client workspace for modern agencies and freelancers.",
+    url: "/",
+  },
 };
 
 const newsreader = Instrument_Serif({ subsets: ["latin"], weight: ["400"] });

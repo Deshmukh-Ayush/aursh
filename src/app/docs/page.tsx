@@ -14,6 +14,10 @@ import {
 export const metadata: Metadata = {
   title: "Developer Docs",
   description: "Internal developer documentation for Scrunity — architecture, Torch AI agent engine, Billing OS, Team workflows, Client access safeguards, speed optimization, DB schema, API routes, and multi-currency engine.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 // Gate: only allow specific developer emails

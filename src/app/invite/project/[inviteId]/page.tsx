@@ -13,6 +13,10 @@ import { AcceptProjectInviteButton } from "@/components/invite/accept-project-in
 export const metadata: Metadata = {
   title: "Project Invitation",
   description: "You have been invited to collaborate on a project.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default async function ProjectInvitePage({

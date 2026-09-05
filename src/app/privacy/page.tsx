@@ -4,6 +4,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy | Scrunity",
   description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal, analytics, e-signature, and financial information.",
+  alternates: {
+    canonical: "/privacy",
+  },
+  openGraph: {
+    title: "Privacy Policy | Scrunity",
+    description: "Read Scrunity's privacy policy to understand how we collect, use, and protect your personal, analytics, e-signature, and financial information.",
+    url: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

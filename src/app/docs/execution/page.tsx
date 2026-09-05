@@ -16,6 +16,10 @@ import {
 export const metadata: Metadata = {
   title: "Application Execution Architecture & Data Flow Map",
   description: "Comprehensive code audit, end-to-end execution funnels, API route specifications, database mutations, and system state flow for Scrunity.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 const DEVELOPER_EMAILS = [
