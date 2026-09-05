@@ -77,29 +77,33 @@ export async function POST(req: NextRequest) {
         })
         .where(eq(paymentProof.id, proofId));
 
-      // 2. Mark milestone paid
-      await db
-        .update(paymentMilestone)
-        .set({
-          status: "paid",
-          updatedAt: now,
-        })
-        .where(eq(paymentMilestone.id, proof.milestoneId));
+      // 2. Mark milestone paid if linked
+      if (proof.milestoneId) {
+        await db
+          .update(paymentMilestone)
+          .set({
+            status: "paid",
+            updatedAt: now,
+          })
+          .where(eq(paymentMilestone.id, proof.milestoneId));
+      }
 
       // 3. Create official payment record
-      const finalAmount = amount
+      const targetCurrency = proof.milestone?.currency || proof.invoice?.currency || "INR";
+      const targetAmountSubunits = amount
         ? Math.round(amount * 100)
-        : proof.milestone.amount;
+        : proof.milestone?.amount || proof.invoice?.total || 0;
 
       const newPaymentId = crypto.randomUUID();
       const liveFxRate = await getUsdToInrRate();
 
       await db.insert(payment).values({
         id: newPaymentId,
-        milestoneId: proof.milestoneId,
+        milestoneId: proof.milestoneId || null,
+        invoiceId: proof.invoiceId || null,
         projectId: proof.projectId,
-        amount: finalAmount,
-        currency: proof.milestone.currency,
+        amount: targetAmountSubunits,
+        currency: targetCurrency,
         paymentMethod: paymentMethod || (proof.extractedData as any)?.paymentMethod || "bank_transfer",
         referenceNote: referenceId || (proof.extractedData as any)?.referenceId || null,
         fxRateAtPayment: liveFxRate.toFixed(4),
@@ -120,14 +124,15 @@ export async function POST(req: NextRequest) {
       }
 
       // 5. Log activity
+      const title = proof.milestone?.title || (proof.invoice ? `Invoice ${proof.invoice.invoiceNumber}` : "Payment");
       await logActivity({
         projectId: proof.projectId,
         userId: session.user.id,
         type: "payment_completed",
         metadata: {
-          milestoneTitle: proof.milestone.title,
-          amount: finalAmount,
-          currency: proof.milestone.currency,
+          milestoneTitle: title,
+          amount: targetAmountSubunits,
+          currency: targetCurrency,
           paymentMethod: paymentMethod || "bank_transfer",
           referenceNote: referenceId || null,
           confirmedProofId: proofId,
@@ -136,6 +141,9 @@ export async function POST(req: NextRequest) {
 
       revalidatePath(`/projects/${proof.projectId}`);
       revalidatePath(`/projects/${proof.projectId}/payments`);
+      if (proof.invoiceId) {
+        revalidatePath(`/projects/${proof.projectId}/payments/invoices/${proof.invoiceId}`);
+      }
 
       return NextResponse.json({
         success: true,
@@ -172,12 +180,13 @@ export async function POST(req: NextRequest) {
       }
 
       // 3. Log activity
+      const title = proof.milestone?.title || (proof.invoice ? `Invoice ${proof.invoice.invoiceNumber}` : "Payment Proof");
       await logActivity({
         projectId: proof.projectId,
         userId: session.user.id,
         type: "payment_proof_rejected" as any,
         metadata: {
-          milestoneTitle: proof.milestone.title,
+          milestoneTitle: title,
           rejectionReason: reason,
           proofId,
         },
@@ -185,6 +194,9 @@ export async function POST(req: NextRequest) {
 
       revalidatePath(`/projects/${proof.projectId}`);
       revalidatePath(`/projects/${proof.projectId}/payments`);
+      if (proof.invoiceId) {
+        revalidatePath(`/projects/${proof.projectId}/payments/invoices/${proof.invoiceId}`);
+      }
 
       return NextResponse.json({
         success: true,
