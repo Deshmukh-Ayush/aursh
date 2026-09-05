@@ -10,12 +10,30 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { cn } from "@/lib/utils";
 
+export type PaymentConfirmTarget = {
+  milestoneId?: string | null;
+  invoiceId?: string | null;
+  title: string;
+  amount: number;
+  currency: string;
+  projectId?: string;
+};
+
 type PaymentConfirmModalProps = {
   formatMoney: (amountInUnits: number, curr?: string) => string;
   isAgency?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+  target?: PaymentConfirmTarget | null;
 };
 
-export function PaymentConfirmModal({ formatMoney, isAgency = false }: PaymentConfirmModalProps) {
+export function PaymentConfirmModal({
+  formatMoney,
+  isAgency = false,
+  isOpen: propIsOpen,
+  onClose: propOnClose,
+  target: propTarget,
+}: PaymentConfirmModalProps) {
   const router = useRouter();
 
   const milestone = usePaymentStore((state) => state.payModalMilestone);
@@ -28,41 +46,69 @@ export function PaymentConfirmModal({ formatMoney, isAgency = false }: PaymentCo
   const setIsSubmitting = usePaymentStore((state) => state.setIsSubmitting);
   const resetConfirmForm = usePaymentStore((state) => state.resetConfirmForm);
 
+  // Active target: either passed directly as prop or read from milestone store
+  const activeTarget: PaymentConfirmTarget | null = propTarget ?? (milestone ? {
+    milestoneId: milestone.id,
+    title: milestone.title,
+    amount: milestone.amount,
+    currency: milestone.currency,
+  } : null);
+
   // Client proof upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isOpen = !!milestone;
+  const isOpen = propIsOpen !== undefined ? propIsOpen : !!milestone;
 
   const handleClose = () => {
     setSelectedFile(null);
     setDragActive(false);
     setUploadProgressText("");
     resetConfirmForm();
+    if (propOnClose) propOnClose();
   };
 
   // Agency Manual Mark-Paid handler
   const handleAgencyConfirm = async () => {
-    if (!milestone) return;
+    if (!activeTarget) return;
     setIsSubmitting(true);
 
     try {
-      const res = await axios.post("/api/milestones/mark-paid", {
-        milestoneId: milestone.id,
-        paymentMethod: selectedMethod,
-        referenceNote,
-      });
-
-      if (res.data.success) {
-        posthog.capture("milestone_payment_confirmed", {
-          currency: milestone.currency,
-          payment_method: selectedMethod,
+      if (activeTarget.milestoneId) {
+        const res = await axios.post("/api/milestones/mark-paid", {
+          milestoneId: activeTarget.milestoneId,
+          paymentMethod: selectedMethod,
+          referenceNote,
         });
-        toast.success("Payment marked as received");
-        handleClose();
-        router.refresh();
+
+        if (res.data.success) {
+          posthog.capture("milestone_payment_confirmed", {
+            currency: activeTarget.currency,
+            payment_method: selectedMethod,
+          });
+          toast.success("Payment marked as received");
+          handleClose();
+          router.refresh();
+        }
+      } else if (activeTarget.invoiceId) {
+        const res = await axios.patch("/api/invoices", {
+          invoiceId: activeTarget.invoiceId,
+          status: "paid",
+          paymentMethod: selectedMethod,
+          referenceNote,
+        });
+
+        if (res.data.success) {
+          posthog.capture("invoice_payment_confirmed", {
+            currency: activeTarget.currency,
+            payment_method: selectedMethod,
+          });
+          toast.success("Invoice marked as paid");
+          handleClose();
+          router.refresh();
+        }
       }
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
@@ -76,7 +122,7 @@ export function PaymentConfirmModal({ formatMoney, isAgency = false }: PaymentCo
 
   // Client Proof Upload handler
   const handleClientUpload = async () => {
-    if (!milestone || !selectedFile) {
+    if (!activeTarget || !selectedFile) {
       toast.error("Please choose a payment proof file to upload.");
       return;
     }
@@ -87,7 +133,12 @@ export function PaymentConfirmModal({ formatMoney, isAgency = false }: PaymentCo
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      formData.append("milestoneId", milestone.id);
+      if (activeTarget.milestoneId) {
+        formData.append("milestoneId", activeTarget.milestoneId);
+      }
+      if (activeTarget.invoiceId) {
+        formData.append("invoiceId", activeTarget.invoiceId);
+      }
 
       const res = await axios.post("/api/payments/proof/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -170,16 +221,16 @@ export function PaymentConfirmModal({ formatMoney, isAgency = false }: PaymentCo
               </button>
             </div>
 
-            {milestone && (
+            {activeTarget && (
               <div className="space-y-5">
-                {/* Milestone Summary Card */}
+                {/* Target Summary Card */}
                 <div className="p-4 rounded-xl bg-muted/30 border border-border/40 space-y-1">
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                    Target Milestone
+                    {activeTarget.milestoneId ? "Target Milestone" : "Target Invoice"}
                   </span>
-                  <div className="text-sm font-semibold text-foreground">{milestone.title}</div>
+                  <div className="text-sm font-semibold text-foreground">{activeTarget.title}</div>
                   <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                    {formatMoney(milestone.amount, milestone.currency)}
+                    {formatMoney(activeTarget.amount, activeTarget.currency)}
                   </div>
                 </div>
 
