@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { getCachedSession } from "@/utils/cached-session";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { notFound } from "next/navigation";
 import { getProjectAccess, canManageProject } from "@/lib/project-auth";
-import { redirect, notFound } from "next/navigation";
 import { db } from "@/utils/db";
-import { invoice, invoiceLineItem, paymentMilestone, paymentProof } from "@/db/schema";
+import { invoice, paymentProof } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { InvoiceViewClient } from "./invoice-view-client";
 import { InvoiceData } from "@/lib/invoices/types";
@@ -17,20 +18,14 @@ interface PageProps {
   params: Promise<{ projectId: string; invoiceId: string }>;
 }
 
-export default async function InvoiceDetailPage({ params }: PageProps) {
-  const { projectId, invoiceId } = await params;
-
-  const session = await getCachedSession();
-  if (!session || !session.user) {
-    redirect("/sign-in");
-  }
-
-  // Authorization: must have access to the project
-  const access = await getProjectAccess(projectId, session.user.id);
-  if (!access.isAuthorized) {
-    redirect(`/projects/${projectId}`);
-  }
-
+async function InvoiceDetailData({
+  projectId,
+  invoiceId,
+}: {
+  projectId: string;
+  invoiceId: string;
+}) {
+  const access = await getProjectAccess(projectId);
   const isAgency = canManageProject(access.role);
 
   const invoiceRow = await db.query.invoice.findFirst({
@@ -120,5 +115,17 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
       projectId={projectId}
       isAgency={isAgency}
     />
+  );
+}
+
+export default async function InvoiceDetailPage({ params }: PageProps) {
+  const { projectId, invoiceId } = await params;
+
+  return (
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+        <InvoiceDetailData projectId={projectId} invoiceId={invoiceId} />
+      </Suspense>
+    </div>
   );
 }

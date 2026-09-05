@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getCachedSession } from "@/utils/cached-session";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProjectAccess, canManageProject } from "@/lib/project-auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/utils/db";
@@ -17,19 +18,14 @@ interface PageProps {
   searchParams: Promise<{ milestoneId?: string }>;
 }
 
-export default async function NewInvoicePage({ params, searchParams }: PageProps) {
-  const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const { projectId } = resolvedParams;
-  const milestoneId = resolvedSearchParams.milestoneId;
-
-  const session = await getCachedSession();
-  if (!session || !session.user) {
-    redirect("/sign-in");
-  }
-
-  // Strict Server-Side Role Gating: Agency / Freelancers only
-  const access = await getProjectAccess(projectId, session.user.id);
+async function NewInvoiceData({
+  projectId,
+  milestoneId,
+}: {
+  projectId: string;
+  milestoneId?: string;
+}) {
+  const access = await getProjectAccess(projectId);
   if (!access.isAuthorized || !canManageProject(access.role)) {
     redirect(`/projects/${projectId}/payments`);
   }
@@ -81,5 +77,20 @@ export default async function NewInvoicePage({ params, searchParams }: PageProps
       initialMilestoneId={milestoneId || null}
       initialMilestone={initialMilestone}
     />
+  );
+}
+
+export default async function NewInvoicePage({ params, searchParams }: PageProps) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { projectId } = resolvedParams;
+  const milestoneId = resolvedSearchParams.milestoneId;
+
+  return (
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+        <NewInvoiceData projectId={projectId} milestoneId={milestoneId} />
+      </Suspense>
+    </div>
   );
 }
