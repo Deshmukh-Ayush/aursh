@@ -43,6 +43,13 @@
       "when": 1788427840151,
       "tag": "0005_pretty_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788516656078,
+      "tag": "0006_mute_mordo",
+      "breakpoints": true
     }
   ]
 }
