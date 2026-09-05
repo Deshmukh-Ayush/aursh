@@ -1,12 +1,21 @@
 import { getTenantContext } from "@/lib/tenant-context"
 import { headers } from "next/headers"
 import { db } from "@/utils/db"
-import { inArray, eq } from "drizzle-orm"
-import { proposal, activityLog, organization } from "@/db/schema"
+import { inArray } from "drizzle-orm"
+import { proposal } from "@/db/schema"
 import { getAccessibleProjectIds } from "@/lib/project-queries"
-import { DashboardKpiRowUI } from "./kpi-row-client"
+import { getCachedOrg, getCachedRecentActivity } from "@/utils/cached-org-queries"
+import dynamic from "next/dynamic"
+import { Skeleton } from "@/components/ui/skeleton"
 import { subDays, isSameDay } from "date-fns"
 import { convertAndAggregate, getUsdToInrRate } from "@/lib/currency"
+
+const DynamicDashboardKpiRowUI = dynamic(
+  () => import("./kpi-row-client").then((mod) => mod.DashboardKpiRowUI),
+  {
+    loading: () => <Skeleton className="h-[180px] w-full rounded-md" />,
+  }
+)
 
 export async function DashboardKpiRow() {
   const reqHeaders = await headers()
@@ -16,24 +25,21 @@ export async function DashboardKpiRow() {
     return null
   }
 
-  // Fetch accessible projects for the active user
-  const projectIds = await getAccessibleProjectIds(ctx.user.id, ctx.organizationId)
+  // Fetch accessible projects and cached org currency in parallel
+  const [projectIds, org] = await Promise.all([
+    getAccessibleProjectIds(ctx.user.id, ctx.organizationId),
+    ctx.organizationId ? getCachedOrg(ctx.organizationId) : Promise.resolve(null),
+  ])
   const activeProjectsCount = projectIds.length
 
   let targetCurrency: "USD" | "INR" = "USD";
-  if (ctx.organizationId) {
-    const [org] = await db
-      .select({ globalCurrency: organization.globalCurrency })
-      .from(organization)
-      .where(eq(organization.id, ctx.organizationId));
-    if (org?.globalCurrency === "INR" || org?.globalCurrency === "USD") {
-      targetCurrency = org.globalCurrency;
-    }
+  if (org?.globalCurrency === "INR" || org?.globalCurrency === "USD") {
+    targetCurrency = org.globalCurrency;
   }
 
   if (projectIds.length === 0) {
     return (
-      <DashboardKpiRowUI
+      <DynamicDashboardKpiRowUI
         totalIncome={0}
         activeProjectsCount={0}
         currency={targetCurrency}
@@ -46,6 +52,8 @@ export async function DashboardKpiRow() {
   // Execute queries and live FX rate fetch concurrently (Promise.all)
   const today = new Date()
   const sevenDaysAgo = subDays(today, 6)
+  const projectIdsKey = [...projectIds].sort().join(",")
+  const sevenDaysAgoIso = sevenDaysAgo.toISOString()
 
   const [proposalsList, recentActivity, usdToInrRate] = await Promise.all([
     db
@@ -56,10 +64,7 @@ export async function DashboardKpiRow() {
       })
       .from(proposal)
       .where(inArray(proposal.projectId, projectIds)),
-    db
-      .select({ createdAt: activityLog.createdAt })
-      .from(activityLog)
-      .where(inArray(activityLog.projectId, projectIds)),
+    getCachedRecentActivity(projectIdsKey, sevenDaysAgoIso),
     getUsdToInrRate(),
   ])
 
@@ -94,7 +99,7 @@ export async function DashboardKpiRow() {
   })
 
   return (
-    <DashboardKpiRowUI
+    <DynamicDashboardKpiRowUI
       totalIncome={totalIncome}
       activeProjectsCount={activeProjectsCount}
       currency={targetCurrency}
