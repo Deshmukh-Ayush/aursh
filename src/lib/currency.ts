@@ -48,7 +48,7 @@ export async function getUsdToInrRate(): Promise<number> {
       // 1. Try Primary: open.er-api.com (Keyless, high-reliability open FX feed)
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 6000)
+        const timeoutId = setTimeout(() => controller.abort(), 1200)
 
         const res = await fetch("https://open.er-api.com/v6/latest/USD", {
           signal: controller.signal,
@@ -73,7 +73,7 @@ export async function getUsdToInrRate(): Promise<number> {
       // 2. Try Secondary Fallback: api.frankfurter.dev (European Central Bank reference rates)
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 6000)
+        const timeoutId = setTimeout(() => controller.abort(), 1000)
 
         const res = await fetch("https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR", {
           signal: controller.signal,
