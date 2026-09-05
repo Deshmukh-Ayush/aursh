@@ -54,36 +54,48 @@ export function InvoiceDocumentView({ invoice, className }: InvoiceDocumentViewP
     let Icon = null;
     let iconColor = "text-neutral-400";
     
-    switch (invoice.status) {
-      case "paid":
-        dotColor = "bg-emerald-500";
-        statusText = "PAID";
-        Icon = CheckCircle;
-        iconColor = "text-emerald-500";
-        break;
-      case "sent":
-      case "viewed":
-        dotColor = "bg-blue-500";
-        statusText = invoice.status.toUpperCase();
-        Icon = Clock;
-        iconColor = "text-blue-500";
-        break;
-      case "payment_submitted":
-        dotColor = "bg-amber-500";
-        statusText = "PAYMENT SUBMITTED";
-        Icon = Clock;
-        iconColor = "text-amber-500";
-        break;
-      case "overdue":
-        dotColor = "bg-rose-500";
-        statusText = "OVERDUE";
-        break;
-      case "void":
-        dotColor = "bg-neutral-500";
-        statusText = "VOID";
-        Icon = Prohibit;
-        iconColor = "text-neutral-500";
-        break;
+    const isOverdue =
+      invoice.status === "overdue" ||
+      (Boolean(invoice.dueDate) &&
+        new Date(invoice.dueDate).getTime() < Date.now() &&
+        invoice.status !== "paid" &&
+        invoice.status !== "payment_submitted" &&
+        invoice.status !== "void" &&
+        invoice.status !== "draft");
+
+    if (isOverdue) {
+      dotColor = "bg-rose-500";
+      statusText = "OVERDUE";
+      Icon = Clock;
+      iconColor = "text-rose-500";
+    } else {
+      switch (invoice.status) {
+        case "paid":
+          dotColor = "bg-emerald-500";
+          statusText = "PAID";
+          Icon = CheckCircle;
+          iconColor = "text-emerald-500";
+          break;
+        case "sent":
+        case "viewed":
+          dotColor = "bg-blue-500";
+          statusText = invoice.status.toUpperCase();
+          Icon = Clock;
+          iconColor = "text-blue-500";
+          break;
+        case "payment_submitted":
+          dotColor = "bg-amber-500";
+          statusText = "PAYMENT SUBMITTED";
+          Icon = Clock;
+          iconColor = "text-amber-500";
+          break;
+        case "void":
+          dotColor = "bg-neutral-500";
+          statusText = "VOID";
+          Icon = Prohibit;
+          iconColor = "text-neutral-500";
+          break;
+      }
     }
 
     return (
