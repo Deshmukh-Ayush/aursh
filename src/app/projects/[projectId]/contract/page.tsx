@@ -29,7 +29,14 @@ function isContractStatus(
   return contractStatuses.includes(value as (typeof contractStatuses)[number]);
 }
 
-async function ContractData({ projectId, userId, role }: { projectId: string, userId: string, role: string }) {
+async function ContractData({ projectId }: { projectId: string }) {
+  const [session, access] = await Promise.all([
+    getCachedSession(),
+    getProjectAccess(projectId),
+  ]);
+  const userId = session.user.id;
+  const role = access.role || "agency";
+
   // Fetch all contracts for this project
   const allContracts = await db
     .select({
@@ -143,12 +150,10 @@ async function ContractData({ projectId, userId, role }: { projectId: string, us
 
 export default async function ContractPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const session = await getCachedSession();
-  const { role } = await getProjectAccess(projectId, session.user.id);
 
   return (
     <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
-      <ContractData projectId={projectId} userId={session.user.id} role={role!} />
+      <ContractData projectId={projectId} />
     </Suspense>
   );
 }
