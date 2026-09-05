@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { db } from "@/utils/db";
-import { project, member, user, organization } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { project, member, user, organization, activityLog } from "@/db/schema";
+import { eq, and, gte, inArray } from "drizzle-orm";
 
 export const getCachedOrg = cache(async (organizationId: string) => {
   if (!organizationId) return null;
@@ -25,4 +25,19 @@ export const getCachedOrgMembers = cache(async (organizationId: string) => {
     .from(member)
     .innerJoin(user, eq(member.userId, user.id))
     .where(eq(member.organizationId, organizationId));
+});
+
+export const getCachedRecentActivity = cache(async (projectIdsKey: string, sinceDateIso: string) => {
+  const projectIds = projectIdsKey ? projectIdsKey.split(",").filter(Boolean) : [];
+  if (projectIds.length === 0) return [];
+  const sinceDate = new Date(sinceDateIso);
+  return db
+    .select({ createdAt: activityLog.createdAt })
+    .from(activityLog)
+    .where(
+      and(
+        inArray(activityLog.projectId, projectIds),
+        gte(activityLog.createdAt, sinceDate)
+      )
+    );
 });
