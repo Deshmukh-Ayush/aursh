@@ -55,6 +55,7 @@ async function PaymentsData({ projectId }: { projectId: string }) {
   const serializedPayments = paymentsData.map((p) => ({
     id: p.id,
     milestoneId: p.milestoneId,
+    invoiceId: p.invoiceId,
     amount: p.amount,
     currency: p.currency,
     paymentMethod: p.paymentMethod,
@@ -108,6 +109,7 @@ async function PaymentsData({ projectId }: { projectId: string }) {
 
   const serializedPaymentProofs: PaymentProofItem[] = paymentProofsData.map((proof) => {
     const matchedMilestone = milestonesData.find((m) => m.id === proof.milestoneId);
+    const matchedInvoice = invoicesData.find((inv) => inv.id === proof.invoiceId);
     return {
       id: proof.id,
       invoiceId: proof.invoiceId,
@@ -122,9 +124,11 @@ async function PaymentsData({ projectId }: { projectId: string }) {
       rejectionReason: proof.rejectionReason,
       submittedBy: proof.submittedBy,
       createdAt: proof.createdAt.toISOString(),
-      milestoneTitle: matchedMilestone?.title,
-      milestoneAmount: matchedMilestone?.amount,
-      currency: matchedMilestone?.currency,
+      milestoneTitle: matchedMilestone?.title || (matchedInvoice ? `Invoice ${matchedInvoice.invoiceNumber}` : undefined),
+      milestoneAmount: matchedMilestone?.amount || matchedInvoice?.total,
+      invoiceNumber: matchedInvoice?.invoiceNumber,
+      invoiceTotal: matchedInvoice?.total,
+      currency: matchedMilestone?.currency || matchedInvoice?.currency,
     };
   });
 
