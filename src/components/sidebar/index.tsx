@@ -27,8 +27,8 @@ type OrgLike = {
 }
 
 type ProjectSidebarProps = {
-  projectId: string
-  projectName: string
+  projectId?: string
+  projectName?: string
   isMobile?: boolean
   org?: OrgLike
 }
@@ -53,14 +53,15 @@ function SectionHeader({
 
 export function ProjectSidebar({
   projectId,
-  projectName,
+  projectName = "Project",
   isMobile = false,
   org,
 }: ProjectSidebarProps) {
   const pathname = usePathname()
-  const basePath = `/projects/${projectId}`
+  const resolvedProjectId = projectId || pathname.split("/")[2] || ""
+  const basePath = `/projects/${resolvedProjectId}`
   const { isCollapsed } = useSidebarCollapse(false)
-  const { getUnreadCount } = useProjectUnreadCounts(projectId)
+  const { getUnreadCount } = useProjectUnreadCounts(resolvedProjectId)
   const canWhitelabel = org?.plan === "agency"
 
   return (

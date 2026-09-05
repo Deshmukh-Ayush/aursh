@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { ProjectSidebar } from "@/components/sidebar/index";
 import { TopbarNotifications } from "@/components/projects/topbar-notifications";
@@ -16,13 +17,20 @@ type MobileHeaderOrg = {
 };
 
 interface MobileHeaderProps {
-  projectId: string;
-  projectName: string;
-  role: string;
+  projectId?: string;
+  projectName?: string;
+  role?: string;
   org?: MobileHeaderOrg;
 }
 
-export function MobileHeader({ projectId, projectName, role, org }: MobileHeaderProps) {
+export function MobileHeader({
+  projectId,
+  projectName = "Project",
+  role = "agency",
+  org,
+}: MobileHeaderProps) {
+  const pathname = usePathname();
+  const resolvedProjectId = projectId || pathname.split("/")[2] || "";
   const [open, setOpen] = React.useState(false);
   const canWhitelabel = org?.plan === "agency";
 
@@ -60,7 +68,7 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
       >
         <div onClick={() => setOpen(false)} className="h-full w-full">
           <ProjectSidebar 
-            projectId={projectId} 
+            projectId={resolvedProjectId} 
             projectName={projectName} 
             isMobile={true} 
             org={org} 
@@ -118,9 +126,9 @@ export function MobileHeader({ projectId, projectName, role, org }: MobileHeader
         {/* Right Side: Copy Invite Button beside Notification Bell */}
         <div className="flex shrink-0 items-center gap-2">
           {role !== "client" && (
-            <ProjectNavbarInviteButton projectId={projectId} projectName={projectName} />
+            <ProjectNavbarInviteButton projectId={resolvedProjectId} projectName={projectName} />
           )}
-          <TopbarNotifications projectId={projectId} />
+          <TopbarNotifications projectId={resolvedProjectId} />
         </div>
       </header>
     </>
