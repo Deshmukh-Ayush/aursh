@@ -15,7 +15,6 @@ import { ProjectOverviewTeam } from "@/components/projects/overview/project-over
 import { ProjectOverviewActivity } from "@/components/projects/overview/project-overview-activity";
 import { ProjectOverviewStagger } from "@/components/projects/overview/project-overview-stagger";
 import { getProjectAccess } from "@/lib/project-auth";
-import { getCachedSession } from "@/utils/cached-session";
 
 export const metadata: Metadata = {
   title: "Overview",
@@ -47,9 +46,13 @@ const getOverviewData = cache(async (projectId: string) => {
   return { proj, recentActivity, latestProposal };
 });
 
-async function ProjectOverviewHeader({ projectId, userRole }: { projectId: string, userRole: string }) {
-  const { proj, latestProposal } = await getOverviewData(projectId);
+async function ProjectOverviewHeader({ projectId }: { projectId: string }) {
+  const [access, { proj, latestProposal }] = await Promise.all([
+    getProjectAccess(projectId),
+    getOverviewData(projectId),
+  ]);
   if (!proj) return null;
+  const userRole = access.role || "agency";
 
   const totalCount = proj.deliverables.length;
   const activeContract = proj.contracts[0];
@@ -73,9 +76,13 @@ async function ProjectOverviewHeader({ projectId, userRole }: { projectId: strin
   );
 }
 
-async function ProjectOverviewHeroSection({ projectId, userRole }: { projectId: string, userRole: string }) {
-  const { proj, latestProposal } = await getOverviewData(projectId);
+async function ProjectOverviewHeroSection({ projectId }: { projectId: string }) {
+  const [access, { proj, latestProposal }] = await Promise.all([
+    getProjectAccess(projectId),
+    getOverviewData(projectId),
+  ]);
   if (!proj) return null;
+  const userRole = access.role || "agency";
 
   let approvedCount = 0;
   const totalCount = proj.deliverables.length;
@@ -248,19 +255,16 @@ async function ProjectOverviewDetailsSection({ projectId }: { projectId: string 
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const session = await getCachedSession();
-  const { role } = await getProjectAccess(projectId, session.user.id);
 
-  // We still use ProjectOverviewStagger to get the entry animations
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
       <Suspense fallback={<Skeleton className="h-20 w-full rounded-xl" />}>
-        <ProjectOverviewHeader projectId={projectId} userRole={role!} />
+        <ProjectOverviewHeader projectId={projectId} />
       </Suspense>
 
       <ProjectOverviewStagger>
         <Suspense fallback={<Skeleton className="h-[300px] w-full rounded-xl" />}>
-          <ProjectOverviewHeroSection projectId={projectId} userRole={role!} />
+          <ProjectOverviewHeroSection projectId={projectId} />
         </Suspense>
 
         <Suspense fallback={<Skeleton className="h-[200px] w-full rounded-xl" />}>
