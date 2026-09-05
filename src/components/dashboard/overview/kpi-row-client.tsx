@@ -1,8 +1,17 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { CurrencyInrIcon, CurrencyDollarIcon, FolderIcon } from "@phosphor-icons/react"
-import { EChartsAreaChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-area-chart"
+import type { ChartConfig } from "@/components/evilcharts/ui/echarts-chart"
 import { ConcentricCard } from "@/components/dashboard/shared/concentric-card"
+
+const DynamicKpiSparkline = dynamic(
+  () => import("./kpi-sparkline").then((mod) => mod.KpiSparkline),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full rounded bg-muted/20 animate-pulse" />,
+  }
+)
 
 interface DashboardKpiRowUIProps {
   totalIncome: number
@@ -59,13 +68,10 @@ export function DashboardKpiRowUI({
           </div>
 
           <div className="h-12 w-24 shrink-0">
-            <EChartsAreaChart
+            <DynamicKpiSparkline
               data={trendData1}
-              className="h-full w-full"
               config={config1}
-            >
-              <EChartsAreaChart.Area dataKey="value" />
-            </EChartsAreaChart>
+            />
           </div>
         </div>
       </ConcentricCard>
@@ -94,13 +100,10 @@ export function DashboardKpiRowUI({
           </div>
 
           <div className="h-12 w-24 shrink-0">
-            <EChartsAreaChart
+            <DynamicKpiSparkline
               data={trendData2}
-              className="h-full w-full"
               config={config2}
-            >
-              <EChartsAreaChart.Area dataKey="value" />
-            </EChartsAreaChart>
+            />
           </div>
         </div>
       </ConcentricCard>
