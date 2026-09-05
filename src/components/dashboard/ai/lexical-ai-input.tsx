@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useRef, useState, useEffect } from "react"
-import { Plus, ArrowUp } from "lucide-react"
+import { Plus, ArrowUp, Globe } from "lucide-react"
 import { motion } from "motion/react"
+import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 
 import { LexicalComposer } from "@lexical/react/LexicalComposer"
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin"
@@ -35,6 +37,8 @@ interface ScrunityAiInputProps {
   disabled?: boolean
   projects?: LexicalProjectOption[]
   commands?: LexicalCommandOption[]
+  webSearchEnabled?: boolean
+  onToggleWebSearch?: (enabled: boolean) => void
 }
 
 const DEFAULT_COMMAND_OPTIONS: LexicalCommandOption[] = [
@@ -117,6 +121,8 @@ export const LexicalAIInput  = ({
   disabled = false,
   projects = DEFAULT_PROJECT_OPTIONS,
   commands = DEFAULT_COMMAND_OPTIONS,
+  webSearchEnabled = false,
+  onToggleWebSearch,
 }: ScrunityAiInputProps) => {
   const editorRef = useRef<LexicalEditor | null>(null)
   const [currentText, setCurrentText] = useState("")
@@ -228,16 +234,48 @@ export const LexicalAIInput  = ({
         </LexicalComposer>
 
         <div className="flex items-center justify-between px-3 pb-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSlashMenu((prev) => !prev)
-              setShowMentionMenu(false)
-            }}
-            className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.97]"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowSlashMenu((prev) => !prev)
+                setShowMentionMenu(false)
+              }}
+              title="Commands (/)"
+              className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.97]"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+
+            {onToggleWebSearch && (
+              <div
+                className={cn(
+                  "flex h-[30px] items-center gap-2 rounded-lg border px-2.5 text-xs font-medium transition-colors select-none",
+                  webSearchEnabled
+                    ? "border-brand/40 bg-brand/10 text-brand"
+                    : "border-border/60 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                )}
+              >
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => onToggleWebSearch(!webSearchEnabled)}
+                  className="flex items-center gap-1.5 cursor-pointer text-xs font-medium focus:outline-none active:scale-[0.97] transition-transform duration-150"
+                  aria-hidden="true"
+                >
+                  <Globe className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                  <span>Search</span>
+                </button>
+                <Switch
+                  size="sm"
+                  checked={webSearchEnabled}
+                  onCheckedChange={onToggleWebSearch}
+                  aria-label="Toggle web search"
+                  className="data-checked:bg-brand cursor-pointer"
+                />
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
