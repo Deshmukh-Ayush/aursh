@@ -141,6 +141,8 @@ export interface TorchContextValue {
   rejectArtifact: (messageId: string) => void;
   copiedId: string | null;
   copyMessage: (id: string, text: string) => Promise<void>;
+  webSearchEnabled: boolean;
+  setWebSearchEnabled: (enabled: boolean) => void;
 }
 
 const TorchContext = React.createContext<TorchContextValue | null>(null);
@@ -173,6 +175,24 @@ export function TorchProvider({
   const [initialLoading, setInitialLoading] = React.useState(true);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [webSearchEnabled, setWebSearchEnabledState] = React.useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("torch_web_search_enabled");
+        if (saved !== null) return saved === "true";
+      } catch {}
+    }
+    return false;
+  });
+
+  const setWebSearchEnabled = React.useCallback((enabled: boolean) => {
+    setWebSearchEnabledState(enabled);
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("torch_web_search_enabled", String(enabled));
+      } catch {}
+    }
+  }, []);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -339,6 +359,7 @@ export function TorchProvider({
             role: m.role,
             content: m.content,
           })),
+          enableWebSearch: webSearchEnabled,
         }),
       });
 
@@ -609,6 +630,8 @@ export function TorchProvider({
         rejectArtifact,
         copiedId,
         copyMessage,
+        webSearchEnabled,
+        setWebSearchEnabled,
       }}
     >
       {children}
