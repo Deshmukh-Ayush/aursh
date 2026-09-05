@@ -9,7 +9,7 @@ export interface TorchInputProps {
 }
 
 export function TorchInput() {
-  const { sendMessage, loading, projects } = useTorch();
+  const { sendMessage, loading, projects, webSearchEnabled, setWebSearchEnabled } = useTorch();
 
   return (
     <div className="w-full">
@@ -17,6 +17,8 @@ export function TorchInput() {
         onSend={sendMessage}
         disabled={loading}
         projects={projects}
+        webSearchEnabled={webSearchEnabled}
+        onToggleWebSearch={setWebSearchEnabled}
       />
     </div>
   );
