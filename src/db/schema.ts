@@ -625,7 +625,8 @@ export const paymentMilestone = pgTable("payment_milestone", {
 
 export const payment = pgTable("payment", {
   id: text("id").primaryKey(),
-  milestoneId: text("milestone_id").notNull().references(() => paymentMilestone.id, { onDelete: "cascade" }),
+  milestoneId: text("milestone_id").references(() => paymentMilestone.id, { onDelete: "cascade" }),
+  invoiceId: text("invoice_id").references(() => invoice.id, { onDelete: "set null" }),
   projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
   amount: integer("amount").notNull(),
   currency: text("currency").default("INR").notNull(),
@@ -639,6 +640,7 @@ export const payment = pgTable("payment", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("pay_milestone_idx").on(table.milestoneId),
+  index("pay_invoice_idx").on(table.invoiceId),
   index("pay_project_idx").on(table.projectId),
 ]);
 
@@ -651,6 +653,7 @@ export const paymentMilestoneRelations = relations(paymentMilestone, ({ one, man
 
 export const paymentRelations = relations(payment, ({ one }) => ({
   milestone: one(paymentMilestone, { fields: [payment.milestoneId], references: [paymentMilestone.id] }),
+  invoice: one(invoice, { fields: [payment.invoiceId], references: [invoice.id] }),
   project: one(project, { fields: [payment.projectId], references: [project.id] }),
 }));
 
@@ -807,6 +810,8 @@ export const invoiceRelations = relations(invoice, ({ one, many }) => ({
   milestone: one(paymentMilestone, { fields: [invoice.milestoneId], references: [paymentMilestone.id] }),
   creator: one(user, { fields: [invoice.createdBy], references: [user.id] }),
   lineItems: many(invoiceLineItem),
+  payments: many(payment),
+  paymentProofs: many(paymentProof),
 }));
 
 export const invoiceLineItemRelations = relations(invoiceLineItem, ({ one }) => ({
@@ -913,7 +918,6 @@ export const paymentProof = pgTable("payment_proof", {
   invoiceId: text("invoice_id")
     .references(() => invoice.id, { onDelete: "cascade" }),
   milestoneId: text("milestone_id")
-    .notNull()
     .references(() => paymentMilestone.id, { onDelete: "cascade" }),
   projectId: text("project_id")
     .notNull()
