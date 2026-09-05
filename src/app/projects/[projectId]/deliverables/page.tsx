@@ -16,7 +16,13 @@ export const metadata: Metadata = {
   description: "Track and manage project deliverables, reviews, and approvals.",
 };
 
-async function DeliverablesData({ projectId, userId, role }: { projectId: string, userId: string, role: string }) {
+async function DeliverablesData({ projectId }: { projectId: string }) {
+  const [session, access] = await Promise.all([
+    getCachedSession(),
+    getProjectAccess(projectId),
+  ]);
+  const userId = session.user.id;
+  const role = access.role || "agency";
   const [deliverablesList, allComments, activeContract] = await Promise.all([
     db.select().from(deliverable).where(eq(deliverable.projectId, projectId)).orderBy(desc(deliverable.createdAt)),
     db
@@ -77,10 +83,14 @@ async function DeliverablesData({ projectId, userId, role }: { projectId: string
   );
 }
 
+async function DeliverablesHeaderAction({ projectId }: { projectId: string }) {
+  const access = await getProjectAccess(projectId);
+  if (access.role !== "owner" && access.role !== "agency") return null;
+  return <CreateDeliverableDialog projectId={projectId} />;
+}
+
 export default async function DeliverablesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const session = await getCachedSession();
-  const { role } = await getProjectAccess(projectId, session.user.id);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto w-full pb-20 antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800">
@@ -92,13 +102,13 @@ export default async function DeliverablesPage({ params }: { params: Promise<{ p
           </h1>
         </div>
 
-        {(role === "owner" || role === "agency") && (
-          <CreateDeliverableDialog projectId={projectId} />
-        )}
+        <Suspense fallback={null}>
+          <DeliverablesHeaderAction projectId={projectId} />
+        </Suspense>
       </div>
 
       <Suspense fallback={<Skeleton className="h-[400px] w-full rounded-xl" />}>
-        <DeliverablesData projectId={projectId} userId={session.user.id} role={role!} />
+        <DeliverablesData projectId={projectId} />
       </Suspense>
     </div>
   );
