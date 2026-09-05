@@ -38,7 +38,8 @@ export interface MilestoneWithDetails {
 
 export interface PaymentRecord {
   id: string;
-  milestoneId: string;
+  milestoneId?: string | null;
+  invoiceId?: string | null;
   amount: number;
   currency: string;
   paymentMethod: string | null;
