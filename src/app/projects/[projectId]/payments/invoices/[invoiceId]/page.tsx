@@ -3,7 +3,7 @@ import { getCachedSession } from "@/utils/cached-session";
 import { getProjectAccess, canManageProject } from "@/lib/project-auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/utils/db";
-import { invoice, invoiceLineItem, paymentMilestone } from "@/db/schema";
+import { invoice, invoiceLineItem, paymentMilestone, paymentProof } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { InvoiceViewClient } from "./invoice-view-client";
 import { InvoiceData } from "@/lib/invoices/types";
@@ -85,9 +85,38 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
     })),
   };
 
+  const proofRow = await db.query.paymentProof.findFirst({
+    where: eq(paymentProof.invoiceId, invoiceId),
+    orderBy: (proof, { desc }) => [desc(proof.createdAt)],
+  });
+
+  const serializedProof = proofRow
+    ? {
+        id: proofRow.id,
+        invoiceId: proofRow.invoiceId,
+        milestoneId: proofRow.milestoneId,
+        projectId: proofRow.projectId,
+        fileUrl: proofRow.fileUrl,
+        fileName: proofRow.fileName,
+        fileType: proofRow.fileType,
+        fileSize: proofRow.fileSize,
+        extractedData: (proofRow.extractedData as any) || null,
+        status: proofRow.status as any,
+        rejectionReason: proofRow.rejectionReason,
+        submittedBy: proofRow.submittedBy,
+        createdAt: proofRow.createdAt.toISOString(),
+        invoiceNumber: invoiceRow.invoiceNumber,
+        invoiceTotal: invoiceRow.total,
+        currency: invoiceRow.currency,
+        milestoneTitle: invoiceRow.milestone?.title || `Invoice ${invoiceRow.invoiceNumber}`,
+        milestoneAmount: invoiceRow.total,
+      }
+    : null;
+
   return (
     <InvoiceViewClient
       invoice={serializedInvoice}
+      proof={serializedProof}
       projectId={projectId}
       isAgency={isAgency}
     />
