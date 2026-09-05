@@ -512,6 +512,15 @@ export async function PATCH(req: NextRequest) {
       await db.update(invoice).set({ status: "paid", paidAt: now, updatedAt: now }).where(eq(invoice.id, invoiceId));
 
       // Synchronize linked milestone and record auditable payment row
+      const paymentMethod = typeof payload.paymentMethod === "string" ? payload.paymentMethod : "bank_transfer";
+      const referenceNote = typeof payload.referenceNote === "string"
+        ? payload.referenceNote
+        : `Paid via Invoice ${inv.invoiceNumber}`;
+
+      const newPaymentId = crypto.randomUUID();
+      const liveFxRate = await getUsdToInrRate();
+      let milestoneTitle = `Invoice ${inv.invoiceNumber}`;
+
       if (inv.milestoneId) {
         const [milestone] = await db
           .select()
@@ -519,49 +528,43 @@ export async function PATCH(req: NextRequest) {
           .where(eq(paymentMilestone.id, inv.milestoneId));
 
         if (milestone) {
+          milestoneTitle = milestone.title;
           if (milestone.status !== "paid") {
             await db
               .update(paymentMilestone)
               .set({ status: "paid", updatedAt: now })
               .where(eq(paymentMilestone.id, inv.milestoneId));
           }
-
-          const paymentMethod = typeof payload.paymentMethod === "string" ? payload.paymentMethod : "bank_transfer";
-          const referenceNote = typeof payload.referenceNote === "string"
-            ? payload.referenceNote
-            : `Paid via Invoice ${inv.invoiceNumber}`;
-
-          const newPaymentId = crypto.randomUUID();
-          const liveFxRate = await getUsdToInrRate();
-
-          await db.insert(payment).values({
-            id: newPaymentId,
-            milestoneId: milestone.id,
-            projectId: inv.projectId,
-            amount: inv.total,
-            currency: inv.currency,
-            paymentMethod,
-            referenceNote,
-            fxRateAtPayment: liveFxRate.toFixed(4),
-            status: "succeeded",
-            paidAt: now,
-          });
-
-          await logActivity({
-            projectId: inv.projectId,
-            userId: session.user.id,
-            type: "payment_completed",
-            metadata: {
-              milestoneTitle: milestone.title,
-              amount: inv.total,
-              currency: inv.currency,
-              paymentMethod,
-              referenceNote,
-              invoiceNumber: inv.invoiceNumber,
-            },
-          });
         }
       }
+
+      await db.insert(payment).values({
+        id: newPaymentId,
+        milestoneId: inv.milestoneId || null,
+        invoiceId: inv.id,
+        projectId: inv.projectId,
+        amount: inv.total,
+        currency: inv.currency,
+        paymentMethod,
+        referenceNote,
+        fxRateAtPayment: liveFxRate.toFixed(4),
+        status: "succeeded",
+        paidAt: now,
+      });
+
+      await logActivity({
+        projectId: inv.projectId,
+        userId: session.user.id,
+        type: "payment_completed",
+        metadata: {
+          milestoneTitle,
+          amount: inv.total,
+          currency: inv.currency,
+          paymentMethod,
+          referenceNote,
+          invoiceNumber: inv.invoiceNumber,
+        },
+      });
 
       await logActivity({
         projectId: inv.projectId,
