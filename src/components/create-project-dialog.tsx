@@ -55,8 +55,11 @@ export function CreateProjectDialog({ defaultCurrency = "USD" }: CreateProjectDi
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="active:scale-[0.96] transition-transform h-9 px-4 rounded-full bg-brand text-white font-medium text-sm flex items-center gap-1.5 shadow-xs hover:bg-brand-hover border-none">
-          <Plus className="h-4 w-4" />
+        <Button
+          size="sm"
+          className="h-9 px-3.5 rounded-lg bg-brand text-white font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs hover:bg-brand-hover border-none active:scale-[0.96] transition-transform select-none"
+        >
+          <Plus className="size-4 shrink-0 stroke-[2.25]" />
           <span>Create Project</span>
         </Button>
       </DialogTrigger>
@@ -67,25 +70,28 @@ export function CreateProjectDialog({ defaultCurrency = "USD" }: CreateProjectDi
             Start a new project and invite your client to collaborate.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pt-1">
             {error && (
-              <div className="text-sm font-medium text-destructive">{error}</div>
+              <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                {error}
+              </div>
             )}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="name" className="text-xs font-medium text-foreground">
                 Project Name
               </Label>
               <Input
                 id="name"
                 name="name"
                 placeholder="e.g. Acme Redesign"
-                className="col-span-3"
+                className="h-9"
                 required
+                autoFocus
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="clientEmail" className="text-right">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="clientEmail" className="text-xs font-medium text-foreground">
                 Client Email
               </Label>
               <Input
@@ -93,24 +99,24 @@ export function CreateProjectDialog({ defaultCurrency = "USD" }: CreateProjectDi
                 name="clientEmail"
                 type="email"
                 placeholder="client@example.com"
-                className="col-span-3"
+                className="h-9"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currency" className="text-right text-xs">
-                Currency
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
+                Project Currency
               </Label>
-              <div className="col-span-3 flex items-center gap-2">
-                <input type="hidden" name="currency" value={currency} />
+              <input type="hidden" name="currency" value={currency} />
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-muted/60 border border-border/40">
                 <button
                   type="button"
                   onClick={() => setCurrency("USD")}
                   className={cn(
-                    "flex-1 py-1.5 px-3 text-xs font-medium rounded-md border transition-all text-center",
+                    "flex items-center justify-center py-1.5 px-3 text-xs font-medium rounded-md transition-[background-color,color,box-shadow] select-none active:scale-[0.96]",
                     currency === "USD"
-                      ? "bg-foreground text-background border-foreground shadow-xs font-semibold"
-                      : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
                   )}
                 >
                   USD ($)
@@ -119,22 +125,37 @@ export function CreateProjectDialog({ defaultCurrency = "USD" }: CreateProjectDi
                   type="button"
                   onClick={() => setCurrency("INR")}
                   className={cn(
-                    "flex-1 py-1.5 px-3 text-xs font-medium rounded-md border transition-all text-center",
+                    "flex items-center justify-center py-1.5 px-3 text-xs font-medium rounded-md transition-[background-color,color,box-shadow] select-none active:scale-[0.96]",
                     currency === "INR"
-                      ? "bg-foreground text-background border-foreground shadow-xs font-semibold"
-                      : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
                   )}
                 >
                   INR (₹)
                 </button>
               </div>
+              <p className="text-[11px] leading-normal text-muted-foreground">
+                All proposals, milestones, and invoices in this project will use this currency.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground col-span-4 pl-[calc(25%+1rem)] -mt-1">
-              All proposals, milestones, and invoices in this project will use this currency.
-            </p>
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isLoading}>
+          <DialogFooter className="mt-2 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={isLoading}
+              className="active:scale-[0.96] transition-transform"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isLoading}
+              className="bg-brand hover:bg-brand-hover text-white border-none shadow-xs active:scale-[0.96] transition-transform"
+            >
               {isLoading ? "Creating..." : "Create Project"}
             </Button>
           </DialogFooter>
