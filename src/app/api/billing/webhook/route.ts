@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const { type, data } = event;
 
     // Handle payment/subscription success
-    if (type === "payment.succeeded" || type === "subscription.active") {
+    if (type === "payment.succeeded" || type === "subscription.active" || type === "subscription.renewed") {
       const metadata = data.metadata || {};
       const orgId = metadata.organizationId;
       const plan = metadata.plan;
@@ -49,11 +49,11 @@ export async function POST(req: Request) {
     }
 
     // Handle subscription cancellation
-    if (type === "subscription.canceled" || type === "subscription.past_due") {
+    if (type === "subscription.canceled" || type === "subscription.cancelled" || type === "subscription.past_due" || type === "subscription.expired") {
       const customerId = data.customer?.customer_id || data.customer_id;
       if (customerId) {
         await db.update(organization)
-          .set({ subscriptionStatus: type === "subscription.canceled" ? "canceled" : "past_due" })
+          .set({ subscriptionStatus: (type === "subscription.canceled" || type === "subscription.cancelled") ? "canceled" : "past_due" })
           .where(eq(organization.dodoCustomerId, customerId));
       }
     }
