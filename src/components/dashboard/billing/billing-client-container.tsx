@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { PlanConfig, PlanTier } from "@/config/billing";
 import { CreditUsageCard } from "@/components/dashboard/billing/credit-usage-card";
 
+import { toast } from "sonner";
+
 interface BillingClientContainerProps {
   organization: {
     id: string;
@@ -35,11 +37,11 @@ export function BillingClientContainer({ organization, config, userEmail }: Bill
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert("Failed to initiate checkout");
+        toast.error(data.error || "Failed to initiate checkout");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Something went wrong");
+      toast.error(error?.message || "Something went wrong initiating checkout");
     } finally {
       setIsLoading(null);
     }
