@@ -58,8 +58,13 @@ export async function POST(req: Request) {
 
     // Create Dodo Checkout Session (handles one-time products as well as recurring subscriptions)
     const session = await dodo.checkoutSessions.create({
-      billing_address: {
-        country: "US",
+      billing_address: org.globalCurrency === "INR" ? { country: "IN" } : undefined,
+      feature_flags: {
+        allow_customer_editing_country: true,
+        allow_customer_editing_state: true,
+        allow_customer_editing_city: true,
+        allow_customer_editing_zipcode: true,
+        allow_customer_editing_street: true,
       },
       customer: {
         email: user.email,
