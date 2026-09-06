@@ -6,8 +6,14 @@ import { db } from "@/utils/db";
 import { organization } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+const environment =
+  process.env.DODO_PAYMENTS_ENVIRONMENT === "live_mode"
+    ? "live_mode"
+    : "test_mode";
+
 const dodo = new DodoPayments({
   bearerToken: process.env.DODO_PAYMENTS_API_KEY || "",
+  environment,
 });
 
 export async function POST(req: Request) {
